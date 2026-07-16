@@ -1,71 +1,147 @@
-/* color palette from <system> */
 :root {
-  --vt-c-white: #ffffff;
-  --vt-c-white-soft: #f8f8f8;
-  --vt-c-white-mute: #f2f2f2;
-
-  --vt-c-black: #181818;
-  --vt-c-black-soft: #222222;
-  --vt-c-black-mute: #282828;
-
-  --vt-c-indigo: #2c3e50;
-
-  --vt-c-divider-light-1: rgba(60, 60, 60, 0.29);
-  --vt-c-divider-light-2: rgba(60, 60, 60, 0.12);
-  --vt-c-divider-dark-1: rgba(84, 84, 84, 0.65);
-  --vt-c-divider-dark-2: rgba(84, 84, 84, 0.48);
-
-  --vt-c-text-light-1: var(--vt-c-indigo);
-  --vt-c-text-light-2: rgba(60, 60, 60, 0.66);
-  --vt-c-text-dark-1: var(--vt-c-white);
-  --vt-c-text-dark-2: rgba(235, 235, 235, 0.64);
-}
-
-:root {
-  --color-background: var(--vt-c-white);
-  --color-background-soft: var(--vt-c-white-soft);
-  --color-background-mute: var(--vt-c-white-mute);
-
-  --color-border: var(--vt-c-divider-light-2);
-  --color-border-hover: var(--vt-c-divider-light-1);
-
-  --color-heading: var(--vt-c-text-light-1);
-  --color-text: var(--vt-c-text-light-1);
-
-  --section-gap: 160px;
+  --color-brand-800: #014268;
+  --color-brand-700: #025583;
+  --color-brand-600: #08678f;
+  --color-brand-100: #e7f3f7;
+  --color-brand-50: #f2f8fa;
+  --color-accent: #e9a824;
+  --color-success: #16865b;
+  --color-warning: #c77800;
+  --color-danger: #c2413b;
+  --color-info: #3973b7;
+  --color-text-primary: #1f2937;
+  --color-text-secondary: #5f6b7a;
+  --color-text-tertiary: #8a94a3;
+  --color-border: #dfe4ea;
+  --color-border-light: #edf0f3;
+  --color-surface: #ffffff;
+  --color-background: #f4f6f8;
+  --shadow-overlay: 0 14px 40px rgba(12, 42, 61, 0.16);
+  --layout-width: 1200px;
+  --header-height: 64px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --el-color-primary: #08678f;
+  --el-color-success: #16865b;
+  --el-color-warning: #c77800;
+  --el-color-danger: #c2413b;
+  --el-border-radius-base: 4px;
+  --el-border-radius-small: 4px;
 }
 
 *,
 *::before,
 *::after {
   box-sizing: border-box;
-  margin: 0;
-  font-weight: normal;
+}
+
+html {
+  min-width: 320px;
+  background: var(--color-background);
 }
 
 body {
+  min-width: 320px;
   min-height: 100vh;
-  color: var(--color-text);
+  margin: 0;
+  color: var(--color-text-primary);
   background: var(--color-background);
-  transition:
-    color 0.5s,
-    background-color 0.5s;
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 14px;
   line-height: 1.6;
-  font-family:
-    Inter,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    Oxygen,
-    Ubuntu,
-    Cantarell,
-    'Fira Sans',
-    'Droid Sans',
-    'Helvetica Neue',
-    sans-serif;
-  font-size: 15px;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: inherit;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+.container {
+  width: min(var(--layout-width), calc(100% - 64px));
+  margin: 0 auto;
+}
+
+.section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 18px;
+}
+
+.section-heading h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.section-heading p {
+  margin: 4px 0 0;
+  color: var(--color-text-secondary);
+}
+
+.surface-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 991px) {
+  .container {
+    width: min(var(--layout-width), calc(100% - 48px));
+  }
+}
+
+@media (max-width: 767px) {
+  .container {
+    width: calc(100% - 32px);
+  }
+
+  .section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
