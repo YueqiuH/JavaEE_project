@@ -18,5 +18,7 @@ public class MenuEntity implements Serializable {
     private String path;
     private String icon;
     private Long parentId;
-    private String userType;
+    private String permissionCode;
+    private Integer sortOrder;
+    private Integer status;
 }

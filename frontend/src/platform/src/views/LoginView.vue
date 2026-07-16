@@ -76,8 +76,8 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { UserFilled, Lock } from '@element-plus/icons-vue'
 import { loginUser } from '@/api/auth.js'
-import { setStorage } from '@/utils/localStorage'
 import { setAccessToken } from '@/utils/authToken.js'
+import { setStoredCurrentUser } from '@/utils/authSession.js'
 
 const router = useRouter()
 
@@ -92,11 +92,11 @@ const formData = ref({
 const rules = {
     username: [
         { required: true, message: '请输入账号', trigger: 'blur' },
-        { min: 5, max: 12, message: '账号长度为5位 ~ 12位', trigger: 'blur' }
+        { max: 64, message: '账号长度不能超过64位', trigger: 'blur' }
     ],
     password: [
         { required: true, message: '请输入密码', trigger: 'blur' },
-        { min: 5, max: 12, message: '密码长度为5位 ~ 12位', trigger: 'blur' }
+        { max: 128, message: '密码长度不能超过128位', trigger: 'blur' }
     ]
 }
 
@@ -118,9 +118,10 @@ const login = async () => {
     try {
         const result = await loginUser(formData.value)
         setAccessToken(result.data.token)
-        setStorage('userInfo', JSON.stringify(result.data))
+        setStoredCurrentUser(result.data.currentUser)
         ElMessage({ message: '登录成功', type: 'success' })
-        await router.push('/home')
+        const redirect = router.currentRoute.value.query.redirect
+        await router.push(typeof redirect === 'string' ? redirect : '/home')
     } catch {
         // 请求拦截器统一展示登录失败信息。
     } finally {

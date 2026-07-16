@@ -14,12 +14,56 @@ USE school_spring;
 
 -- 用户表
 CREATE TABLE IF NOT EXISTS `user` (
-    `user_id`   BIGINT       NOT NULL AUTO_INCREMENT COMMENT '用户主键ID',
-    `username`  VARCHAR(32)  NOT NULL                COMMENT '用户名/账号',
-    `password`  VARCHAR(32)  NOT NULL                COMMENT '密码',
-    `user_type` INT          NOT NULL DEFAULT 1      COMMENT '用户类型: 1=学生, 2=老师, 3=教务, 4=管理员',
-    PRIMARY KEY (`user_id`)
+    `user_id`    BIGINT       NOT NULL AUTO_INCREMENT COMMENT '用户主键ID',
+    `username`   VARCHAR(64)  NOT NULL                COMMENT '用户名/账号',
+    `password`   VARCHAR(100) NOT NULL                COMMENT 'BCrypt密码哈希',
+    `user_type`  TINYINT      NOT NULL DEFAULT 1      COMMENT '人员类别: 1=学生, 2=教师, 3=教职工, 4=管理员',
+    `status`     TINYINT      NOT NULL DEFAULT 1      COMMENT '状态: 1=启用, 0=停用',
+    `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`user_id`),
+    UNIQUE KEY `uk_user_username` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
+
+-- 角色表
+CREATE TABLE IF NOT EXISTS `role` (
+    `role_id`   BIGINT      NOT NULL AUTO_INCREMENT,
+    `role_code` VARCHAR(32) NOT NULL COMMENT '稳定角色编码',
+    `role_name` VARCHAR(64) NOT NULL COMMENT '角色名称',
+    `status`    TINYINT     NOT NULL DEFAULT 1,
+    PRIMARY KEY (`role_id`),
+    UNIQUE KEY `uk_role_code` (`role_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色表';
+
+-- 权限表
+CREATE TABLE IF NOT EXISTS `permission` (
+    `permission_id`   BIGINT      NOT NULL AUTO_INCREMENT,
+    `permission_code` VARCHAR(64) NOT NULL COMMENT 'domain:action权限码',
+    `permission_name` VARCHAR(64) NOT NULL,
+    `status`          TINYINT     NOT NULL DEFAULT 1,
+    PRIMARY KEY (`permission_id`),
+    UNIQUE KEY `uk_permission_code` (`permission_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='权限表';
+
+-- 用户角色关联表
+CREATE TABLE IF NOT EXISTS `user_role` (
+    `user_id` BIGINT NOT NULL,
+    `role_id` BIGINT NOT NULL,
+    PRIMARY KEY (`user_id`, `role_id`),
+    KEY `idx_user_role_role_id` (`role_id`),
+    CONSTRAINT `fk_user_role_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`user_id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_user_role_role` FOREIGN KEY (`role_id`) REFERENCES `role` (`role_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户角色关联表';
+
+-- 角色权限关联表
+CREATE TABLE IF NOT EXISTS `role_permission` (
+    `role_id`      BIGINT NOT NULL,
+    `permission_id` BIGINT NOT NULL,
+    PRIMARY KEY (`role_id`, `permission_id`),
+    KEY `idx_role_permission_permission_id` (`permission_id`),
+    CONSTRAINT `fk_role_permission_role` FOREIGN KEY (`role_id`) REFERENCES `role` (`role_id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_role_permission_permission` FOREIGN KEY (`permission_id`) REFERENCES `permission` (`permission_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色权限关联表';
 
 -- 年级表
 CREATE TABLE IF NOT EXISTS `grade` (
@@ -49,13 +93,16 @@ CREATE TABLE IF NOT EXISTS `course` (
 
 -- 菜单表
 CREATE TABLE IF NOT EXISTS `menu` (
-    `menu_id`   BIGINT       NOT NULL AUTO_INCREMENT COMMENT '菜单主键ID',
-    `title`     VARCHAR(32)  NOT NULL                COMMENT '菜单标题',
-    `path`      VARCHAR(64)  DEFAULT NULL            COMMENT '路由路径',
-    `icon`      VARCHAR(32)  DEFAULT NULL            COMMENT '图标名称',
-    `parent_id` BIGINT       DEFAULT NULL            COMMENT '父菜单ID',
-    `user_type` VARCHAR(16)  NOT NULL                COMMENT '可见用户类型',
-    PRIMARY KEY (`menu_id`)
+    `menu_id`         BIGINT       NOT NULL AUTO_INCREMENT COMMENT '菜单主键ID',
+    `title`           VARCHAR(32)  NOT NULL                COMMENT '菜单标题',
+    `path`            VARCHAR(64)  DEFAULT NULL            COMMENT '路由路径',
+    `icon`            VARCHAR(32)  DEFAULT NULL            COMMENT '图标名称',
+    `parent_id`       BIGINT       DEFAULT NULL            COMMENT '父菜单ID',
+    `permission_code` VARCHAR(64)  DEFAULT NULL            COMMENT '可见权限码',
+    `sort_order`      INT          NOT NULL DEFAULT 0,
+    `status`          TINYINT      NOT NULL DEFAULT 1,
+    PRIMARY KEY (`menu_id`),
+    UNIQUE KEY `uk_menu_path` (`path`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='菜单表';
 
 -- 院系表
@@ -548,3 +595,50 @@ CREATE TABLE IF NOT EXISTS `forum_comment` (
     `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '回复时间',
     PRIMARY KEY (`comment_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='论坛回复表';
+
+-- ============================================
+-- 本地演示认证数据（统一密码: 123321）
+-- ============================================
+
+INSERT INTO `role` (`role_code`, `role_name`) VALUES
+    ('STUDENT', '学生'),
+    ('TEACHER', '教师'),
+    ('STAFF', '教职工'),
+    ('ADMIN', '系统管理员')
+ON DUPLICATE KEY UPDATE `role_name` = VALUES(`role_name`);
+
+INSERT INTO `permission` (`permission_code`, `permission_name`) VALUES
+    ('teaching:read', '读取教务数据'), ('teaching:write', '维护教务数据'),
+    ('student:read', '读取学生事务'), ('student:write', '维护学生事务'),
+    ('office:read', '读取办公数据'), ('office:write', '维护办公数据'),
+    ('base:read', '读取基础数据'), ('base:write', '维护基础数据'),
+    ('admin:manage', '系统管理')
+ON DUPLICATE KEY UPDATE `permission_name` = VALUES(`permission_name`);
+
+INSERT INTO `user` (`username`, `password`, `user_type`, `status`) VALUES
+    ('600001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1),
+    ('700001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 2, 1),
+    ('800001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 3, 1),
+    ('admin', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 4, 1)
+ON DUPLICATE KEY UPDATE `password` = VALUES(`password`), `user_type` = VALUES(`user_type`), `status` = VALUES(`status`);
+
+INSERT IGNORE INTO `user_role` (`user_id`, `role_id`)
+SELECT u.user_id, r.role_id FROM `user` u JOIN `role` r ON
+    (u.username = '600001' AND r.role_code = 'STUDENT') OR
+    (u.username = '700001' AND r.role_code = 'TEACHER') OR
+    (u.username = '800001' AND r.role_code = 'STAFF') OR
+    (u.username = 'admin' AND r.role_code = 'ADMIN');
+
+INSERT IGNORE INTO `role_permission` (`role_id`, `permission_id`)
+SELECT r.role_id, p.permission_id FROM `role` r CROSS JOIN `permission` p WHERE
+    r.role_code = 'ADMIN'
+    OR (r.role_code = 'STUDENT' AND p.permission_code IN ('teaching:read', 'student:read', 'student:write', 'base:read'))
+    OR (r.role_code = 'TEACHER' AND p.permission_code IN ('teaching:read', 'teaching:write', 'student:read', 'base:read'))
+    OR (r.role_code = 'STAFF' AND p.permission_code IN ('student:read', 'student:write', 'office:read', 'office:write', 'base:read'));
+
+INSERT INTO `menu` (`title`, `path`, `permission_code`, `sort_order`) VALUES
+    ('教务核心', '/home/course-schedule', 'teaching:read', 10),
+    ('学生事务', '/home/student-status', 'student:read', 20),
+    ('协同办公', '/home/work-plan', 'office:read', 30),
+    ('基础数据', '/home/user-management', 'base:read', 40)
+ON DUPLICATE KEY UPDATE `title` = VALUES(`title`), `permission_code` = VALUES(`permission_code`), `sort_order` = VALUES(`sort_order`);
