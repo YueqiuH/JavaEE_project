@@ -7,11 +7,21 @@ logging:
   config: classpath:logback-spring.xml
 
 spring:
+  autoconfigure:
+    exclude:
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAgentAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeChatAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeEmbeddingAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeImageAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeVideoAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAudioSpeechAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAudioTranscriptionAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeRerankAutoConfiguration
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/school_spring?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&allowMultiQueries=true
     username: root
-    password: root
+    password: RANsz5201314!
   data:
     redis:
       host: localhost
@@ -26,10 +36,8 @@ spring:
           max-idle: 5
           min-idle: 1
   ai:
-    dashscope:
-      api-key: your-dashscope-api-key-here
     openai:
-      api-key: your-deepseek-api-key-here
+      api-key: sk-9d65588468764044afc7a30f080a2262
       base-url: https://api.deepseek.com
       chat:
         options:
