@@ -50,3 +50,8 @@ mybatis-plus:
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  auth:
+    session-ttl: ${AUTH_SESSION_TTL:2h}
+    sliding-expiration: ${AUTH_SLIDING_EXPIRATION:true}
+    redis-key-prefix: ${AUTH_REDIS_KEY_PREFIX:auth:session:}
+    public-paths: ${AUTH_PUBLIC_PATHS:/api/v1/auth/login}

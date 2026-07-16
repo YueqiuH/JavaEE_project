@@ -12,6 +12,15 @@
 
 AI 功能是加分项，默认构建不会加载 Spring AI、DashScope、DeepSeek 或 WebFlux 依赖。
 
+本地演示账号如下，密码统一为 `123321`。这些账号只用于本地开发和课程演示：
+
+| 账号 | 角色 |
+| --- | --- |
+| `600001` | 学生 |
+| `700001` | 教师 |
+| `800001` | 教职工 |
+| `admin` | 系统管理员 |
+
 ## 后端配置
 
 `.env.example` 列出了可用环境变量。Spring Boot 不会自动读取 `.env` 文件，启动前需要在终端、IDE 或部署平台中设置对应变量。
@@ -70,6 +79,7 @@ java -jar backend/campus-app/target/campus-app-0.0.1-SNAPSHOT.jar --spring.profi
 - 成功业务码：`0`
 - 分页字段：`records`、`total`、`page`、`size`
 - 请求链路头：`X-Request-Id`
+- 会话：随机 Token 只返回客户端，Redis 使用 Token 的 SHA-256 摘要作为键，默认滑动有效期为 2 小时
 
 ## Git 工作流
 

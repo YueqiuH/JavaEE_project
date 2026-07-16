@@ -1,0 +1,68 @@
+package com.smartcampus.auth.repository;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.smartcampus.contract.entity.MenuEntity;
+import com.smartcampus.contract.entity.UserEntity;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+
+import java.util.List;
+
+public interface AuthUserMapper extends BaseMapper<UserEntity> {
+
+    @Select("""
+            SELECT user_id, username, password, user_type, status, created_at, updated_at
+            FROM `user`
+            WHERE username = #{username} AND status = 1
+            LIMIT 1
+            """)
+    UserEntity findActiveByUsername(@Param("username") String username);
+
+    @Select("""
+            SELECT user_id, username, password, user_type, status, created_at, updated_at
+            FROM `user`
+            WHERE user_id = #{userId} AND status = 1
+            LIMIT 1
+            """)
+    UserEntity findActiveById(@Param("userId") Long userId);
+
+    @Select("""
+            SELECT r.role_code
+            FROM `role` r
+            JOIN user_role ur ON ur.role_id = r.role_id
+            WHERE ur.user_id = #{userId} AND r.status = 1
+            ORDER BY r.role_code
+            """)
+    List<String> findRoleCodes(@Param("userId") Long userId);
+
+    @Select("""
+            SELECT DISTINCT p.permission_code
+            FROM permission p
+            JOIN role_permission rp ON rp.permission_id = p.permission_id
+            JOIN `role` r ON r.role_id = rp.role_id AND r.status = 1
+            JOIN user_role ur ON ur.role_id = r.role_id
+            WHERE ur.user_id = #{userId} AND p.status = 1
+            ORDER BY p.permission_code
+            """)
+    List<String> findPermissionCodes(@Param("userId") Long userId);
+
+    @Select("""
+            SELECT m.menu_id, m.title, m.path, m.icon, m.parent_id,
+                   m.permission_code, m.sort_order, m.status
+            FROM menu m
+            WHERE m.status = 1
+              AND (
+                  m.permission_code IS NULL
+                  OR m.permission_code IN (
+                      SELECT p.permission_code
+                      FROM permission p
+                      JOIN role_permission rp ON rp.permission_id = p.permission_id
+                      JOIN `role` r ON r.role_id = rp.role_id AND r.status = 1
+                      JOIN user_role ur ON ur.role_id = r.role_id
+                      WHERE ur.user_id = #{userId} AND p.status = 1
+                  )
+              )
+            ORDER BY m.sort_order, m.menu_id
+            """)
+    List<MenuEntity> findMenus(@Param("userId") Long userId);
+}
