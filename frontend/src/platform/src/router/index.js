@@ -36,6 +36,7 @@ import NewsForum from "@/views/base/NewsForum.vue";
 import AiReport from "@/views/base/AiReport.vue";
 
 import { createRouter, createWebHistory } from 'vue-router'
+import { getAccessToken } from '@/utils/authToken.js'
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -44,7 +45,7 @@ const router = createRouter({
         { path: '/', name: 'landing', component: LandingView, meta: { name: "欢迎页" } },
         { path: '/login', name: 'login', component: LoginView, meta: { name: "登录" } },
         {
-            path: '/home', name: 'home', component: HomeView, meta: { name: "主页" },
+            path: '/home', name: 'home', component: HomeView, meta: { name: "主页", requiresAuth: true },
             children: [
                 // 成员A：教务核心
                 { path: '/home/course-schedule', name: 'courseSchedule', component: CourseSchedule, meta: { name: "排课与课表", member: "A" } },
@@ -77,6 +78,13 @@ const router = createRouter({
             ]
         }
     ]
+})
+
+router.beforeEach((to) => {
+    if (to.matched.some(record => record.meta.requiresAuth) && !getAccessToken()) {
+        return { path: '/login', query: { redirect: to.fullPath } }
+    }
+    return true
 })
 
 export default router

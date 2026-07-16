@@ -75,8 +75,9 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { UserFilled, Lock } from '@element-plus/icons-vue'
-import { loginUser } from '@/api/getData'
+import { loginUser } from '@/api/auth.js'
 import { setStorage } from '@/utils/localStorage'
+import { setAccessToken } from '@/utils/authToken.js'
 
 const router = useRouter()
 
@@ -112,19 +113,19 @@ const submitForm = (formEl) => {
     })
 }
 
-const login = () => {
+const login = async () => {
     buttonLoading.value = true
-    loginUser(formData.value).then(res => {
-        if (res && res != -1) {
-            ElMessage({ message: '登录成功', type: 'success' })
-            setStorage('Token', res.data.token)
-            setStorage('userInfo', JSON.stringify(res.data))
-            router.push('/home')
-        }
-        setTimeout(() => {
-            buttonLoading.value = false
-        }, 5000)
-    })
+    try {
+        const result = await loginUser(formData.value)
+        setAccessToken(result.data.token)
+        setStorage('userInfo', JSON.stringify(result.data))
+        ElMessage({ message: '登录成功', type: 'success' })
+        await router.push('/home')
+    } catch {
+        // 请求拦截器统一展示登录失败信息。
+    } finally {
+        buttonLoading.value = false
+    }
 }
 </script>
 

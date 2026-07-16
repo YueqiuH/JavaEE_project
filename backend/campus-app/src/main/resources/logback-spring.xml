@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
+    <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [requestId=%X{requestId:-}] %logger{36} - %msg%n"/>
+
     <!--输出日志到控制台-->
     <appender name="consoleLog" class="ch.qos.logback.core.ConsoleAppender">
         <layout>
-            <pattern>
-                [%p]%d - %msg%n
-            </pattern>
+            <pattern>${LOG_PATTERN}</pattern>
         </layout>
     </appender>
 
@@ -16,9 +16,7 @@
             <onMatch>DENY</onMatch>
         </filter>
         <encoder>
-            <pattern>
-                [%p]%d - %msg%n
-            </pattern>
+            <pattern>${LOG_PATTERN}</pattern>
         </encoder>
         <!--指定文件的输出位置-->
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
@@ -27,7 +25,7 @@
             </fileNamePattern>
         </rollingPolicy>
     </appender>
-    <root level="debug">
+    <root level="info">
         <appender-ref ref="consoleLog"></appender-ref>
         <appender-ref ref="fileLog"></appender-ref>
     </root>
