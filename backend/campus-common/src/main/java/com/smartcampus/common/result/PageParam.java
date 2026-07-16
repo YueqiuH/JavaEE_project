@@ -1,22 +1,22 @@
 package com.smartcampus.common.result;
 
 import lombok.Data;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 
 import java.io.Serializable;
 
 @Data
 public class PageParam implements Serializable {
 
-    private static final Integer PAGE_NO = 1;
-    private static final Integer PAGE_SIZE = 10;
+    private static final Integer DEFAULT_PAGE = 1;
+    private static final Integer DEFAULT_SIZE = 20;
 
-    /**
-     * 每页条数 - 不分页
-     */
-    public static final Integer PAGE_SIZE_NONE = -1;
+    @Min(value = 1, message = "page 必须大于等于 1")
+    private Integer page = DEFAULT_PAGE;
 
-    private Integer pageNo = PAGE_NO;
-
-    private Integer pageSize = PAGE_SIZE;
+    @Min(value = 1, message = "size 必须大于等于 1")
+    @Max(value = 200, message = "size 不能大于 200")
+    private Integer size = DEFAULT_SIZE;
 
 }

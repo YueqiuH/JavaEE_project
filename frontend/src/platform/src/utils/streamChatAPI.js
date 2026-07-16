@@ -1,7 +1,9 @@
 /**
  * 使用Fetch API进行流式请求
  */
-const URL = "http://localhost:8888";
+import { getAccessToken } from '@/utils/authToken.js'
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8888'
 export const streamChatAPI = {
     /**
      * 流式聊天
@@ -16,10 +18,12 @@ export const streamChatAPI = {
         const controller = new AbortController()
 
         try {
-            const response = await fetch(`${URL}${url}`, {
+            const token = getAccessToken()
+            const response = await fetch(`${API_BASE_URL}${url}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
                 },
                 body: JSON.stringify(body),
                 signal: controller.signal

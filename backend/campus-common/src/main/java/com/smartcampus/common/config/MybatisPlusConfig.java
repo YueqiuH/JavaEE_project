@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@MapperScan("com.smartcampus.*.dao")
+@MapperScan({"com.smartcampus.app.dao", "com.smartcampus.auth.repository"})
 public class MybatisPlusConfig {
     /**
      * 添加MyBatis分页插件
