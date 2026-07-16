@@ -1,39 +1,34 @@
 server:
-  port: 8888
+  port: ${SERVER_PORT:8888}
 
 logging:
   level:
-    com.smartcampus: DEBUG
+    com.smartcampus: ${LOG_LEVEL_APP:INFO}
   config: classpath:logback-spring.xml
 
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/school_spring?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&allowMultiQueries=true
-    username: root
-    password: root
+    url: ${DB_URL:jdbc:mysql://localhost:3306/school_spring?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&allowMultiQueries=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
   data:
     redis:
-      host: localhost
-      port: 6379
-      password: 123456
-      database: 1
-      timeout: 1800000
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:1}
+      timeout: ${REDIS_TIMEOUT:3s}
       lettuce:
         pool:
-          max-active: 20
-          max-wait: -1
-          max-idle: 5
-          min-idle: 1
-  ai:
-    dashscope:
-      api-key: your-dashscope-api-key-here
-    openai:
-      api-key: your-deepseek-api-key-here
-      base-url: https://api.deepseek.com
-      chat:
-        options:
-          model: deepseek-v4-flash
+          max-active: ${REDIS_POOL_MAX_ACTIVE:20}
+          max-wait: ${REDIS_POOL_MAX_WAIT:-1ms}
+          max-idle: ${REDIS_POOL_MAX_IDLE:5}
+          min-idle: ${REDIS_POOL_MIN_IDLE:1}
+  jackson:
+    time-zone: Asia/Shanghai
+    serialization:
+      write-dates-as-timestamps: false
 
 # SpringDoc + Swagger3
 springdoc:
@@ -48,7 +43,10 @@ mybatis-plus:
   type-aliases-package: com.smartcampus.contract.entity
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
       id-type: auto
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
