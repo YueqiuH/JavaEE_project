@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { ElMessage } from 'element-plus';
 import { clearAccessToken, getAccessToken } from '@/utils/authToken.js'
+import { clearStoredCurrentUser } from '@/utils/authSession.js'
 import Router from '@/router'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8888'
@@ -44,6 +45,7 @@ service.interceptors.response.use(
 
         if (status === 401) {
             clearAccessToken()
+            clearStoredCurrentUser()
             if (Router.currentRoute.value.path !== '/login') {
                 Router.push({ path: '/login', query: { redirect: Router.currentRoute.value.fullPath } })
             }
