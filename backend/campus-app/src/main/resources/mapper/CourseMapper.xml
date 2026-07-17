@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.smartcampus.app.dao.teaching.CourseMapper">
+
+    <!-- ============================================================
+         多维搜索课程 —— 动态 SQL 根据 searchType 组装不同条件
+         ============================================================ -->
+    <select id="searchCourses" resultType="com.smartcampus.app.vo.teaching.CourseVo">
+        SELECT DISTINCT
+            c.course_id              AS courseId,
+            c.course_name            AS courseName,
+            c.course_code            AS courseCode,
+            c.classification  AS classification,
+            c.credit                 AS credit,
+            c.created_at             AS createdAt,
+            sch.teacher_id           AS teacherId,
+            u.username               AS teacherName,
+            sch.week_day             AS weekDay,
+            sch.start_period         AS startPeriod,
+            sch.end_period           AS endPeriod,
+            cr.classroom_name        AS classroomName,
+            cap.max_capacity         AS maxCapacity,
+            cap.current_count        AS currentCount
+        FROM course c
+        LEFT JOIN schedule sch
+            ON c.course_id = sch.course_id
+        LEFT JOIN classroom cr
+            ON sch.classroom_id = cr.classroom_id
+        LEFT JOIN course_capacity cap
+            ON c.course_id = cap.course_id
+        LEFT JOIN user u
+            ON sch.teacher_id = u.user_id
+        <where>
+            <!-- 课程分类过滤（下拉单选） -->
+            <if test="query.classification != null and query.classification != ''">
+                AND c.classification = #{query.classification}
+            </if>
+
+            <!-- 按搜索类型动态拼装条件 -->
+            <choose>
+                <when test="query.searchType == 'course_name' and query.keyword != null and query.keyword != ''">
+                    AND c.course_name LIKE CONCAT('%', #{query.keyword}, '%')
+                </when>
+                <when test="query.searchType == 'course_code' and query.keyword != null and query.keyword != ''">
+                    AND c.course_code = #{query.keyword}
+                </when>
+                <when test="query.searchType == 'teacher_name' and query.keyword != null and query.keyword != ''">
+                    AND u.username LIKE CONCAT('%', #{query.keyword}, '%')
+                </when>
+                <otherwise>
+                    <!-- 无 searchType 或 keyword 为空时，回退为全量查询（业务可在此加默认逻辑） -->
+                    <if test="query.keyword != null and query.keyword != ''">
+                        AND (c.course_name LIKE CONCAT('%', #{query.keyword}, '%')
+                             OR c.course_code = #{query.keyword})
+                    </if>
+                </otherwise>
+            </choose>
+        </where>
+        ORDER BY c.created_at DESC
+    </select>
+
+    <!-- 查询课程列表（含排课、教室、容量、教师信息）
+         注意：由于 resultType="java.util.Map"，MyBatis 不会自动做下划线转驼峰，
+         必须手动 AS 别名匹配前端 camelCase 字段名。 -->
+    <select id="selectCourseListWithDetails" resultType="java.util.Map">
+        SELECT
+            c.course_id          AS courseId,
+            c.course_name        AS courseName,
+            c.course_code        AS courseCode,
+            c.classification     AS classification,
+            c.credit             AS credit,
+            c.weekly_frequency   AS weeklyFrequency,
+            c.is_active          AS isActive,
+            sch.schedule_id      AS scheduleId,
+            sch.week_day         AS weekDay,
+            sch.start_period     AS startPeriod,
+            sch.end_period       AS endPeriod,
+            cr.classroom_id      AS classroomId,
+            cr.classroom_name    AS classroomName,
+            cap.capacity_id      AS capacityId,
+            cap.max_capacity     AS maxCapacity,
+            cap.current_count    AS currentCount,
+            sch.teacher_id       AS teacherId,
+            u.username           AS teacherName
+        FROM course c
+        LEFT JOIN schedule sch
+            ON c.course_id = sch.course_id
+            AND sch.semester = #{semester}
+        LEFT JOIN classroom cr
+            ON sch.classroom_id = cr.classroom_id
+        LEFT JOIN course_capacity cap
+            ON c.course_id = cap.course_id
+            AND cap.semester = #{semester}
+        LEFT JOIN user u
+            ON sch.teacher_id = u.user_id
+        ORDER BY c.course_id
+    </select>
+
+</mapper>

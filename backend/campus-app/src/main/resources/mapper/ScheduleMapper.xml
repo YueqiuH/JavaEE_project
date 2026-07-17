@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.smartcampus.app.dao.teaching.ScheduleMapper">
+
+    <resultMap id="ScheduleResultMap" type="com.smartcampus.contract.entity.Schedule">
+        <id column="schedule_id" property="scheduleId"/>
+        <result column="course_id" property="courseId"/>
+        <result column="classroom_id" property="classroomId"/>
+        <result column="teacher_id" property="teacherId"/>
+        <result column="semester" property="semester"/>
+        <result column="week_day" property="weekDay"/>
+        <result column="start_period" property="startPeriod"/>
+        <result column="end_period" property="endPeriod"/>
+        <result column="start_week" property="startWeek"/>
+        <result column="end_week" property="endWeek"/>
+        <result column="schedule_type" property="scheduleType"/>
+    </resultMap>
+
+    <!-- 学生课表查询（关联选课表） -->
+    <select id="selectByStudent" resultMap="ScheduleResultMap">
+        SELECT s.*
+        FROM schedule s
+        INNER JOIN course_selection cs
+            ON s.course_id = cs.course_id
+            AND cs.student_id = #{studentId}
+            AND cs.semester = #{semester}
+            AND cs.status = 1
+        WHERE s.semester = #{semester}
+        ORDER BY s.week_day, s.start_period
+    </select>
+
+    <!-- 教师课表查询 -->
+    <select id="selectByTeacher" resultMap="ScheduleResultMap">
+        SELECT s.*, c.course_name, cr.classroom_name
+        FROM schedule s
+        LEFT JOIN course c ON s.course_id = c.course_id
+        LEFT JOIN classroom cr ON s.classroom_id = cr.classroom_id
+        WHERE s.teacher_id = #{teacherId}
+          AND s.semester = #{semester}
+        ORDER BY s.week_day, s.start_period
+    </select>
+
+</mapper>
