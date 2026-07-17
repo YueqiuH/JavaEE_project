@@ -11,6 +11,9 @@ export const feeAPI = {
 
 export const assetAPI = {
   list: (deptId) => request.get(`${OFFICE_API_PREFIX}/asset/list`, { params: deptId ? { deptId } : {} }),
+  inventory: (deptId) => request.get(`${OFFICE_API_PREFIX}/asset/inventory`, { params: deptId ? { deptId } : {} }),
+  myApplications: () => request.get(`${OFFICE_API_PREFIX}/asset/applications/mine`),
+  applications: () => request.get(`${OFFICE_API_PREFIX}/asset/applications`),
   save: (data) => request.post(`${OFFICE_API_PREFIX}/asset/save`, data),
   apply: (data) => request.post(`${OFFICE_API_PREFIX}/asset/apply`, data),
   approve: (assetId, approved) => request.post(`${OFFICE_API_PREFIX}/asset/approve/${assetId}`, null, { params: { approved } }),

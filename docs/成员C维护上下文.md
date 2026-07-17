@@ -25,9 +25,19 @@
 - 办公权限已细分为缴费、资产、工作计划、公文、会议、通知和 AI 共 14 个权限码。
 - 六个办公页面保留真实业务实现，并接入新版门户、权限菜单和 `src/api/office.js`。
 - 默认 Maven 构建不启动 AI；启用 AI 时同时使用 Maven `ai` Profile 和 Spring `ai` Profile，并配置 `DEEPSEEK_API_KEY`。
-- 验证结果：JDK 25 Maven 编译通过，后端 23 项测试通过，Vite 生产构建通过。
+- 验证结果：JDK 25 Maven 编译通过，后端 30 项测试通过，Vite 生产构建通过。
 
-### 1.2 C3 工作计划与任务指派规则
+### 1.2 C2 固定资产可见性与审批规则
+
+- 资产负责人不是数据库中的部门负责人关系，而是拥有 `asset:manage` 权限的用户；默认包括 `800001` 和 `admin`。
+- 公共资产台账只显示 `approve_status=1`、`status=1` 且 `quantity>0` 的资产，已领用、已报废、无库存、待审批和已拒绝记录均不显示。
+- 普通教职工通过“我的申请”只能查询 `apply_user_id` 为当前登录用户的申请；资产负责人通过“全部申请”查看所有申请。
+- 只有 `asset:manage` 可以审批全部申请、维护和删除资产；禁止负责人审批自己提交的申请。
+- 审批通过后记录变为已领用并绑定申请人，因此不会继续出现在可用资产台账中。
+- 相关接口：`GET /api/v1/office/asset/inventory`、`GET /api/v1/office/asset/applications/mine`、`GET /api/v1/office/asset/applications`。
+- 本次可见性与权限隔离复用现有 `asset` 字段，不修改数据库结构。
+
+### 1.3 C3 工作计划与任务指派规则
 
 - 教职工通过 `work-plan:self` 权限维护本人的周计划和月计划。
 - 拥有 `work-plan:manage` 权限的用户可以查看、点评全部计划，并从具备 `work-plan:self` 权限的教师或教职工中选择任务接收人。
@@ -36,7 +46,7 @@
 - 由于数据库结构保持不变，当前记录不单独保存指派人；`work-plan:manage` 也不代表真实部门上下级关系。
 - 相关接口：`GET /api/v1/office/work-plan/assignees`、`POST /api/v1/office/work-plan/assign`。
 
-### 1.3 C4 单步公文审批规则
+### 1.4 C4 单步公文审批规则
 
 - 公文类型固定为：`公文会签`、`请示报告`、`请假申请`。
 - 流程固定为单步审批，发起人不再填写审批链 JSON。
