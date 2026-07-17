@@ -30,6 +30,27 @@ public class UserEntity implements Serializable {
     @TableField(value = "user_type")
     private Integer userType;
 
+    /** 姓名 */
+    private String realName;
+
+    /** 性别: 1=男, 2=女 */
+    private Integer gender;
+
+    /** 联系电话 */
+    private String phone;
+
+    /** 邮箱 */
+    private String email;
+
+    /** 职称 */
+    private String title;
+
+    /** 职务 */
+    private String position;
+
+    /** 所属院系ID */
+    private Long deptId;
+
     private Integer status;
 
     private LocalDateTime createdAt;
