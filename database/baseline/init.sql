@@ -316,16 +316,24 @@ CREATE TABLE IF NOT EXISTS `student_status_change` (
 -- 奖助贷申请表
 CREATE TABLE IF NOT EXISTS `scholarship` (
     `scholarship_id`   BIGINT       NOT NULL AUTO_INCREMENT COMMENT '申请主键ID',
+    `application_no`   VARCHAR(32)  NOT NULL                COMMENT '申请编号',
     `student_id`       BIGINT       NOT NULL                COMMENT '学生ID',
-    `scholarship_type` VARCHAR(16)  NOT NULL                COMMENT '类型：奖学金/困难补助/助学贷款',
+    `scholarship_type` VARCHAR(32)  NOT NULL                COMMENT '类型：SCHOLARSHIP/DIFFICULTY_GRANT/STUDENT_LOAN',
     `title`            VARCHAR(128) NOT NULL                COMMENT '申请标题',
     `reason`           TEXT         NOT NULL                COMMENT '申请理由',
     `attachment_url`   VARCHAR(256) DEFAULT NULL            COMMENT '附件地址',
-    `status`           INT          DEFAULT 0               COMMENT '状态：0=待审核, 1=已通过, 2=已拒绝',
+    `status`           INT          NOT NULL DEFAULT 0      COMMENT '状态：0=草稿,1=已提交,2=已退回,3=已通过,4=已拒绝,5=已撤回,6=已入选',
     `reviewer_id`      BIGINT       DEFAULT NULL            COMMENT '审核人ID',
     `review_opinion`   VARCHAR(256) DEFAULT NULL            COMMENT '审核意见',
-    `apply_time`       DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '申请时间',
-    PRIMARY KEY (`scholarship_id`)
+    `apply_time`       DATETIME     DEFAULT NULL             COMMENT '提交时间',
+    `reviewed_at`      DATETIME     DEFAULT NULL             COMMENT '评审时间',
+    `selected_at`      DATETIME     DEFAULT NULL             COMMENT '入选时间',
+    `created_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`scholarship_id`),
+    UNIQUE KEY `uk_scholarship_application_no` (`application_no`),
+    KEY `idx_scholarship_student_status` (`student_id`, `status`),
+    KEY `idx_scholarship_status_updated` (`status`, `updated_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='奖助贷申请表';
 
 -- 评教表
@@ -612,7 +620,15 @@ INSERT INTO `permission` (`permission_code`, `permission_name`) VALUES
     ('student:read', '读取学生事务'), ('student:write', '维护学生事务'),
     ('office:read', '读取办公数据'), ('office:write', '维护办公数据'),
     ('base:read', '读取基础数据'), ('base:write', '维护基础数据'),
-    ('admin:manage', '系统管理')
+    ('admin:manage', '系统管理'),
+    ('scholarship:application:read-self', '查看本人奖助贷申请'),
+    ('scholarship:application:create', '创建奖助贷申请'),
+    ('scholarship:application:update-self', '修改本人奖助贷申请'),
+    ('scholarship:application:submit-self', '提交本人奖助贷申请'),
+    ('scholarship:application:withdraw-self', '撤回本人奖助贷申请'),
+    ('scholarship:review:read', '查看奖助贷评审队列'),
+    ('scholarship:review:submit', '提交奖助贷评审结论'),
+    ('scholarship:result:generate', '生成奖助贷资助名单')
 ON DUPLICATE KEY UPDATE `permission_name` = VALUES(`permission_name`);
 
 INSERT INTO `user` (`username`, `password`, `user_type`, `status`) VALUES
@@ -632,9 +648,19 @@ SELECT u.user_id, r.role_id FROM `user` u JOIN `role` r ON
 INSERT IGNORE INTO `role_permission` (`role_id`, `permission_id`)
 SELECT r.role_id, p.permission_id FROM `role` r CROSS JOIN `permission` p WHERE
     r.role_code = 'ADMIN'
-    OR (r.role_code = 'STUDENT' AND p.permission_code IN ('teaching:read', 'student:read', 'student:write', 'base:read'))
-    OR (r.role_code = 'TEACHER' AND p.permission_code IN ('teaching:read', 'teaching:write', 'student:read', 'base:read'))
+    OR (r.role_code = 'STUDENT' AND p.permission_code IN (
+        'teaching:read', 'student:read', 'student:write', 'base:read',
+        'scholarship:application:read-self', 'scholarship:application:create',
+        'scholarship:application:update-self', 'scholarship:application:submit-self',
+        'scholarship:application:withdraw-self'))
+    OR (r.role_code = 'TEACHER' AND p.permission_code IN (
+        'teaching:read', 'teaching:write', 'student:read', 'base:read',
+        'scholarship:review:read', 'scholarship:review:submit', 'scholarship:result:generate'))
     OR (r.role_code = 'STAFF' AND p.permission_code IN ('student:read', 'student:write', 'office:read', 'office:write', 'base:read'));
+
+INSERT INTO `student` (`student_name`, `student_no`, `student_age`)
+SELECT '演示学生', 600001, 20
+WHERE NOT EXISTS (SELECT 1 FROM `student` WHERE `student_no` = 600001);
 
 INSERT INTO `menu` (`title`, `path`, `permission_code`, `sort_order`) VALUES
     ('教务核心', '/home/course-schedule', 'teaching:read', 10),

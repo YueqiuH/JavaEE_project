@@ -1,29 +1,25 @@
-package com.smartcampus.contract.entity;
+package com.smartcampus.contract.vo.student;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
-import lombok.ToString;
 
-import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @Data
-@ToString
-@TableName(value = "scholarship")
-public class Scholarship implements Serializable {
+public class ScholarshipApplicationVo {
 
-    @TableId(type = IdType.AUTO)
     private Long scholarshipId;
     private String applicationNo;
     private Long studentId;
+    private Long studentNo;
+    private String studentName;
     private String scholarshipType;
     private String title;
     private String reason;
     private String attachmentUrl;
-    private Integer status;
+    private Integer statusCode;
+    private String status;
     private Long reviewerId;
+    private String reviewerName;
     private String reviewOpinion;
     private LocalDateTime applyTime;
     private LocalDateTime reviewedAt;
