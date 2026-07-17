@@ -1,22 +1,24 @@
 import axios from 'axios';
 import { ElMessage } from 'element-plus';
-import { getStorage } from "@/utils/localStorage.js";
+import { clearAccessToken, getAccessToken } from '@/utils/authToken.js'
+import { clearStoredCurrentUser } from '@/utils/authSession.js'
 import Router from '@/router'
 
-const URL = "http://localhost:8888";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8888'
+const REQUEST_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT || 15000)
 
 // create an axios instance
 const service = axios.create({
-    baseURL: URL,
-    timeout: 1000000,
-    crossDomain: true
+    baseURL: API_BASE_URL,
+    timeout: REQUEST_TIMEOUT
 })
 
-
-// http request 拦截器
 service.interceptors.request.use(
     config => {
-        config.headers['Token'] = getStorage('Token')
+        const token = getAccessToken()
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`
+        }
         return config
     },
     error => {
@@ -26,34 +28,37 @@ service.interceptors.request.use(
 
 service.interceptors.response.use(
     response => {
-        if (response.data) {//服务器返回了数据
-            //对自己的返回结果做判断
-            if (response.data.code == 200) {
-                return response.data
-            } else if (response.data.code == 401) {
-                //登录失效, 跳转到登录页面
-                ElMessage({
-                    message: response.data.msg,
-                    type: "error",
-                    duration: 2000
-                });
-                //跳转到登录页面
-                Router.push({ path: "/" })
-                return false;
-            } else {
-                ElMessage({
-                    message: response.data.msg,
-                    type: "error",
-                    duration: 2000
-                });
-            }
-            return -1;
+        const result = response.data
+        if (result?.code === 0) {
+            return result
         }
 
+        const error = new Error(result?.message || '请求失败')
+        error.code = result?.code
+        error.requestId = result?.requestId
+        ElMessage.error(formatMessage(error.message, error.requestId))
+        return Promise.reject(error)
     },
     error => {
+        const status = error.response?.status
+        const result = error.response?.data
+
+        if (status === 401) {
+            clearAccessToken()
+            clearStoredCurrentUser()
+            if (Router.currentRoute.value.path !== '/login') {
+                Router.push({ path: '/login', query: { redirect: Router.currentRoute.value.fullPath } })
+            }
+        }
+
+        const message = result?.message || (status === 403 ? '没有该操作权限' : '网络请求失败')
+        ElMessage.error(formatMessage(message, result?.requestId))
         return Promise.reject(error)
     }
 )
+
+const formatMessage = (message, requestId) => {
+    return requestId ? `${message}（请求编号：${requestId}）` : message
+}
 
 export default service

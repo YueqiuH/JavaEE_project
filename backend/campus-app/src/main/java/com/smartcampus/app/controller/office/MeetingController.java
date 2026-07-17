@@ -1,16 +1,20 @@
 package com.smartcampus.app.controller.office;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.smartcampus.app.enums.OfficeErrorCodeConstants;
+import com.smartcampus.app.security.OfficePermissions;
 import com.smartcampus.app.service.office.IMeetingAttendeeService;
 import com.smartcampus.app.service.office.IMeetingService;
 import com.smartcampus.app.service.office.INotificationService;
+import com.smartcampus.auth.context.CurrentUserContext;
+import com.smartcampus.auth.permission.RequirePermission;
+import com.smartcampus.common.exception.BusinessException;
 import com.smartcampus.common.result.CommonResult;
 import com.smartcampus.contract.entity.Meeting;
 import com.smartcampus.contract.entity.MeetingAttendee;
 import com.smartcampus.contract.entity.Notification;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/office/meeting")
+@RequestMapping("/api/v1/office/meeting")
 @Tag(name = "校园会议与通知发布")
 public class MeetingController {
     @Autowired private IMeetingService meetingService;
@@ -29,13 +33,24 @@ public class MeetingController {
     @Autowired private INotificationService notificationService;
 
     @PostMapping("/publish")
+    @RequirePermission(OfficePermissions.MEETING_MANAGE)
     @Transactional
     @Operation(summary = "发布会议并向参会人员推送通知")
     public CommonResult<Meeting> publish(@RequestBody PublishRequest request) {
+        if (request == null) {
+            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "会议信息不能为空");
+        }
         Meeting meeting = request.getMeeting();
-        if (meeting == null || meeting.getTitle() == null || meeting.getInitiatorId() == null
-                || request.getAttendeeIds() == null || request.getAttendeeIds().isEmpty())
-            return CommonResult.error(1401, "会议信息和参会人员不能为空");
+        if (meeting == null || meeting.getTitle() == null || meeting.getTitle().isBlank()
+                || meeting.getMeetingDate() == null || meeting.getStartTime() == null || meeting.getEndTime() == null
+                || request.getAttendeeIds() == null || request.getAttendeeIds().isEmpty()) {
+            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "会议标题、时间和参会人员不能为空");
+        }
+        if (!meeting.getStartTime().before(meeting.getEndTime())) {
+            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "会议开始时间必须早于结束时间");
+        }
+        meeting.setMeetingId(null);
+        meeting.setInitiatorId(CurrentUserContext.require().userId());
         meeting.setCreateTime(new java.sql.Date(System.currentTimeMillis()));
         meetingService.save(meeting);
         for (Long userId : request.getAttendeeIds().stream().distinct().toList()) {
@@ -57,27 +72,34 @@ public class MeetingController {
     }
 
     @GetMapping("/list")
+    @RequirePermission(OfficePermissions.MEETING_MANAGE)
     @Operation(summary = "查询会议列表")
     public CommonResult<List<Meeting>> list() {
         return CommonResult.success(meetingService.list(new LambdaQueryWrapper<Meeting>()
                 .orderByDesc(Meeting::getMeetingDate, Meeting::getStartTime)));
     }
 
-    @GetMapping("/user/{userId}")
+    @GetMapping("/mine")
+    @RequirePermission(OfficePermissions.MEETING_SELF)
     @Operation(summary = "查询用户收到的会议")
-    public CommonResult<List<Meeting>> userMeetings(@PathVariable Long userId) {
+    public CommonResult<List<Meeting>> myMeetings() {
+        Long userId = CurrentUserContext.require().userId();
         List<Long> ids = attendeeService.list(new LambdaQueryWrapper<MeetingAttendee>()
                 .eq(MeetingAttendee::getUserId, userId)).stream().map(MeetingAttendee::getMeetingId).toList();
         return CommonResult.success(ids.isEmpty() ? List.of() : meetingService.listByIds(ids));
     }
 
     @PostMapping("/{meetingId}/reply")
+    @RequirePermission(OfficePermissions.MEETING_SELF)
     @Operation(summary = "参会人反馈参会或请假")
-    public CommonResult<MeetingAttendee> reply(@PathVariable Long meetingId, @RequestParam Long userId, @RequestParam String status) {
-        if (!List.of("参会", "请假").contains(status)) return CommonResult.error(1402, "反馈状态必须为参会或请假");
+    public CommonResult<MeetingAttendee> reply(@PathVariable Long meetingId, @RequestParam String status) {
+        if (!List.of("参会", "请假").contains(status)) {
+            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "反馈状态必须为参会或请假");
+        }
+        Long userId = CurrentUserContext.require().userId();
         MeetingAttendee attendee = attendeeService.getOne(new LambdaQueryWrapper<MeetingAttendee>()
                 .eq(MeetingAttendee::getMeetingId, meetingId).eq(MeetingAttendee::getUserId, userId));
-        if (attendee == null) return CommonResult.error(1403, "您不在该会议参会名单中");
+        if (attendee == null) throw new BusinessException(OfficeErrorCodeConstants.FORBIDDEN, "您不在该会议参会名单中");
         attendee.setStatus(status);
         attendee.setReplyTime(new Date());
         attendeeService.updateById(attendee);
@@ -85,6 +107,7 @@ public class MeetingController {
     }
 
     @GetMapping("/{meetingId}/summary")
+    @RequirePermission(OfficePermissions.MEETING_MANAGE)
     @Operation(summary = "汇总会议参会反馈情况")
     public CommonResult<Map<String, Long>> summary(@PathVariable Long meetingId) {
         Map<String, Long> result = new LinkedHashMap<>();
@@ -95,25 +118,46 @@ public class MeetingController {
         return CommonResult.success(result);
     }
 
-    @GetMapping("/notification/{userId}")
+    @GetMapping("/notifications")
+    @RequirePermission(OfficePermissions.NOTIFICATION_SELF_READ)
     @Operation(summary = "查询用户通知")
-    public CommonResult<List<Notification>> notifications(@PathVariable Long userId) {
+    public CommonResult<List<Notification>> notifications() {
+        Long userId = CurrentUserContext.require().userId();
         return CommonResult.success(notificationService.list(new LambdaQueryWrapper<Notification>()
                 .eq(Notification::getUserId, userId).orderByDesc(Notification::getCreateTime)));
     }
 
-    @PostMapping("/notification/{notifyId}/read")
+    @PostMapping("/notifications/{notifyId}/read")
+    @RequirePermission(OfficePermissions.NOTIFICATION_SELF_READ)
     @Operation(summary = "标记通知已读")
     public CommonResult<Boolean> read(@PathVariable Long notifyId) {
         Notification notification = notificationService.getById(notifyId);
-        if (notification == null) return CommonResult.error(1404, "通知不存在");
+        if (notification == null) throw new BusinessException(OfficeErrorCodeConstants.NOT_FOUND, "通知不存在");
+        if (!CurrentUserContext.require().userId().equals(notification.getUserId())) {
+            throw new BusinessException(OfficeErrorCodeConstants.FORBIDDEN, "不能修改他人的通知");
+        }
         notification.setIsRead(1);
         return CommonResult.success(notificationService.updateById(notification));
     }
 
-    @Data
     public static class PublishRequest {
         private Meeting meeting;
         private List<Long> attendeeIds;
+
+        public Meeting getMeeting() {
+            return meeting;
+        }
+
+        public void setMeeting(Meeting meeting) {
+            this.meeting = meeting;
+        }
+
+        public List<Long> getAttendeeIds() {
+            return attendeeIds;
+        }
+
+        public void setAttendeeIds(List<Long> attendeeIds) {
+            this.attendeeIds = attendeeIds;
+        }
     }
 }

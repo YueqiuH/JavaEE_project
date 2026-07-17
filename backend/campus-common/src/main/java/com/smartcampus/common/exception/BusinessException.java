@@ -1,0 +1,20 @@
+package com.smartcampus.common.exception;
+
+import com.smartcampus.common.result.ErrorCode;
+import lombok.Getter;
+
+@Getter
+public class BusinessException extends RuntimeException {
+
+    private final ErrorCode errorCode;
+
+    public BusinessException(ErrorCode errorCode) {
+        super(errorCode.getMessage());
+        this.errorCode = errorCode;
+    }
+
+    public BusinessException(ErrorCode errorCode, String message) {
+        super(message);
+        this.errorCode = new ErrorCode(errorCode.getCode(), message, errorCode.getHttpStatus());
+    }
+}

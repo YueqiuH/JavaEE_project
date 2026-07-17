@@ -3,16 +3,20 @@ package com.smartcampus.app.controller.office;
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.smartcampus.app.enums.OfficeErrorCodeConstants;
+import com.smartcampus.app.security.OfficePermissions;
 import com.smartcampus.app.service.office.IDocumentApprovalService;
 import com.smartcampus.app.service.office.IDocumentService;
 import com.smartcampus.app.service.office.INotificationService;
+import com.smartcampus.auth.context.CurrentUserContext;
+import com.smartcampus.auth.permission.RequirePermission;
+import com.smartcampus.common.exception.BusinessException;
 import com.smartcampus.common.result.CommonResult;
 import com.smartcampus.contract.entity.Document;
 import com.smartcampus.contract.entity.DocumentApproval;
 import com.smartcampus.contract.entity.Notification;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +25,7 @@ import java.util.Date;
 import java.util.List;
 
 @RestController
-@RequestMapping("/office/document")
+@RequestMapping("/api/v1/office/document")
 @Tag(name = "官方公文流转系统OA")
 public class DocumentController {
     @Autowired private IDocumentService documentService;
@@ -29,13 +33,20 @@ public class DocumentController {
     @Autowired private INotificationService notificationService;
 
     @PostMapping("/start")
+    @RequirePermission(OfficePermissions.DOCUMENT_SELF)
     @Transactional
     @Operation(summary = "发起公文并设置逐级审批链")
     public CommonResult<Document> start(@RequestBody Document document) {
-        if (document.getTitle() == null || document.getContent() == null || document.getInitiatorId() == null)
-            return CommonResult.error(1301, "标题、内容和发起人不能为空");
-        List<Long> chain = parseChain(document.getApprovalChain());
-        if (chain.isEmpty()) return CommonResult.error(1302, "审批链不能为空，格式应为用户ID数组");
+        if (document.getTitle() == null || document.getTitle().isBlank()
+                || document.getContent() == null || document.getContent().isBlank()) {
+            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "标题和正文不能为空");
+        }
+        List<Long> chain = parseChain(document.getApprovalChain()).stream().distinct().toList();
+        if (chain.isEmpty()) {
+            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "审批链不能为空，格式应为用户ID数组");
+        }
+        document.setDocId(null);
+        document.setInitiatorId(CurrentUserContext.require().userId());
         document.setApprovalChain(JSON.toJSONString(chain));
         document.setCurrentApproverId(chain.get(0));
         document.setStatus(0);
@@ -45,42 +56,55 @@ public class DocumentController {
         return CommonResult.success(document);
     }
 
-    @GetMapping("/initiator/{userId}")
+    @GetMapping("/mine")
+    @RequirePermission(OfficePermissions.DOCUMENT_SELF)
     @Operation(summary = "查询我发起的公文")
-    public CommonResult<List<Document>> initiated(@PathVariable Long userId) {
+    public CommonResult<List<Document>> initiated() {
+        Long userId = CurrentUserContext.require().userId();
         return CommonResult.success(documentService.list(new LambdaQueryWrapper<Document>()
                 .eq(Document::getInitiatorId, userId).orderByDesc(Document::getCreateTime)));
     }
 
-    @GetMapping("/pending/{userId}")
+    @GetMapping("/pending")
+    @RequirePermission(OfficePermissions.DOCUMENT_APPROVE)
     @Operation(summary = "查询我的待审批公文")
-    public CommonResult<List<Document>> pending(@PathVariable Long userId) {
+    public CommonResult<List<Document>> pending() {
+        Long userId = CurrentUserContext.require().userId();
         return CommonResult.success(documentService.list(new LambdaQueryWrapper<Document>()
                 .eq(Document::getCurrentApproverId, userId).eq(Document::getStatus, 0)
                 .orderByDesc(Document::getCreateTime)));
     }
 
     @GetMapping("/{docId}/history")
+    @RequirePermission(OfficePermissions.DOCUMENT_SELF)
     @Operation(summary = "查询公文审批历史")
     public CommonResult<List<DocumentApproval>> history(@PathVariable Long docId) {
+        Document document = requireDocument(docId);
+        requireDocumentAccess(document, CurrentUserContext.require().userId());
         return CommonResult.success(approvalService.list(new LambdaQueryWrapper<DocumentApproval>()
                 .eq(DocumentApproval::getDocId, docId).orderByAsc(DocumentApproval::getApprovalTime)));
     }
 
     @PostMapping("/{docId}/approve")
+    @RequirePermission(OfficePermissions.DOCUMENT_APPROVE)
     @Transactional
     @Operation(summary = "审批公文，支持同意拒绝和退回")
     public CommonResult<Document> approve(@PathVariable Long docId, @RequestBody ApprovalRequest request) {
-        Document document = documentService.getById(docId);
-        if (document == null) return CommonResult.error(1303, "公文不存在");
-        if (!Integer.valueOf(0).equals(document.getStatus())) return CommonResult.error(1304, "该公文已结束审批");
-        if (request.getApproverId() == null || !request.getApproverId().equals(document.getCurrentApproverId()))
-            return CommonResult.error(1305, "您不是当前审批人");
-        if (!List.of("同意", "拒绝", "退回").contains(request.getAction())) return CommonResult.error(1306, "审批操作必须为同意、拒绝或退回");
+        Document document = requireDocument(docId);
+        if (!Integer.valueOf(0).equals(document.getStatus())) {
+            throw new BusinessException(OfficeErrorCodeConstants.STATE_CONFLICT, "该公文已结束审批");
+        }
+        Long approverId = CurrentUserContext.require().userId();
+        if (!approverId.equals(document.getCurrentApproverId())) {
+            throw new BusinessException(OfficeErrorCodeConstants.FORBIDDEN, "您不是当前审批人");
+        }
+        if (request == null || !List.of("同意", "拒绝", "退回").contains(request.getAction())) {
+            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "审批操作必须为同意、拒绝或退回");
+        }
 
         DocumentApproval approval = new DocumentApproval();
         approval.setDocId(docId);
-        approval.setApproverId(request.getApproverId());
+        approval.setApproverId(approverId);
         approval.setAction(request.getAction());
         approval.setOpinion(request.getOpinion());
         approval.setApprovalTime(new Date());
@@ -94,7 +118,7 @@ public class DocumentController {
             document.setCurrentApproverId(null);
         } else {
             List<Long> chain = parseChain(document.getApprovalChain());
-            int currentIndex = chain.indexOf(request.getApproverId());
+            int currentIndex = chain.indexOf(approverId);
             if (currentIndex >= 0 && currentIndex + 1 < chain.size()) {
                 Long next = chain.get(currentIndex + 1);
                 document.setCurrentApproverId(next);
@@ -113,10 +137,16 @@ public class DocumentController {
     }
 
     @PostMapping("/{docId}/remind")
+    @RequirePermission(OfficePermissions.DOCUMENT_SELF)
     @Operation(summary = "催办当前公文审批人")
     public CommonResult<Void> remind(@PathVariable Long docId) {
-        Document document = documentService.getById(docId);
-        if (document == null || document.getCurrentApproverId() == null) return CommonResult.error(1307, "当前没有可催办的审批人");
+        Document document = requireDocument(docId);
+        if (!CurrentUserContext.require().userId().equals(document.getInitiatorId())) {
+            throw new BusinessException(OfficeErrorCodeConstants.FORBIDDEN, "只有发起人可以催办");
+        }
+        if (document.getCurrentApproverId() == null) {
+            throw new BusinessException(OfficeErrorCodeConstants.STATE_CONFLICT, "当前没有可催办的审批人");
+        }
         notifyUser(document.getCurrentApproverId(), "公文催办", "请尽快审批《" + document.getTitle() + "》", "公文通知");
         return CommonResult.success();
     }
@@ -124,6 +154,20 @@ public class DocumentController {
     private List<Long> parseChain(String json) {
         try { return json == null ? List.of() : JSON.parseArray(json, Long.class); }
         catch (RuntimeException exception) { return List.of(); }
+    }
+
+    private Document requireDocument(Long docId) {
+        Document document = documentService.getById(docId);
+        if (document == null) throw new BusinessException(OfficeErrorCodeConstants.NOT_FOUND, "公文不存在");
+        return document;
+    }
+
+    private void requireDocumentAccess(Document document, Long userId) {
+        boolean involved = userId.equals(document.getInitiatorId()) || userId.equals(document.getCurrentApproverId())
+                || approvalService.count(new LambdaQueryWrapper<DocumentApproval>()
+                .eq(DocumentApproval::getDocId, document.getDocId())
+                .eq(DocumentApproval::getApproverId, userId)) > 0;
+        if (!involved) throw new BusinessException(OfficeErrorCodeConstants.FORBIDDEN, "无权查看该公文");
     }
 
     private void notifyUser(Long userId, String title, String content, String type) {
@@ -137,10 +181,24 @@ public class DocumentController {
         notificationService.save(notification);
     }
 
-    @Data
     public static class ApprovalRequest {
-        private Long approverId;
         private String action;
         private String opinion;
+
+        public String getAction() {
+            return action;
+        }
+
+        public void setAction(String action) {
+            this.action = action;
+        }
+
+        public String getOpinion() {
+            return opinion;
+        }
+
+        public void setOpinion(String opinion) {
+            this.opinion = opinion;
+        }
     }
 }

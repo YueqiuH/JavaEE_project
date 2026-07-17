@@ -1,22 +1,89 @@
 <template>
-  <div class="page-container">
-    <div class="page-header"><div><h2>学杂费交纳与流水查询</h2><p>费用账单、在线支付与一卡通最近五笔明细</p></div>
-      <div><el-input-number v-model="studentId" :min="1" controls-position="right"/><el-button type="primary" @click="load">查询学生</el-button><el-button @click="dialogVisible=true">导入账单</el-button></div>
-    </div>
-    <el-card shadow="never"><template #header>个人费用账单</template>
-      <el-table :data="fees" v-loading="loading" stripe><el-table-column prop="feeType" label="费用类型"/><el-table-column prop="semester" label="学期"/><el-table-column prop="amount" label="金额"><template #default="s">¥ {{ s.row.amount }}</template></el-table-column><el-table-column prop="dueDate" label="截止日期"/><el-table-column label="状态"><template #default="s"><el-tag :type="s.row.status===1?'success':'warning'">{{ s.row.status===1?'已支付':'未支付' }}</el-tag></template></el-table-column><el-table-column label="操作"><template #default="s"><el-button type="primary" link :disabled="s.row.status===1" @click="pay(s.row)">立即支付</el-button></template></el-table-column></el-table>
-    </el-card>
-    <el-card shadow="never"><template #header>一卡通最近五笔明细</template>
-      <el-table :data="payments" stripe><el-table-column prop="paymentTime" label="时间"/><el-table-column prop="paymentType" label="类型"/><el-table-column prop="description" label="说明"/><el-table-column prop="amount" label="金额"/></el-table>
-    </el-card>
-    <el-dialog v-model="dialogVisible" title="财务人员导入账单" width="480px"><el-form label-width="90px"><el-form-item label="学生ID"><el-input-number v-model="form.studentId" :min="1"/></el-form-item><el-form-item label="费用类型"><el-select v-model="form.feeType"><el-option v-for="v in ['学费','报考费','住宿费']" :key="v" :value="v"/></el-select></el-form-item><el-form-item label="金额"><el-input-number v-model="form.amount" :min="0.01" :precision="2"/></el-form-item><el-form-item label="学期"><el-input v-model="form.semester"/></el-form-item><el-form-item label="截止日期"><el-date-picker v-model="form.dueDate" value-format="YYYY-MM-DD"/></el-form-item></el-form><template #footer><el-button @click="dialogVisible=false">取消</el-button><el-button type="primary" @click="importFee">导入</el-button></template></el-dialog>
-  </div>
+  <section class="office-page">
+    <header class="office-page__header">
+      <div><h1>学杂费交纳与流水查询</h1><p>使用当前登录身份查询本人账单并安全完成支付。</p></div>
+      <div class="office-page__actions">
+        <el-button :loading="loading" @click="load">刷新</el-button>
+        <el-button v-if="canManage" type="primary" @click="dialogVisible=true">导入账单</el-button>
+      </div>
+    </header>
+
+    <el-result v-if="!canRead" class="office-page__empty" icon="warning" title="无缴费访问权限" sub-title="当前账号没有本人账单查询权限" />
+    <template v-else>
+      <el-card class="office-page__section" shadow="never">
+        <template #header><strong>个人费用账单</strong></template>
+        <el-table :data="fees" v-loading="loading" stripe empty-text="当前没有待缴或历史账单">
+          <el-table-column prop="feeType" label="费用类型" min-width="110" />
+          <el-table-column prop="semester" label="学期" min-width="130" />
+          <el-table-column prop="amount" label="金额" min-width="110"><template #default="scope">¥ {{ scope.row.amount }}</template></el-table-column>
+          <el-table-column prop="dueDate" label="截止日期" min-width="120" />
+          <el-table-column label="状态" width="100"><template #default="scope"><el-tag :type="scope.row.status===1?'success':'warning'">{{ scope.row.status===1?'已支付':'未支付' }}</el-tag></template></el-table-column>
+          <el-table-column label="操作" width="110"><template #default="scope"><el-button type="primary" link :disabled="!canPay||scope.row.status===1" @click="pay(scope.row)">立即支付</el-button></template></el-table-column>
+        </el-table>
+      </el-card>
+
+      <el-card class="office-page__section" shadow="never">
+        <template #header><strong>一卡通最近五笔明细</strong></template>
+        <el-table :data="payments" stripe empty-text="暂无充值或消费记录">
+          <el-table-column prop="paymentTime" label="时间" min-width="170" />
+          <el-table-column prop="paymentType" label="类型" min-width="110" />
+          <el-table-column prop="description" label="说明" min-width="180" />
+          <el-table-column prop="amount" label="金额" min-width="100" />
+        </el-table>
+      </el-card>
+    </template>
+
+    <el-dialog v-model="dialogVisible" title="财务人员导入账单" width="min(500px,92vw)">
+      <el-form label-position="top">
+        <el-form-item label="学生用户 ID"><el-input-number v-model="form.studentId" :min="1" /></el-form-item>
+        <el-form-item label="费用类型"><el-select v-model="form.feeType"><el-option v-for="value in ['学费','报考费','住宿费']" :key="value" :value="value" /></el-select></el-form-item>
+        <el-form-item label="金额"><el-input-number v-model="form.amount" :min="0.01" :precision="2" /></el-form-item>
+        <el-form-item label="学期"><el-input v-model="form.semester" /></el-form-item>
+        <el-form-item label="截止日期"><el-date-picker v-model="form.dueDate" value-format="YYYY-MM-DD" /></el-form-item>
+      </el-form>
+      <template #footer><el-button @click="dialogVisible=false">取消</el-button><el-button type="primary" @click="importFee">导入</el-button></template>
+    </el-dialog>
+  </section>
 </template>
+
 <script setup>
-import { onMounted, reactive, ref } from 'vue'; import { ElMessage, ElMessageBox } from 'element-plus'; import { feeAPI } from '@/api/getData.js';
-const studentId=ref(1), fees=ref([]), payments=ref([]), loading=ref(false), dialogVisible=ref(false); const form=reactive({studentId:1,feeType:'学费',amount:0.01,semester:'2025-2026-1',dueDate:''});
-const load=async()=>{loading.value=true;try{const [a,b]=await Promise.all([feeAPI.getStudentFees(studentId.value),feeAPI.getRecentPayments(studentId.value)]);if(a&&a!==-1)fees.value=a.data||[];if(b&&b!==-1)payments.value=b.data||[]}finally{loading.value=false}};
-const pay=async row=>{await ElMessageBox.confirm(`确认支付 ¥${row.amount}？`,'支付确认');const r=await feeAPI.pay(row.feeId);if(r&&r!==-1){ElMessage.success('支付成功');load()}};
-const importFee=async()=>{const r=await feeAPI.importFees([{...form,status:0}]);if(r&&r!==-1){ElMessage.success('账单导入成功');dialogVisible.value=false;if(form.studentId===studentId.value)load()}}; onMounted(load);
+import { computed, onMounted, reactive, ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { feeAPI } from '@/api/office.js'
+import { useOfficeAccess } from '@/composables/useOfficeAccess.js'
+
+const { userId, hasPermission } = useOfficeAccess()
+const canRead = computed(() => hasPermission('fee:self:read'))
+const canPay = computed(() => hasPermission('fee:self:pay'))
+const canManage = computed(() => hasPermission('fee:manage'))
+const fees = ref([])
+const payments = ref([])
+const loading = ref(false)
+const dialogVisible = ref(false)
+const form = reactive({ studentId: 1, feeType: '学费', amount: 0.01, semester: '2025-2026-1', dueDate: '' })
+
+const load = async () => {
+  if (!canRead.value) return
+  loading.value = true
+  try {
+    const [feeResult, paymentResult] = await Promise.all([feeAPI.getMyFees(), feeAPI.getRecentPayments()])
+    fees.value = feeResult.data || []
+    payments.value = paymentResult.data || []
+  } finally { loading.value = false }
+}
+const pay = async (row) => {
+  await ElMessageBox.confirm(`确认支付 ¥${row.amount}？`, '支付确认')
+  await feeAPI.pay(row.feeId)
+  ElMessage.success('支付成功')
+  await load()
+}
+const importFee = async () => {
+  await feeAPI.importFees([{ ...form }])
+  ElMessage.success('账单导入成功')
+  dialogVisible.value = false
+  if (form.studentId === userId.value) await load()
+}
+onMounted(load)
 </script>
-<style scoped>.page-container{padding:24px;background:#f5f7fa;min-height:100vh}.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.page-header h2{margin:0}.page-header p{color:#909399;margin:8px 0 0}.page-header>div:last-child{display:flex;gap:10px}.el-card+.el-card{margin-top:18px}</style>
+
+<style scoped>@import '@/assets/office-workspace.css';</style>

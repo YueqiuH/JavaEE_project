@@ -1,5 +1,7 @@
 # 成员 A 实现指南：教务核心、学业管理与 AI 智能学习助手
 
+> **基线提示**：A1-A5 为必做内容，A6 为加分项。本文示例必须遵循 [`架构基线.md`](./架构基线.md)：接口使用 `/api/v1/teaching/**`，认证使用 `Authorization: Bearer <token>`，响应使用 `code/message/data/requestId`。如示例与架构基线冲突，以架构基线为准。
+
 > **Controller 包**：`com.smartcampus.app.controller.teaching`
 > **Service 包**：`com.smartcampus.app.service.teaching`
 > **Mapper 包**：`com.smartcampus.app.dao.teaching`
@@ -16,12 +18,12 @@
 | Mapper | `extends BaseMapper<Entity>`，接口定义在 `dao` 包 |
 | Service 接口 | `extends IService<Entity>`，命名 `I{Name}Service` |
 | Service 实现 | `extends ServiceImpl<Mapper, Entity> implements I{Name}Service`，`@Service` 注解 |
-| Controller | `@RestController` + `@RequestMapping("/xxx")`，`@Tag` + `@Operation` 中文注释 |
+| Controller | `@RestController` + `@RequestMapping("/api/v1/teaching/xxx")`，`@Tag` + `@Operation` 中文注释 |
 | 依赖注入 | `@Autowired` 字段注入 |
 | 响应封装 | `CommonResult<T>` 统一返回，`CommonResult.success(data)` / `CommonResult.error(ErrorCode)` |
 | 分页查询 | MyBatis Plus `Page<Entity>` + `LambdaQueryWrapper` |
 | 前端组件 | `<script setup>` 组合式 API，Element Plus 组件库 |
-| API 调用 | `@/api/getData.js` 定义函数，`.then(res => { if (res && res != -1) {...} })` |
+| API 调用 | `@/api/teaching.js` 定义函数，按统一响应和异常处理读取结果 |
 
 ---
 
@@ -332,7 +334,7 @@ public interface IScheduleService extends IService<Schedule> {
 #### Controller
 
 ```java
-@RestController @RequestMapping("/teaching/schedule") @Tag(name = "排课与课表管理")
+@RestController @RequestMapping("/api/v1/teaching/schedules") @Tag(name = "排课与课表管理")
 public class ScheduleController {
     @Autowired IScheduleService scheduleService;
 
@@ -463,7 +465,7 @@ public CommonResult selectCourse(Long studentId, Long courseId, String semester)
 **Controller：**
 
 ```java
-@RestController @RequestMapping("/teaching/selection") @Tag(name = "选课与容量控制")
+@RestController @RequestMapping("/api/v1/teaching/course-selections") @Tag(name = "选课与容量控制")
 public class CourseSelectionController {
     @RequestMapping("/select") @Operation(summary = "学生选课")
     public CommonResult selectCourse(@RequestBody CourseSelection selection) { ... }
@@ -544,7 +546,7 @@ public void checkAcademicWarning(Long studentId) {
 **Controller：**
 
 ```java
-@RestController @RequestMapping("/teaching/score") @Tag(name = "成绩评定与预警")
+@RestController @RequestMapping("/api/v1/teaching/scores") @Tag(name = "成绩评定与预警")
 public class ScoreController {
     @RequestMapping("/input") @Operation(summary = "教师录入/修改成绩")
     public CommonResult inputScore(@RequestBody ScoreEntity score) { ... }
@@ -591,7 +593,7 @@ public class ScoreController {
 **Controller：**
 
 ```java
-@RestController @RequestMapping("/teaching/exam") @Tag(name = "考试安排与重修补考")
+@RestController @RequestMapping("/api/v1/teaching/exams") @Tag(name = "考试安排与重修补考")
 public class ExamController {
 
     // ===== 考试安排 =====
@@ -666,7 +668,7 @@ public void assignSeats(Long examId, Long classroomId) {
 **Controller：**
 
 ```java
-@RestController @RequestMapping("/teaching/graduation") @Tag(name = "毕业设计过程管理")
+@RestController @RequestMapping("/api/v1/teaching/graduation-designs") @Tag(name = "毕业设计过程管理")
 public class GraduationController {
 
     @RequestMapping("/topic/publish") @Operation(summary = "教师发布毕业设计课题")
@@ -831,7 +833,7 @@ public class AIStudyService {
 **Controller：**
 
 ```java
-@RestController @RequestMapping("/teaching/ai") @Tag(name = "AI智能学习助理")
+@RestController @RequestMapping("/api/v1/teaching/ai") @Tag(name = "AI智能学习助理")
 public class AIStudyController {
 
     @Autowired AIStudyService aiStudyService;
@@ -895,22 +897,22 @@ public class AIStudyController {
 // ========== AI 学习助理 API ==========
 export const aiStudyAPI = {
     uploadMaterial(data) {
-        return request({ url: '/teaching/ai/material/upload', method: 'post', data })
+        return request({ url: '/api/v1/teaching/ai/material/upload', method: 'post', data })
     },
     getMaterials(studentId) {
-        return request({ url: `/teaching/ai/material/list/${studentId}`, method: 'get' })
+        return request({ url: `/api/v1/teaching/ai/material/list/${studentId}`, method: 'get' })
     },
     generateSummary(materialId) {
-        return request({ url: `/teaching/ai/summary/${materialId}`, method: 'post' })
+        return request({ url: `/api/v1/teaching/ai/summary/${materialId}`, method: 'post' })
     },
     generateQuestions(materialId) {
-        return request({ url: `/teaching/ai/questions/${materialId}`, method: 'post' })
+        return request({ url: `/api/v1/teaching/ai/questions/${materialId}`, method: 'post' })
     },
     recommendPath(studentId) {
-        return request({ url: `/teaching/ai/path/${studentId}`, method: 'post' })
+        return request({ url: `/api/v1/teaching/ai/path/${studentId}`, method: 'post' })
     },
     getRecords(studentId) {
-        return request({ url: `/teaching/ai/record/list/${studentId}`, method: 'get' })
+        return request({ url: `/api/v1/teaching/ai/record/list/${studentId}`, method: 'get' })
     }
 }
 ```

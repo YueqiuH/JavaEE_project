@@ -1,7 +1,12 @@
 package com.smartcampus.app.controller.office;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.smartcampus.app.enums.OfficeErrorCodeConstants;
+import com.smartcampus.app.security.OfficePermissions;
 import com.smartcampus.app.service.office.IAssetService;
+import com.smartcampus.auth.context.CurrentUserContext;
+import com.smartcampus.auth.permission.RequirePermission;
+import com.smartcampus.common.exception.BusinessException;
 import com.smartcampus.common.result.CommonResult;
 import com.smartcampus.contract.entity.Asset;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,12 +18,13 @@ import java.util.Date;
 import java.util.List;
 
 @RestController
-@RequestMapping("/office/asset")
+@RequestMapping("/api/v1/office/asset")
 @Tag(name = "固定资产管理与申领")
 public class AssetController {
     @Autowired private IAssetService assetService;
 
     @GetMapping("/list")
+    @RequirePermission(OfficePermissions.ASSET_READ)
     @Operation(summary = "查询固定资产台账")
     public CommonResult<List<Asset>> list(@RequestParam(required = false) Long deptId) {
         LambdaQueryWrapper<Asset> wrapper = new LambdaQueryWrapper<Asset>().orderByDesc(Asset::getCreateTime);
@@ -27,9 +33,12 @@ public class AssetController {
     }
 
     @PostMapping("/save")
+    @RequirePermission(OfficePermissions.ASSET_MANAGE)
     @Operation(summary = "新增或修改固定资产")
     public CommonResult<Boolean> save(@RequestBody Asset asset) {
-        if (asset.getAssetName() == null || asset.getAssetName().isBlank()) return CommonResult.error(1101, "资产名称不能为空");
+        if (asset.getAssetName() == null || asset.getAssetName().isBlank()) {
+            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "资产名称不能为空");
+        }
         if (asset.getAssetId() == null) {
             if (asset.getStatus() == null) asset.setStatus(1);
             if (asset.getApproveStatus() == null) asset.setApproveStatus(1);
@@ -39,9 +48,15 @@ public class AssetController {
     }
 
     @PostMapping("/apply")
+    @RequirePermission(OfficePermissions.ASSET_APPLY)
     @Operation(summary = "教职工提交资产购置或领用申请")
     public CommonResult<Asset> apply(@RequestBody Asset asset) {
-        if (asset.getApplyUserId() == null) return CommonResult.error(1102, "申请人不能为空");
+        if (asset.getAssetName() == null || asset.getAssetName().isBlank()) {
+            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "资产名称不能为空");
+        }
+        asset.setAssetId(null);
+        asset.setApplyUserId(CurrentUserContext.require().userId());
+        asset.setUserId(null);
         asset.setApproveStatus(0);
         asset.setStatus(1);
         asset.setCreateTime(new Date());
@@ -50,11 +65,17 @@ public class AssetController {
     }
 
     @PostMapping("/approve/{assetId}")
+    @RequirePermission(OfficePermissions.ASSET_MANAGE)
     @Operation(summary = "部门负责人审批资产申请")
     public CommonResult<Asset> approve(@PathVariable Long assetId, @RequestParam Integer approved) {
         Asset asset = assetService.getById(assetId);
-        if (asset == null) return CommonResult.error(1103, "资产申请不存在");
-        if (!Integer.valueOf(0).equals(asset.getApproveStatus())) return CommonResult.error(1104, "该申请已审批");
+        if (asset == null) throw new BusinessException(OfficeErrorCodeConstants.NOT_FOUND, "资产申请不存在");
+        if (!Integer.valueOf(0).equals(asset.getApproveStatus())) {
+            throw new BusinessException(OfficeErrorCodeConstants.STATE_CONFLICT, "该申请已审批");
+        }
+        if (!Integer.valueOf(0).equals(approved) && !Integer.valueOf(1).equals(approved)) {
+            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "审批结果只能为通过或拒绝");
+        }
         asset.setApproveStatus(Integer.valueOf(1).equals(approved) ? 1 : 2);
         if (Integer.valueOf(1).equals(approved)) {
             asset.setStatus(2);
@@ -65,6 +86,7 @@ public class AssetController {
     }
 
     @DeleteMapping("/{assetId}")
+    @RequirePermission(OfficePermissions.ASSET_MANAGE)
     @Operation(summary = "删除固定资产记录")
     public CommonResult<Boolean> delete(@PathVariable Long assetId) {
         return CommonResult.success(assetService.removeById(assetId));
