@@ -26,7 +26,9 @@ export const workPlanAPI = {
 }
 
 export const documentAPI = {
+  approvers: () => request.get(`${OFFICE_API_PREFIX}/document/approvers`),
   start: (data) => request.post(`${OFFICE_API_PREFIX}/document/start`, data),
+  resubmit: (docId, data) => request.post(`${OFFICE_API_PREFIX}/document/${docId}/resubmit`, data),
   initiated: () => request.get(`${OFFICE_API_PREFIX}/document/mine`),
   pending: () => request.get(`${OFFICE_API_PREFIX}/document/pending`),
   history: (docId) => request.get(`${OFFICE_API_PREFIX}/document/${docId}/history`),

@@ -5,7 +5,7 @@
 
 ## 1. 当前状态
 
-- 最近相关提交：`ddec7ff feat: 完成办公管理模块 - 资产、文档、缴费、会议、工作计划、AI审批等功能的controller/service/dao层及前端对接`
+- 当前开发分支：`temp-branch`；成员 C 与新版门户/RBAC 的最近集成提交为 `b953e5a`。
 - 成员 C 的 6 个模块已经实现并提交：
   - C1 学杂费交纳与流水查询
   - C2 固定资产管理与申领
@@ -15,7 +15,7 @@
   - C6 AI 公文摘要与审批助手
 - 后端曾使用 JDK 25 完成 Maven 多模块编译。
 - 前端曾完成 Vite 生产构建。
-- 2026-07-17 最后检查时，`5173` 和 `8888` 均未监听，需要重新启动前后端。
+- 前后端需要分别启动；默认端口为前端 `5173`、后端 `8888`。
 
 ### 1.1 远端框架合并后的适配
 
@@ -25,7 +25,16 @@
 - 办公权限已细分为缴费、资产、工作计划、公文、会议、通知和 AI 共 14 个权限码。
 - 六个办公页面保留真实业务实现，并接入新版门户、权限菜单和 `src/api/office.js`。
 - 默认 Maven 构建不启动 AI；启用 AI 时同时使用 Maven `ai` Profile 和 Spring `ai` Profile，并配置 `DEEPSEEK_API_KEY`。
-- 验证结果：JDK 25 Maven 编译通过，后端 15 项测试通过，Vite 生产构建通过。
+- 验证结果：JDK 25 Maven 编译通过，后端 19 项测试通过，Vite 生产构建通过。
+
+### 1.2 C4 单步公文审批规则
+
+- 公文类型固定为：`公文会签`、`请示报告`、`请假申请`。
+- 流程固定为单步审批，发起人不再填写审批链 JSON。
+- 两名可选审批人为 `700001`（教学负责人）和 `800001`（行政负责人），来自 `document_approver` 表。
+- 发起人可从两人中选择一人；如果发起人本人就是指定审批人，前后端都会禁止自选和自审。
+- 审批动作为同意、拒绝、退回。退回后 `document.status=3`，只有原发起人可以修改正文、类型和审批人后重新提交。
+- 重新提交会保留原审批历史，并将状态恢复为审批中；`approval_chain` 仅作为后端生成的单审批人快照保留。
 
 ## 2. 主要代码位置
 
@@ -41,7 +50,7 @@
 ### 前端
 
 - 页面：`frontend/src/platform/src/views/office/`
-- API：`frontend/src/platform/src/api/getData.js`
+- API：`frontend/src/platform/src/api/office.js`
 - 路由：`frontend/src/platform/src/router/index.js`
 
 不要编辑 `backend/campus-app/target/classes/application.yml`。它是构建产物，每次编译都会由 `src/main/resources/application.yml` 覆盖。
@@ -85,9 +94,9 @@ PowerShell 若因执行策略禁止 `npm.ps1`，使用 `npm.cmd run dev`。
 
 - 数据库名：`school_spring`
 - 完整初始化脚本：`database/baseline/init.sql`
-- 脚本已包含成员 C 使用的表：`fee`、`payment`、`asset`、`work_plan`、`document`、`document_approval`、`meeting`、`meeting_attendee`、`notification`。
-- 最新基线共 47 张表；当前数据库有 23 个权限项，其中 14 个为成员 C 细粒度权限。
-- 已有 RBAC 数据库升级需执行 `database/migration/framework/V20260717120000__office_permissions.sql`；全新数据库直接使用最新 `database/baseline/init.sql`。
+- 脚本已包含成员 C 使用的表：`fee`、`payment`、`asset`、`work_plan`、`document`、`document_approval`、`document_approver`、`meeting`、`meeting_attendee`、`notification`。
+- 最新基线共 48 张表；当前数据库有 23 个权限项，其中 14 个为成员 C 细粒度权限。
+- 已有数据库依次执行 `V20260717120000__office_permissions.sql` 和 `V20260717153000__single_step_document_approval.sql`；全新数据库直接使用最新 `database/baseline/init.sql`。
 - 初始化脚本没有测试数据。缴费表格显示 `No Data` 时通常只是没有账单，可使用页面右上角“导入账单”创建数据。
 - 数据库用户名和密码以本机配置为准，不要将真实密码写入本文件或对话。
 
@@ -146,17 +155,17 @@ Started SmartCampusApplication
 
 ## 8. AI 页面测试流程
 
-1. 在公文 OA 页面用用户 `1` 发起公文，审批链填写 `[2]`（前端输入形式为 `2`）。
-2. 打开 AI 审批页面，将当前审批人 ID 改为 `2`。
-3. 选择待审批公文。
-4. 点击“生成要点摘要”或“生成审批建议”。
+1. 使用 `admin / 123321` 在公文 OA 页面发起公文，选择 `800001` 行政负责人审批。
+2. 退出后使用 `800001 / 123321` 登录。
+3. 打开 AI 审批页面，页面会自动加载当前账号的待审批公文。
+4. 选择公文并点击“生成要点摘要”或“生成审批建议”。
 5. 同时观察浏览器 Network 和后端控制台。
 
 相关接口：
 
 ```text
-POST /office/ai-approval/summary/{docId}
-POST /office/ai-approval/recommend/{docId}
+POST /api/v1/office/ai-approval/summary/{docId}
+POST /api/v1/office/ai-approval/recommend/{docId}
 ```
 
 ## 9. 安全约束

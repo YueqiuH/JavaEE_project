@@ -488,12 +488,12 @@ CREATE TABLE IF NOT EXISTS `work_plan` (
 CREATE TABLE IF NOT EXISTS `document` (
     `doc_id`      BIGINT       NOT NULL AUTO_INCREMENT COMMENT '公文主键ID',
     `title`       VARCHAR(128) NOT NULL                COMMENT '公文标题',
-    `doc_type`    VARCHAR(16)  NOT NULL                COMMENT '类型：会签/请示/请假/报告',
+    `doc_type`    VARCHAR(16)  NOT NULL                COMMENT '类型：公文会签/请示报告/请假申请',
     `content`     TEXT         NOT NULL                COMMENT '公文内容',
     `initiator_id` BIGINT      NOT NULL                COMMENT '发起人ID',
     `current_approver_id` BIGINT DEFAULT NULL          COMMENT '当前审批人ID',
     `status`      INT          DEFAULT 0               COMMENT '状态：0=审批中, 1=已通过, 2=已拒绝, 3=已退回',
-    `approval_chain` TEXT      DEFAULT NULL            COMMENT '审批链JSON',
+    `approval_chain` TEXT      DEFAULT NULL            COMMENT '系统生成的单审批人链JSON',
     `create_time` DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (`doc_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='公文表';
@@ -508,6 +508,18 @@ CREATE TABLE IF NOT EXISTS `document_approval` (
     `approval_time` DATETIME   DEFAULT CURRENT_TIMESTAMP COMMENT '审批时间',
     PRIMARY KEY (`approval_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='公文审批记录表';
+
+-- 公文指定审批人表（课程简化流程固定两人）
+CREATE TABLE IF NOT EXISTS `document_approver` (
+    `approver_config_id` BIGINT       NOT NULL AUTO_INCREMENT COMMENT '审批人配置主键ID',
+    `user_id`            BIGINT       NOT NULL                COMMENT '审批用户ID',
+    `display_name`       VARCHAR(32)  NOT NULL                COMMENT '审批人显示名称',
+    `status`             TINYINT      NOT NULL DEFAULT 1      COMMENT '状态：1=启用, 0=停用',
+    `create_time`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`approver_config_id`),
+    UNIQUE KEY `uk_document_approver_user` (`user_id`),
+    CONSTRAINT `fk_document_approver_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='公文指定审批人表';
 
 -- 会议表
 CREATE TABLE IF NOT EXISTS `meeting` (
@@ -650,6 +662,14 @@ SELECT r.role_id, p.permission_id FROM `role` r CROSS JOIN `permission` p WHERE
         'asset:read', 'asset:apply', 'asset:manage',
         'work-plan:self', 'work-plan:manage', 'document:self', 'document:approve',
         'meeting:self', 'meeting:manage', 'notification:self:read', 'ai-approval:use'));
+
+INSERT INTO `document_approver` (`user_id`, `display_name`, `status`)
+SELECT u.user_id,
+       CASE u.username WHEN '700001' THEN '教学负责人' ELSE '行政负责人' END,
+       1
+FROM `user` u
+WHERE u.username IN ('700001', '800001')
+ON DUPLICATE KEY UPDATE `display_name` = VALUES(`display_name`), `status` = 1;
 
 INSERT INTO `menu` (`title`, `path`, `permission_code`, `sort_order`) VALUES
     ('教务核心', '/home/course-schedule', 'teaching:read', 10),
