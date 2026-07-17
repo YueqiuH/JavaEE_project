@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -51,7 +52,7 @@ class AssetControllerTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void inventoryOnlyQueriesApprovedAvailablePositiveStock() {
+    void inventoryOnlyQueriesNonApplicationAvailablePositiveStock() {
         when(assetService.list(any(LambdaQueryWrapper.class))).thenReturn(List.of());
 
         controller.inventory(7L);
@@ -59,7 +60,7 @@ class AssetControllerTest {
         ArgumentCaptor<LambdaQueryWrapper<Asset>> captor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
         verify(assetService).list(captor.capture());
         String sql = captor.getValue().getSqlSegment();
-        assertTrue(sql.contains("approve_status"));
+        assertTrue(sql.contains("apply_user_id IS NULL"));
         assertTrue(sql.contains("status"));
         assertTrue(sql.contains("quantity"));
         assertTrue(sql.contains("dept_id"));
@@ -112,6 +113,26 @@ class AssetControllerTest {
     }
 
     @Test
+    void availableAssetApplicationCopiesInventoryAndRemembersSource() {
+        setCurrentUser(2L, Set.of("asset:apply"));
+        Asset inventory = validAsset();
+        inventory.setAssetId(9L);
+        inventory.setQuantity(3);
+        inventory.setStatus(1);
+        inventory.setApproveStatus(1);
+        when(assetService.getById(9L)).thenReturn(inventory);
+        when(assetService.save(any(Asset.class))).thenReturn(true);
+
+        Asset application = controller.applyAvailable(9L, 2).getData();
+
+        assertEquals(2L, application.getApplyUserId());
+        assertEquals(9L, application.getUserId());
+        assertEquals(2, application.getQuantity());
+        assertEquals(0, application.getApproveStatus());
+        verify(assetService).save(application);
+    }
+
+    @Test
     void managerCannotApproveOwnApplication() {
         setCurrentUser(3L, Set.of("asset:manage"));
         Asset application = pendingApplication(5L, 3L);
@@ -137,6 +158,30 @@ class AssetControllerTest {
         assertEquals(2, approved.getStatus());
         assertEquals(2L, approved.getUserId());
         verify(assetService).update(any(LambdaUpdateWrapper.class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void approvedAvailableAssetApplicationConsumesSourceInventory() {
+        setCurrentUser(3L, Set.of("asset:manage"));
+        Asset application = pendingApplication(6L, 2L);
+        application.setUserId(9L);
+        application.setQuantity(2);
+        Asset inventory = validAsset();
+        inventory.setAssetId(9L);
+        inventory.setQuantity(2);
+        inventory.setStatus(1);
+        inventory.setApproveStatus(1);
+        when(assetService.getById(6L)).thenReturn(application);
+        when(assetService.getById(9L)).thenReturn(inventory);
+        when(assetService.update(any(LambdaUpdateWrapper.class))).thenReturn(true);
+
+        Asset approved = controller.approve(6L, 1).getData();
+
+        assertEquals(2L, approved.getUserId());
+        ArgumentCaptor<LambdaUpdateWrapper<Asset>> captor = ArgumentCaptor.forClass(LambdaUpdateWrapper.class);
+        verify(assetService, times(2)).update(captor.capture());
+        assertTrue(captor.getAllValues().get(0).getSqlSegment().contains("quantity"));
     }
 
     @Test

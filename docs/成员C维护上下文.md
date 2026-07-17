@@ -25,15 +25,16 @@
 - 办公权限已细分为缴费、资产、工作计划、公文、会议、通知和 AI 共 14 个权限码。
 - 六个办公页面保留真实业务实现，并接入新版门户、权限菜单和 `src/api/office.js`。
 - 默认 Maven 构建不启动 AI；启用 AI 时同时使用 Maven `ai` Profile 和 Spring `ai` Profile，并配置 `DEEPSEEK_API_KEY`。
-- 验证结果：JDK 25 Maven 编译通过，后端 30 项测试通过，Vite 生产构建通过。
+- 验证结果：JDK 25 Maven 编译通过，后端 32 项测试通过，Vite 生产构建通过。
 
 ### 1.2 C2 固定资产可见性与审批规则
 
 - 资产负责人不是数据库中的部门负责人关系，而是拥有 `asset:manage` 权限的用户；默认包括 `800001` 和 `admin`。
-- 公共资产台账只显示 `approve_status=1`、`status=1` 且 `quantity>0` 的资产，已领用、已报废、无库存、待审批和已拒绝记录均不显示。
+- 公共资产台账只显示非申请记录（`apply_user_id IS NULL`）、`status=1` 且 `quantity>0` 的现有资产，已领用、已报废、无库存和申请记录均不显示。
 - 普通教职工通过“我的申请”只能查询 `apply_user_id` 为当前登录用户的申请；资产负责人通过“全部申请”查看所有申请。
 - 只有 `asset:manage` 可以审批全部申请、维护和删除资产；禁止负责人审批自己提交的申请。
-- 审批通过后记录变为已领用并绑定申请人，因此不会继续出现在可用资产台账中。
+- 可用资产台账提供“申请领用”，后端复制资产信息并校验申请数量；待审批记录暂用 `user_id` 保存来源资产 ID。
+- 领用申请审批通过时以条件更新扣减来源库存；剩余数量为 0 时来源资产转为已领用并自动退出台账，申请记录的 `user_id` 再改为申请人。
 - 相关接口：`GET /api/v1/office/asset/inventory`、`GET /api/v1/office/asset/applications/mine`、`GET /api/v1/office/asset/applications`。
 - 本次可见性与权限隔离复用现有 `asset` 字段，不修改数据库结构。
 

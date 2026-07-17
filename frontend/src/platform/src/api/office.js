@@ -16,6 +16,7 @@ export const assetAPI = {
   applications: () => request.get(`${OFFICE_API_PREFIX}/asset/applications`),
   save: (data) => request.post(`${OFFICE_API_PREFIX}/asset/save`, data),
   apply: (data) => request.post(`${OFFICE_API_PREFIX}/asset/apply`, data),
+  applyAvailable: (assetId, quantity) => request.post(`${OFFICE_API_PREFIX}/asset/apply/${assetId}`, null, { params: { quantity } }),
   approve: (assetId, approved) => request.post(`${OFFICE_API_PREFIX}/asset/approve/${assetId}`, null, { params: { approved } }),
   remove: (assetId) => request.delete(`${OFFICE_API_PREFIX}/asset/${assetId}`),
 }

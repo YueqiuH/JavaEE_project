@@ -13,6 +13,7 @@ import com.smartcampus.contract.entity.Asset;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Date;
@@ -104,8 +105,34 @@ public class AssetController {
         return CommonResult.success(asset);
     }
 
+    @PostMapping("/apply/{inventoryAssetId}")
+    @RequirePermission(OfficePermissions.ASSET_APPLY)
+    @Operation(summary = "从可用资产台账发起领用申请")
+    public CommonResult<Asset> applyAvailable(@PathVariable Long inventoryAssetId,
+                                               @RequestParam Integer quantity) {
+        Asset inventory = requireAvailableInventory(inventoryAssetId);
+        if (quantity == null || quantity <= 0 || quantity > inventory.getQuantity()) {
+            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "申请数量必须大于 0 且不能超过现有库存");
+        }
+
+        Asset application = new Asset();
+        application.setAssetName(inventory.getAssetName());
+        application.setAssetType(inventory.getAssetType());
+        application.setQuantity(quantity);
+        application.setDeptId(inventory.getDeptId());
+        application.setApplyUserId(CurrentUserContext.require().userId());
+        // 在待审批阶段暂存来源资产 ID；审批结束后改为领用人 ID 或清空。
+        application.setUserId(inventoryAssetId);
+        application.setApproveStatus(APPROVAL_PENDING);
+        application.setStatus(STATUS_IN_STOCK);
+        application.setCreateTime(new Date());
+        assetService.save(application);
+        return CommonResult.success(application);
+    }
+
     @PostMapping("/approve/{assetId}")
     @RequirePermission(OfficePermissions.ASSET_MANAGE)
+    @Transactional
     @Operation(summary = "资产负责人审批资产申请")
     public CommonResult<Asset> approve(@PathVariable Long assetId, @RequestParam Integer approved) {
         Asset asset = requireAsset(assetId);
@@ -125,6 +152,10 @@ public class AssetController {
 
         boolean passed = Integer.valueOf(1).equals(approved);
         int targetApproval = passed ? APPROVAL_APPROVED : APPROVAL_REJECTED;
+        Long sourceInventoryId = asset.getUserId();
+        if (passed && sourceInventoryId != null) {
+            consumeInventory(sourceInventoryId, asset.getQuantity());
+        }
         LambdaUpdateWrapper<Asset> update = new LambdaUpdateWrapper<Asset>()
                 .eq(Asset::getAssetId, assetId)
                 .eq(Asset::getApproveStatus, APPROVAL_PENDING)
@@ -133,6 +164,8 @@ public class AssetController {
         if (passed) {
             update.set(Asset::getStatus, STATUS_ASSIGNED)
                     .set(Asset::getUserId, asset.getApplyUserId());
+        } else {
+            update.set(Asset::getUserId, null);
         }
         if (!assetService.update(update)) {
             throw new BusinessException(OfficeErrorCodeConstants.STATE_CONFLICT, "申请状态已变化，请刷新后重试");
@@ -141,6 +174,8 @@ public class AssetController {
         if (passed) {
             asset.setStatus(STATUS_ASSIGNED);
             asset.setUserId(asset.getApplyUserId());
+        } else {
+            asset.setUserId(null);
         }
         return CommonResult.success(asset);
     }
@@ -154,7 +189,7 @@ public class AssetController {
 
     private CommonResult<List<Asset>> availableInventory(Long deptId) {
         LambdaQueryWrapper<Asset> wrapper = new LambdaQueryWrapper<Asset>()
-                .eq(Asset::getApproveStatus, APPROVAL_APPROVED)
+                .isNull(Asset::getApplyUserId)
                 .eq(Asset::getStatus, STATUS_IN_STOCK)
                 .gt(Asset::getQuantity, 0)
                 .orderByDesc(Asset::getCreateTime);
@@ -162,6 +197,34 @@ public class AssetController {
             wrapper.eq(Asset::getDeptId, deptId);
         }
         return CommonResult.success(assetService.list(wrapper));
+    }
+
+    private Asset requireAvailableInventory(Long assetId) {
+        Asset inventory = requireAsset(assetId);
+        if (inventory.getApplyUserId() != null
+                || !Integer.valueOf(STATUS_IN_STOCK).equals(inventory.getStatus())
+                || inventory.getQuantity() == null || inventory.getQuantity() <= 0) {
+            throw new BusinessException(OfficeErrorCodeConstants.STATE_CONFLICT, "该资产当前不可申请");
+        }
+        return inventory;
+    }
+
+    private void consumeInventory(Long inventoryAssetId, Integer requestedQuantity) {
+        Asset inventory = requireAvailableInventory(inventoryAssetId);
+        if (requestedQuantity == null || requestedQuantity <= 0 || requestedQuantity > inventory.getQuantity()) {
+            throw new BusinessException(OfficeErrorCodeConstants.STATE_CONFLICT, "可用库存不足，无法通过申请");
+        }
+        int remaining = inventory.getQuantity() - requestedQuantity;
+        boolean updated = assetService.update(new LambdaUpdateWrapper<Asset>()
+                .eq(Asset::getAssetId, inventoryAssetId)
+                .isNull(Asset::getApplyUserId)
+                .eq(Asset::getStatus, STATUS_IN_STOCK)
+                .eq(Asset::getQuantity, inventory.getQuantity())
+                .set(Asset::getQuantity, remaining)
+                .set(Asset::getStatus, remaining == 0 ? STATUS_ASSIGNED : STATUS_IN_STOCK));
+        if (!updated) {
+            throw new BusinessException(OfficeErrorCodeConstants.STATE_CONFLICT, "库存状态已变化，请刷新后重试");
+        }
     }
 
     private Asset requireAsset(Long assetId) {
