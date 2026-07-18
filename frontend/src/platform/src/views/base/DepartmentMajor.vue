@@ -10,7 +10,6 @@
 
     <header class="d-head d-rise" style="--rise: 1">
       <div>
-        <span class="d-head-module">基础数据 · D4</span>
         <h1>院系与专业资源管理</h1>
         <p class="d-head-desc">维护各院系介绍、专业设置与培养方案等基础结构数据</p>
       </div>
@@ -29,11 +28,14 @@
             class="toolbar-search"
             @keyup.enter="loadDepartments(1)"
             @clear="loadDepartments(1)"
-          />
+          >
+            <template #append>
+              <el-button :icon="Search" @click="loadDepartments(1)" />
+            </template>
+          </el-input>
           <el-button v-if="canWrite" type="primary" :icon="Plus" @click="openDeptForm()">新增院系</el-button>
         </div>
         <el-table
-          v-loading="deptLoading"
           :data="deptRows"
           highlight-current-row
           :row-class-name="deptRowClass"
@@ -81,7 +83,11 @@
             class="toolbar-search"
             @keyup.enter="loadMajors(1)"
             @clear="loadMajors(1)"
-          />
+          >
+            <template #append>
+              <el-button :icon="Search" @click="loadMajors(1)" />
+            </template>
+          </el-input>
           <el-button v-if="canWrite" type="primary" :icon="Plus" @click="openMajorForm()">新增专业</el-button>
         </div>
         <el-table v-loading="majorLoading" :data="majorRows">
@@ -179,7 +185,6 @@ const canWrite = computed(() => {
 })
 
 // ===== 院系 =====
-const deptLoading = ref(false)
 const deptRows = ref([])
 const deptTotal = ref(0)
 const deptQuery = reactive({ page: 1, size: 10, keyword: '' })
@@ -187,13 +192,12 @@ const selectedDept = ref(null)
 
 const loadDepartments = async (page) => {
   if (page) deptQuery.page = page
-  deptLoading.value = true
   try {
     const res = await listDepartmentPage({ ...deptQuery })
     deptRows.value = res.data.records
     deptTotal.value = Number(res.data.total)
-  } finally {
-    deptLoading.value = false
+  } catch {
+    // interceptor shows error toast
   }
 }
 
@@ -222,6 +226,8 @@ const loadMajors = async (page) => {
     const res = await listMajorPage({ ...majorQuery, deptId: selectedDept.value?.deptId })
     majorRows.value = res.data.records
     majorTotal.value = Number(res.data.total)
+  } catch {
+    // interceptor shows error toast
   } finally {
     majorLoading.value = false
   }
@@ -245,9 +251,9 @@ const openDeptForm = (row) => {
 }
 
 const saveDept = async () => {
-  await deptFormRef.value.validate()
   saving.value = true
   try {
+    await deptFormRef.value.validate()
     if (deptForm.deptId) {
       await updateDepartment(deptForm.deptId, deptForm)
     } else {
@@ -256,17 +262,21 @@ const saveDept = async () => {
     ElMessage.success('保存成功')
     deptFormVisible.value = false
     await Promise.all([loadDepartments(), loadDeptOptions()])
+  } catch {
+    // validation failed or API error
   } finally {
     saving.value = false
   }
 }
 
 const removeDept = async (row) => {
-  await ElMessageBox.confirm(`确定删除院系「${row.deptName}」吗？`, '删除确认', { type: 'warning' })
-  await delDepartment(row.deptId)
-  ElMessage.success('删除成功')
-  if (selectedDept.value?.deptId === row.deptId) selectedDept.value = null
-  await Promise.all([loadDepartments(), loadMajors(1), loadDeptOptions()])
+  try {
+    await ElMessageBox.confirm(`确定删除院系「${row.deptName}」吗？`, '删除确认', { type: 'warning' })
+    await delDepartment(row.deptId)
+    ElMessage.success('删除成功')
+    if (selectedDept.value?.deptId === row.deptId) selectedDept.value = null
+    await Promise.all([loadDepartments(), loadMajors(1), loadDeptOptions()])
+  } catch { /* user cancelled or API failed */ }
 }
 
 // ===== 专业表单 =====
@@ -281,8 +291,10 @@ const majorRules = {
 }
 
 const loadDeptOptions = async () => {
-  const res = await listDepartmentPage({ page: 1, size: 200 })
-  deptOptions.value = res.data.records
+  try {
+    const res = await listDepartmentPage({ page: 1, size: 200 })
+    deptOptions.value = res.data.records
+  } catch { /* interceptor shows error */ }
 }
 
 const openMajorForm = (row) => {
@@ -293,9 +305,9 @@ const openMajorForm = (row) => {
 }
 
 const saveMajor = async () => {
-  await majorFormRef.value.validate()
   saving.value = true
   try {
+    await majorFormRef.value.validate()
     if (majorForm.majorId) {
       await updateMajor(majorForm.majorId, majorForm)
     } else {
@@ -304,16 +316,20 @@ const saveMajor = async () => {
     ElMessage.success('保存成功')
     majorFormVisible.value = false
     await Promise.all([loadMajors(), loadDepartments()])
+  } catch {
+    // validation failed or API error
   } finally {
     saving.value = false
   }
 }
 
 const removeMajor = async (row) => {
-  await ElMessageBox.confirm(`确定删除专业「${row.majorName}」吗？`, '删除确认', { type: 'warning' })
-  await delMajor(row.majorId)
-  ElMessage.success('删除成功')
-  await Promise.all([loadMajors(), loadDepartments()])
+  try {
+    await ElMessageBox.confirm(`确定删除专业「${row.majorName}」吗？`, '删除确认', { type: 'warning' })
+    await delMajor(row.majorId)
+    ElMessage.success('删除成功')
+    await Promise.all([loadMajors(), loadDepartments()])
+  } catch { /* user cancelled or API failed */ }
 }
 
 onMounted(() => {
@@ -324,11 +340,14 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.panel-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 16px; align-items: start; }
-.toolbar-search { width: 170px; }
-.plan-text { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; color: var(--color-text-secondary); }
-:deep(.el-table .is-selected-dept) { background: var(--d-accent-soft); }
-:deep(.el-table__row) { cursor: pointer; }
+.panel-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 18px; align-items: start; }
+.toolbar-search { width: 180px; }
+.plan-text { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; color: var(--color-text-secondary); line-height: 1.6; }
+:deep(.el-table .is-selected-dept) {
+  background: var(--d-accent-soft) !important;
+  box-shadow: inset 3px 0 0 var(--d-accent);
+}
+:deep(.el-table__row) { cursor: pointer; transition: background var(--d-transition); }
 @media (max-width: 1199px) { .panel-grid { grid-template-columns: 1fr; } }
 @media (max-width: 767px) { .toolbar-search { width: 100%; order: 3; } }
 </style>

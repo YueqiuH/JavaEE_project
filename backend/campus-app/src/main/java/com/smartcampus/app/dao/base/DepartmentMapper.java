@@ -11,15 +11,14 @@ public interface DepartmentMapper extends BaseMapper<Department> {
 
     @Select("""
             SELECT d.dept_id, d.dept_name, d.dept_code, d.description,
-                   COUNT(DISTINCT m.major_id)   AS major_count,
-                   COUNT(DISTINCT s.student_id) AS student_count
+                   (SELECT COUNT(*) FROM major m
+                     WHERE m.dept_id = d.dept_id)                    AS major_count,
+                   (SELECT COUNT(*) FROM student s
+                     WHERE s.dept_id = d.dept_id AND s.status = 1)   AS student_count
             FROM department d
-            LEFT JOIN major m   ON m.dept_id = d.dept_id
-            LEFT JOIN student s ON s.dept_id = d.dept_id AND s.status = 1
             WHERE (#{keyword} IS NULL OR #{keyword} = ''
                    OR d.dept_name LIKE CONCAT('%', #{keyword}, '%')
                    OR d.dept_code LIKE CONCAT('%', #{keyword}, '%'))
-            GROUP BY d.dept_id, d.dept_name, d.dept_code, d.description
             ORDER BY d.dept_id
             """)
     IPage<DepartmentSummaryVo> selectSummaryPage(IPage<DepartmentSummaryVo> page, @Param("keyword") String keyword);

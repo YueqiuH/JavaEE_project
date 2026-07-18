@@ -11,15 +11,14 @@ public interface MajorMapper extends BaseMapper<Major> {
 
     @Select("""
             SELECT m.major_id, m.dept_id, d.dept_name, m.major_name, m.major_code, m.cultivation_plan,
-                   COUNT(s.student_id) AS student_count
+                   (SELECT COUNT(*) FROM student s
+                     WHERE s.major_id = m.major_id AND s.status = 1)   AS student_count
             FROM major m
             LEFT JOIN department d ON d.dept_id = m.dept_id
-            LEFT JOIN student s    ON s.major_id = m.major_id AND s.status = 1
             WHERE (#{deptId} IS NULL OR m.dept_id = #{deptId})
               AND (#{keyword} IS NULL OR #{keyword} = ''
                    OR m.major_name LIKE CONCAT('%', #{keyword}, '%')
                    OR m.major_code LIKE CONCAT('%', #{keyword}, '%'))
-            GROUP BY m.major_id, m.dept_id, d.dept_name, m.major_name, m.major_code, m.cultivation_plan
             ORDER BY m.dept_id, m.major_id
             """)
     IPage<MajorVo> selectVoPage(IPage<MajorVo> page, @Param("deptId") Long deptId, @Param("keyword") String keyword);
