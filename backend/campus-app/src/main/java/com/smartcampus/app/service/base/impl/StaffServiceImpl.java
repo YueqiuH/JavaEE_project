@@ -7,6 +7,7 @@ import com.smartcampus.app.dao.base.DepartmentMapper;
 import com.smartcampus.app.dao.base.StaffMapper;
 import com.smartcampus.app.service.base.BaseErrorCodes;
 import com.smartcampus.app.service.base.StaffService;
+import com.smartcampus.common.enums.GlobalErrorCodeConstants;
 import com.smartcampus.common.exception.BusinessException;
 import com.smartcampus.contract.dto.StaffQuery;
 import com.smartcampus.contract.dto.StaffSaveRequest;
@@ -57,18 +58,29 @@ public class StaffServiceImpl implements StaffService {
             user.setStatus(1);
         }
         staffMapper.insert(user);
-        staffMapper.assignRole(user.getUserId(),
+        int roleCount = staffMapper.assignRole(user.getUserId(),
                 request.getUserType() == USER_TYPE_TEACHER ? "TEACHER" : "STAFF");
+        if (roleCount == 0) {
+            throw new BusinessException(BaseErrorCodes.ROLE_ASSIGN_FAILED);
+        }
         return toVo(user);
     }
 
     @Override
+    @Transactional
     public StaffVo update(Long userId, StaffSaveRequest request) {
         UserEntity user = requireStaff(userId);
         assertDeptExists(request.getDeptId());
+        Integer oldType = user.getUserType();
         user.setUserType(request.getUserType());
         applyProfile(user, request);
         staffMapper.updateById(user);
+        // 类别变更时同步调整角色（教师↔教职工），避免权限漂移
+        if (oldType != null && !oldType.equals(request.getUserType())) {
+            staffMapper.removeRole(userId, oldType == USER_TYPE_TEACHER ? "TEACHER" : "STAFF");
+            staffMapper.assignRole(userId,
+                    request.getUserType() == USER_TYPE_TEACHER ? "TEACHER" : "STAFF");
+        }
         return toVo(user);
     }
 

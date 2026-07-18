@@ -17,5 +17,6 @@ public class ForumPostCreateRequest implements Serializable {
     private String title;
 
     @NotBlank(message = "帖子内容不能为空")
+    @Size(max = 10000, message = "内容不能超过 10000 个字符")
     private String content;
 }

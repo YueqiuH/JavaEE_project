@@ -29,12 +29,16 @@ public interface EnrollmentMapper extends BaseMapper<Enrollment> {
 
     @Select("""
             SELECT d.dept_name AS label,
-                   COALESCE(SUM(e.plan_count), 0)   AS plan_count,
-                   COALESCE(SUM(e.actual_count), 0) AS actual_count
-            FROM enrollment e
-            JOIN major m      ON m.major_id = e.major_id
-            JOIN department d ON d.dept_id = m.dept_id
-            WHERE e.year = #{year}
+                   COALESCE(SUM(e.plan_count), 0) AS plan_count,
+                   COALESCE((SELECT COUNT(*)
+                       FROM student s
+                       WHERE s.dept_id = d.dept_id
+                         AND s.enroll_year = #{year}), 0) AS actual_count
+            FROM department d
+            LEFT JOIN major m ON m.dept_id = d.dept_id
+            LEFT JOIN enrollment e ON e.major_id = m.major_id AND e.year = #{year}
+            WHERE e.enrollment_id IS NOT NULL
+               OR EXISTS (SELECT 1 FROM student s WHERE s.dept_id = d.dept_id AND s.enroll_year = #{year})
             GROUP BY d.dept_id, d.dept_name
             ORDER BY plan_count DESC
             """)
@@ -42,8 +46,10 @@ public interface EnrollmentMapper extends BaseMapper<Enrollment> {
 
     @Select("""
             SELECT e.year AS label,
-                   COALESCE(SUM(e.plan_count), 0)   AS plan_count,
-                   COALESCE(SUM(e.actual_count), 0) AS actual_count
+                   COALESCE(SUM(e.plan_count), 0) AS plan_count,
+                   COALESCE((SELECT COUNT(*)
+                       FROM student s
+                       WHERE s.enroll_year = e.year), 0) AS actual_count
             FROM enrollment e
             GROUP BY e.year
             ORDER BY e.year

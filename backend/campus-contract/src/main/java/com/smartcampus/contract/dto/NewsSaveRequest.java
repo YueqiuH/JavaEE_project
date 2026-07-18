@@ -1,5 +1,7 @@
 package com.smartcampus.contract.dto;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -18,6 +20,7 @@ public class NewsSaveRequest implements Serializable {
     private String title;
 
     @NotBlank(message = "内容不能为空")
+    @Size(max = 20000, message = "内容不能超过 20000 个字符")
     private String content;
 
     /** 类型：公告/新闻 */
@@ -26,5 +29,7 @@ public class NewsSaveRequest implements Serializable {
     private String newsType;
 
     /** 是否置顶: 1=置顶, 0=普通 */
+    @Min(value = 0, message = "置顶标志只能为 0 或 1")
+    @Max(value = 1, message = "置顶标志只能为 0 或 1")
     private Integer isPinned;
 }

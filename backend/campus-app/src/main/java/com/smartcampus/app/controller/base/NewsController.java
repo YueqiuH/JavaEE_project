@@ -38,7 +38,7 @@ public class NewsController {
 
     @GetMapping
     @Operation(summary = "分页查询新闻公告", description = "置顶优先、按发布时间倒序；错误示例：401001 账号未登录")
-    @RequirePermission("base:read")
+    @RequirePermission("forum:read")
     public CommonResult<PageResult<NewsVo>> page(
             @Valid @ParameterObject PageParam pageParam,
             @Parameter(description = "类型：公告/新闻") @RequestParam(required = false) String newsType,

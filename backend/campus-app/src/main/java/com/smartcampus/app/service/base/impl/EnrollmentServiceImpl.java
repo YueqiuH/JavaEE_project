@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.smartcampus.app.dao.base.EnrollmentMapper;
 import com.smartcampus.app.dao.base.MajorMapper;
+import com.smartcampus.app.dao.base.StudentMapper;
 import com.smartcampus.app.service.base.BaseErrorCodes;
 import com.smartcampus.app.service.base.EnrollmentService;
 import com.smartcampus.common.exception.BusinessException;
@@ -12,6 +13,7 @@ import com.smartcampus.common.result.PageParam;
 import com.smartcampus.contract.dto.EnrollmentSaveRequest;
 import com.smartcampus.contract.entity.Enrollment;
 import com.smartcampus.contract.vo.EnrollmentStatVo;
+import com.smartcampus.contract.entity.StudentEntity;
 import com.smartcampus.contract.vo.EnrollmentStatsVo;
 import com.smartcampus.contract.vo.EnrollmentVo;
 import org.springframework.stereotype.Service;
@@ -25,10 +27,13 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
     private final EnrollmentMapper enrollmentMapper;
     private final MajorMapper majorMapper;
+    private final StudentMapper studentMapper;
 
-    public EnrollmentServiceImpl(EnrollmentMapper enrollmentMapper, MajorMapper majorMapper) {
+    public EnrollmentServiceImpl(EnrollmentMapper enrollmentMapper, MajorMapper majorMapper,
+                                  StudentMapper studentMapper) {
         this.enrollmentMapper = enrollmentMapper;
         this.majorMapper = majorMapper;
+        this.studentMapper = studentMapper;
     }
 
     @Override
@@ -77,14 +82,15 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
         long planTotal = byDept.stream()
                 .mapToLong(s -> { Long v = s.getPlanCount(); return v != null ? v : 0L; }).sum();
-        long actualTotal = byDept.stream()
-                .mapToLong(s -> { Long v = s.getActualCount(); return v != null ? v : 0L; }).sum();
+        Long actualTotal = studentMapper.selectCount(
+                new LambdaQueryWrapper<StudentEntity>()
+                        .eq(StudentEntity::getEnrollYear, year));
 
         EnrollmentStatsVo stats = new EnrollmentStatsVo();
         stats.setYear(year);
         stats.setPlanTotal(planTotal);
-        stats.setActualTotal(actualTotal);
-        stats.setReportRate(rate(actualTotal, planTotal));
+        stats.setActualTotal(actualTotal != null ? actualTotal : 0L);
+        stats.setReportRate(rate(stats.getActualTotal(), planTotal));
         stats.setByDept(byDept);
         stats.setTrend(trend);
         stats.setOriginDistribution(enrollmentMapper.originDistribution(year));
@@ -117,12 +123,30 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         enrollment.setYear(request.getYear());
         enrollment.setPlanCount(request.getPlanCount());
         Integer actualCount = request.getActualCount();
-        enrollment.setActualCount(actualCount != null ? actualCount : 0);
-        Integer enrollmentActual = enrollment.getActualCount();
-        Integer enrollmentPlan = enrollment.getPlanCount();
+        // 计算报到率时使用原始请求值：actualCount 为 null 时 rate 应为 null（非 0%）
         enrollment.setReportRate(rate(
-                enrollmentActual == null ? null : enrollmentActual.longValue(),
-                enrollmentPlan == null ? null : enrollmentPlan.longValue()));
+                actualCount != null ? actualCount.longValue() : null,
+                request.getPlanCount() != null ? request.getPlanCount().longValue() : null));
+        enrollment.setActualCount(actualCount != null ? actualCount : 0);
+    }
+
+    @Override
+    public int syncActualFromStudents(Integer year) {
+        List<Enrollment> plans = enrollmentMapper.selectList(
+                new LambdaQueryWrapper<Enrollment>().eq(Enrollment::getYear, year));
+        int updated = 0;
+        for (Enrollment plan : plans) {
+            Long majorId = plan.getMajorId();
+            Long actualCount = studentMapper.selectCount(
+                    new LambdaQueryWrapper<StudentEntity>()
+                            .eq(StudentEntity::getMajorId, majorId)
+                            .eq(StudentEntity::getEnrollYear, year));
+            plan.setActualCount(actualCount != null ? actualCount.intValue() : 0);
+            plan.setReportRate(rate(actualCount, plan.getPlanCount() != null ? plan.getPlanCount().longValue() : null));
+            enrollmentMapper.updateById(plan);
+            updated++;
+        }
+        return updated;
     }
 
     /** 报到率(%)，保留两位小数；计划数为 0 时返回 null */

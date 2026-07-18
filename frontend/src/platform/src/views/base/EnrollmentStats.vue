@@ -10,12 +10,12 @@
 
     <header class="d-head d-rise" style="--rise: 1">
       <div>
-        <span class="d-head-module">基础数据 · D2</span>
         <h1>招生与迎新数据统计</h1>
         <p class="d-head-desc">年度招生计划、报到率与生源地分布实时汇总</p>
       </div>
       <div class="d-head-side">
-        <el-select v-model="statsYear" class="year-select" @change="loadStats">
+        <el-button v-if="canWrite" :icon="RefreshLeft" @click="syncActual" :loading="syncLoading">同步报到数</el-button>
+        <el-select ref="yearSelectRef" v-model="statsYear" class="year-select" @change="loadStats" @visible-change="onYearDropdownChange">
           <el-option v-for="y in yearOptions" :key="y" :label="`${y} 年度`" :value="y" />
         </el-select>
       </div>
@@ -44,6 +44,7 @@
         <em>{{ statsYear }} 级新生覆盖范围</em>
       </div>
     </section>
+
 
     <!-- 图表 -->
     <section class="chart-grid">
@@ -150,12 +151,12 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowRight, Plus } from '@element-plus/icons-vue'
+import { ArrowRight, Plus, RefreshLeft } from '@element-plus/icons-vue'
 import {
   addEnrollment, delEnrollment, getEnrollmentStats,
-  listDepartmentPage, listEnrollmentPage, listMajorPage, updateEnrollment,
+  listDepartmentPage, listEnrollmentPage, listMajorPage, syncEnrollmentActual, updateEnrollment,
 } from '@/api/base.js'
 import { getStoredCurrentUser } from '@/utils/authSession.js'
 import EChart from './components/EChart.vue'
@@ -163,9 +164,22 @@ import './base-d.css'
 
 const canWrite = computed(() => (getStoredCurrentUser()?.permissions || []).includes('base:write'))
 
-const CURRENT_YEAR = new Date().getFullYear()
-const yearOptions = [CURRENT_YEAR + 1, CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2, CURRENT_YEAR - 3]
-const statsYear = ref(CURRENT_YEAR)
+const syncActual = async () => {
+  try {
+    await ElMessageBox.confirm(`从 student 表同步 ${statsYear.value} 年度的真实报到人数到招生计划中？`, '同步确认', { type: 'info' })
+  } catch { return /* user cancelled */ }
+  syncLoading.value = true
+  try {
+    const res = await syncEnrollmentActual({ year: statsYear.value })
+    ElMessage.success(`已同步 ${res.data} 条招生计划`)
+    await Promise.all([loadPlans(), loadStats()])
+  } catch { /* interceptor shows error */ }
+  finally { syncLoading.value = false }
+}
+
+const yearOptions = [2022, 2023, 2024, 2025, 2026]
+const statsYear = ref(2025)
+const syncLoading = ref(false)
 
 const fmt = (n) => (n == null ? '—' : Number(n).toLocaleString())
 const rateClass = (rate) => (rate == null ? '' : rate >= 90 ? 'rate-good' : rate >= 60 ? '' : 'rate-low')
@@ -178,7 +192,9 @@ const loadStats = async () => {
   statsLoading.value = true
   try {
     const res = await getEnrollmentStats({ year: statsYear.value })
-    stats.value = res.data
+    stats.value = res.data || {}
+  } catch {
+    stats.value = {}
   } finally {
     statsLoading.value = false
   }
@@ -194,8 +210,8 @@ const deptChartOption = computed(() => {
   return {
     tooltip: { trigger: 'axis' },
     legend: { data: ['计划招生', '实际报到'], top: 0 },
-    grid: { left: 8, right: 12, top: 34, bottom: 6, containLabel: true },
-    xAxis: { type: 'category', data: rows.map((r) => r.label), axisLabel: { interval: 0, rotate: 24 } },
+    grid: { left: 12, right: 16, top: 34, bottom: 100, containLabel: true },
+    xAxis: { type: 'category', data: rows.map((r) => r.label), axisLabel: { interval: 0, rotate: 30, fontSize: 11, formatter: (v) => v.length > 6 ? v.slice(0, 5) + '…' : v } },
     yAxis: { type: 'value' },
     series: [
       { name: '计划招生', type: 'bar', data: rows.map((r) => r.planCount), itemStyle: { color: PLAN_COLOR }, barGap: '-46%', z: 1 },
@@ -209,8 +225,8 @@ const trendChartOption = computed(() => {
   return {
     tooltip: { trigger: 'axis' },
     legend: { data: ['计划招生', '实际报到', '报到率'], top: 0 },
-    grid: { left: 8, right: 12, top: 34, bottom: 6, containLabel: true },
-    xAxis: { type: 'category', data: rows.map((r) => r.label) },
+    grid: { left: 24, right: 24, top: 34, bottom: 36, containLabel: true },
+    xAxis: { type: 'category', data: rows.map((r) => r.label), axisLabel: { rotate: 18 } },
     yAxis: [
       { type: 'value' },
       { type: 'value', max: 100, splitLine: { show: false }, axisLabel: { formatter: '{value}%' } },
@@ -246,6 +262,8 @@ const loadPlans = async (page) => {
     const res = await listEnrollmentPage({ ...planQuery })
     planRows.value = res.data.records
     planTotal.value = Number(res.data.total)
+  } catch {
+    // interceptor shows error toast
   } finally {
     planLoading.value = false
   }
@@ -256,7 +274,7 @@ const deptOptions = ref([])
 const majorOptions = ref([])
 const planFormVisible = ref(false)
 const planFormRef = ref(null)
-const planForm = reactive({ enrollmentId: null, deptId: null, majorId: null, year: CURRENT_YEAR, planCount: 0, actualCount: 0 })
+const planForm = reactive({ enrollmentId: null, deptId: null, majorId: null, year: 2024, planCount: 0, actualCount: 0 })
 const planRules = {
   majorId: [{ required: true, message: '请选择专业', trigger: 'change' }],
   year: [{ required: true, message: '请选择年度', trigger: 'change' }],
@@ -264,13 +282,19 @@ const planRules = {
 }
 
 const loadDeptOptions = async () => {
-  const res = await listDepartmentPage({ page: 1, size: 200 })
-  deptOptions.value = res.data.records
+  try {
+    const res = await listDepartmentPage({ page: 1, size: 200 })
+    deptOptions.value = res.data.records
+  } catch { /* interceptor shows error */ }
 }
 
 const loadMajorOptions = async (deptId) => {
-  const res = await listMajorPage({ page: 1, size: 200, deptId })
-  majorOptions.value = res.data.records
+  try {
+    const res = await listMajorPage({ page: 1, size: 200, deptId })
+    majorOptions.value = res.data.records
+  } catch {
+    majorOptions.value = []
+  }
 }
 
 const onPlanDeptChange = async () => {
@@ -287,9 +311,9 @@ const openPlanForm = async (row) => {
 }
 
 const savePlan = async () => {
-  await planFormRef.value.validate()
   saving.value = true
   try {
+    await planFormRef.value.validate()
     if (planForm.enrollmentId) {
       await updateEnrollment(planForm.enrollmentId, planForm)
     } else {
@@ -298,30 +322,66 @@ const savePlan = async () => {
     ElMessage.success('保存成功')
     planFormVisible.value = false
     await Promise.all([loadPlans(), loadStats()])
+  } catch {
+    // validation failed or API error
   } finally {
     saving.value = false
   }
 }
 
 const removePlan = async (row) => {
-  await ElMessageBox.confirm(`确定删除 ${row.year} 年度「${row.majorName}」的招生计划吗？`, '删除确认', { type: 'warning' })
-  await delEnrollment(row.enrollmentId)
-  ElMessage.success('删除成功')
-  await Promise.all([loadPlans(), loadStats()])
+  try {
+    await ElMessageBox.confirm(`确定删除 ${row.year} 年度「${row.majorName}」的招生计划吗？`, '删除确认', { type: 'warning' })
+    await delEnrollment(row.enrollmentId)
+    ElMessage.success('删除成功')
+    await Promise.all([loadPlans(), loadStats()])
+  } catch { /* user cancelled or API failed */ }
+}
+
+const yearSelectRef = ref(null)
+let yearDropdownOpen = false
+
+const onYearDropdownChange = (visible) => { yearDropdownOpen = visible }
+
+const closeYearDropdown = () => {
+  if (yearDropdownOpen && yearSelectRef.value) {
+    yearSelectRef.value.blur()
+  }
 }
 
 onMounted(() => {
+  window.addEventListener('scroll', closeYearDropdown, true)
   loadStats()
   loadPlans()
   loadDeptOptions()
 })
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', closeYearDropdown, true)
+})
 </script>
 
 <style scoped>
-.year-select { width: 128px; }
-.plan-filter { width: 118px; }
-.chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.rate.rate-good { color: var(--color-success, #16865b); }
-.rate.rate-low { color: var(--color-danger, #c2413b); }
+.year-select { width: 134px; }
+.plan-filter { width: 124px; }
+.chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.rate.rate-good { color: var(--color-success, #16865b); font-weight: 600; }
+.rate.rate-low { color: var(--color-danger, #c2413b); font-weight: 600; }
+.welcome-banner {
+  display: flex; gap: 22px; align-items: center;
+  padding: 24px 26px; margin-bottom: 20px;
+  background: linear-gradient(135deg, #f5f3ff 0%, #faf5ff 100%);
+  border: 1px solid var(--d-accent-line);
+  border-radius: 14px;
+  transition: box-shadow var(--d-transition);
+}
+.welcome-banner:hover { box-shadow: 0 4px 16px rgba(124, 58, 237, 0.08); }
+.welcome-icon { font-size: 46px; line-height: 1; }
+.welcome-text h3 { margin: 0 0 6px; font-size: 17px; font-weight: 700; color: var(--d-accent-deep); }
+.welcome-text p { margin: 0 0 10px; font-size: 13.5px; color: var(--color-text-secondary); line-height: 1.6; }
+.rate-refs { display: flex; flex-wrap: wrap; gap: 12px; }
+.rate-refs span { font-size: 12px; color: var(--color-text-tertiary); background: #fff; padding: 4px 12px; border-radius: 6px; border: 1px solid var(--color-border-light); }
+.rate-refs strong { color: var(--d-accent); margin-left: 2px; font-weight: 600; }
+@media (max-width: 767px) { .welcome-banner { flex-direction: column; text-align: center; } }
 @media (max-width: 1199px) { .chart-grid { grid-template-columns: 1fr; } }
 </style>

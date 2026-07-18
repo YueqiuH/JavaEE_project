@@ -1,4 +1,5 @@
 import request from '@/utils/request.js'
+import { getAccessToken } from '@/utils/authToken.js'
 
 export const BASE_API_PREFIX = '/api/v1/base'
 
@@ -79,6 +80,45 @@ export const updateEnrollment = (id, data) => request.put(`${BASE_API_PREFIX}/en
 export const delEnrollment = (id) => request.delete(`${BASE_API_PREFIX}/enrollments/${id}`)
 
 export const getEnrollmentStats = (params) => request.get(`${BASE_API_PREFIX}/enrollments/stats`, { params })
+
+export const syncEnrollmentActual = (params) => request.post(`${BASE_API_PREFIX}/enrollments/sync-actual`, null, { params })
+
+// ===== Excel 导出 =====
+
+export const exportStudents= (params) => downloadFile(`${BASE_API_PREFIX}/students/export`, params, '学生档案.xlsx')
+
+export const exportStaffs = () => downloadFile(`${BASE_API_PREFIX}/staffs/export`, null, '教职工档案.xlsx')
+
+export const downloadStudentTemplate = () => downloadFile(`${BASE_API_PREFIX}/students/template`, null, '学生导入模板.xlsx')
+
+export const downloadStaffTemplate = () => downloadFile(`${BASE_API_PREFIX}/staffs/template`, null, '教职工导入模板.xlsx')
+
+export const importStudents = (formData) => request.post(`${BASE_API_PREFIX}/students/import`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+
+export const importStaffs = (formData) => request.post(`${BASE_API_PREFIX}/staffs/import`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+
+async function downloadFile(path, params, filename) {
+  const token = getAccessToken()
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8888'
+  const query = params ? '?' + new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v != null)
+  ).toString() : ''
+  const res = await fetch(`${baseUrl}${path}${query}`, {
+    headers: { 'Authorization': token ? `Bearer ${token}` : '' }
+  })
+  if (!res.ok) throw new Error('HTTP ' + res.status)
+  const blob = await res.blob()
+  if (blob.size < 100) {
+    const text = await blob.text()
+    console.warn('导出响应异常:', text)
+    throw new Error('导出响应异常')
+  }
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
 
 // ===== D3 学生特征多维统计 =====
 export const getStudentStats = (params) => request.get(`${BASE_API_PREFIX}/students/stats`, { params })

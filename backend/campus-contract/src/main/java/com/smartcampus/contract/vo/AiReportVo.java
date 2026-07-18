@@ -21,9 +21,6 @@ public class AiReportVo implements Serializable {
     /** 建议图表类型：bar / line / pie / table */
     private String chartType;
 
-    /** AI 生成并通过安全校验的 SQL（仅展示用） */
-    private String sql;
-
     /** AI 分析文字 */
     private String analysis;
 

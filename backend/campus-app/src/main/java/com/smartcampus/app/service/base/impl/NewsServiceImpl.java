@@ -13,6 +13,8 @@ import com.smartcampus.contract.entity.News;
 import com.smartcampus.contract.vo.NewsVo;
 import org.springframework.stereotype.Service;
 
+import java.util.Date;
+
 @Service
 public class NewsServiceImpl implements NewsService {
 
@@ -33,6 +35,7 @@ public class NewsServiceImpl implements NewsService {
         News news = new News();
         applyRequest(news, request);
         news.setPublisherId(CurrentUserContext.require().userId());
+        news.setCreateTime(new Date());
         newsMapper.insert(news);
         return news;
     }

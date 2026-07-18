@@ -10,7 +10,6 @@
 
     <header class="d-head d-rise" style="--rise: 1">
       <div>
-        <span class="d-head-module">基础数据 · D6</span>
         <h1>AI 自然语言报表助手</h1>
         <p class="d-head-desc">一句话描述需求，自动查询校园数据并生成分析与图表</p>
       </div>
@@ -51,7 +50,6 @@
 
       <div class="analysis-quote">
         <p>{{ report.analysis }}</p>
-        <cite>AI 分析 · 基于 {{ report.rows.length }} 条查询结果</cite>
       </div>
 
       <el-empty v-if="!report.rows.length" description="查询结果为空，试着换一种问法" :image-size="56" />
@@ -65,11 +63,6 @@
         </el-table>
       </template>
 
-      <el-collapse class="sql-collapse">
-        <el-collapse-item title="查看生成的 SQL" name="sql">
-          <pre class="sql-text">{{ report.sql }}</pre>
-        </el-collapse-item>
-      </el-collapse>
       <p class="ai-disclaimer">AI 生成内容仅供参考，请结合实际业务数据判断</p>
     </section>
 
@@ -107,7 +100,10 @@ const submit = async (preset) => {
   loading.value = true
   try {
     const res = await generateAiReport({ question: text })
-    report.value = res.data
+    // 规范化，防止后端返回缺字段导致模板渲染崩溃
+    report.value = { rows: [], columns: [], ...res.data }
+  } catch {
+    // interceptor shows error toast
   } finally {
     loading.value = false
   }
@@ -116,7 +112,7 @@ const submit = async (preset) => {
 // 首列作维度，其余数值列作系列（色板由 EChart 主题提供）
 const chartOption = computed(() => {
   const r = report.value
-  if (!r || !r.rows.length || r.columns.length < 2) return null
+  if (!r || !r.rows?.length || !r.columns || r.columns.length < 2) return null
   const [dimension, ...metrics] = r.columns
   const categories = r.rows.map((row) => String(row[dimension]))
 
@@ -146,70 +142,58 @@ const chartOption = computed(() => {
 </script>
 
 <style scoped>
-.ask-panel { margin-bottom: 18px; padding: 18px 20px; }
+.ask-panel { margin-bottom: 20px; padding: 20px 22px; }
 .ask-box {
   overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  border: 1.5px solid var(--color-border);
+  border-radius: 10px;
+  transition: border-color var(--d-transition), box-shadow var(--d-transition);
 }
-.ask-box:focus-within { border-color: var(--d-accent); box-shadow: 0 0 0 3px rgba(138, 77, 143, 0.09); }
+.ask-box:focus-within { border-color: var(--d-accent); box-shadow: 0 0 0 3px var(--d-accent-glow); }
 .ask-box.is-busy { border-color: var(--d-accent-line); }
-.ask-box :deep(.el-textarea__inner) { border: 0; box-shadow: none; padding: 12px 14px; }
-.ask-foot { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 8px 14px; }
-.ask-count { color: var(--color-text-tertiary); font-size: 11px; }
-.example-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
-.example-chips > span { color: var(--color-text-tertiary); font-size: 12px; }
+.ask-box :deep(.el-textarea__inner) { border: 0; box-shadow: none; padding: 14px 16px; font-size: 14px; }
+.ask-foot { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px 10px 16px; }
+.ask-count { color: var(--color-text-tertiary); font-size: 11.5px; }
+.example-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+.example-chips > span { color: var(--color-text-tertiary); font-size: 12px; font-weight: 500; }
 .example-chips button {
-  padding: 4px 12px;
+  padding: 5px 14px;
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: 12.5px;
   background: #fff;
   border: 1px solid var(--color-border);
   border-radius: 999px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--d-transition);
 }
-.example-chips button:hover:not(:disabled) { color: var(--d-accent); background: var(--d-accent-soft); border-color: var(--d-accent-line); }
+.example-chips button:hover:not(:disabled) { color: var(--d-accent); background: var(--d-accent-soft); border-color: var(--d-accent-line); transform: translateY(-1px); }
 .example-chips button:disabled { opacity: 0.5; cursor: default; }
 
-.result-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-.result-heading h2 { margin: 0; font-size: 17px; font-weight: 600; }
+.result-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.result-heading h2 { margin: 0; font-size: 18px; font-weight: 700; }
 .analysis-quote {
-  margin-bottom: 18px;
-  padding: 13px 16px;
+  margin-bottom: 20px;
+  padding: 16px 18px;
   background: var(--d-accent-soft);
   border-left: 3px solid var(--d-accent);
-  border-radius: 0 8px 8px 0;
+  border-radius: 0 10px 10px 0;
 }
-.analysis-quote p { margin: 0; line-height: 1.85; font-size: 13.5px; }
-.analysis-quote cite { display: block; margin-top: 7px; color: var(--d-accent); font-size: 11px; font-style: normal; letter-spacing: 0.04em; }
+.analysis-quote p { margin: 0; line-height: 1.9; font-size: 14px; }
 .result-table { margin-top: 16px; }
-.sql-collapse { margin-top: 16px; }
-.sql-text {
-  margin: 0;
-  padding: 12px 14px;
-  overflow-x: auto;
-  background: #f6f8fa;
-  border-radius: 6px;
-  font-family: var(--d-num-font);
-  font-size: 12px;
-  line-height: 1.65;
-  white-space: pre-wrap;
-}
-.ai-disclaimer { margin: 12px 0 0; color: var(--color-text-tertiary); font-size: 11px; text-align: center; }
+.ai-disclaimer { margin: 14px 0 0; color: var(--color-text-tertiary); font-size: 11.5px; text-align: center; }
 
-.empty-panel { display: flex; flex-direction: column; align-items: center; padding: 58px 20px; text-align: center; }
+.empty-panel { display: flex; flex-direction: column; align-items: center; padding: 64px 20px; text-align: center; }
 .empty-mark {
   display: inline-flex;
-  width: 52px; height: 52px;
+  width: 56px; height: 56px;
   align-items: center; justify-content: center;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
   color: var(--d-accent);
-  font-size: 26px;
+  font-size: 28px;
   background: var(--d-accent-soft);
-  border-radius: 14px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.1);
 }
-.empty-panel h3 { margin: 0 0 6px; font-size: 16px; font-weight: 600; }
-.empty-panel p { margin: 0; max-width: 440px; color: var(--color-text-secondary); font-size: 13px; line-height: 1.7; }
+.empty-panel h3 { margin: 0 0 8px; font-size: 17px; font-weight: 650; }
+.empty-panel p { margin: 0; max-width: 460px; color: var(--color-text-secondary); font-size: 13.5px; line-height: 1.7; }
 </style>

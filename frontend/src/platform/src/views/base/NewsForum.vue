@@ -3,14 +3,13 @@
     <div class="d-crumb d-rise" style="--rise: 0">
       <router-link to="/home">首页</router-link>
       <el-icon><ArrowRight /></el-icon>
-      <router-link :to="{ path: '/services', query: { domain: 'base' } }">基础数据</router-link>
+      <router-link :to="{ path: '/services', query: { domain: 'base' } }">{{ baseDomainLabel }}</router-link>
       <el-icon><ArrowRight /></el-icon>
       <span>新闻与论坛</span>
     </div>
 
     <header class="d-head d-rise" style="--rise: 1">
       <div>
-        <span class="d-head-module">基础数据 · D5</span>
         <h1>新闻公告与校园论坛</h1>
         <p class="d-head-desc">浏览学校新闻公告，参与校园话题交流</p>
       </div>
@@ -171,7 +170,7 @@
         </div>
         <p class="post-detail-content">{{ activePost.content }}</p>
         <div class="post-detail-actions">
-          <el-button :icon="Pointer" @click="like(activePost)">点赞 {{ activePost.likeCount }}</el-button>
+          <el-button :icon="Pointer" :type="likedPostIds.has(activePost.postId) ? 'primary' : 'default'" @click="like(activePost)">点赞 {{ activePost.likeCount }}</el-button>
           <span class="filter-spacer"></span>
           <template v-if="canWrite">
             <el-button v-if="activePost.status === 1" type="warning" plain @click="moderate(activePost, -1)">封禁</el-button>
@@ -220,11 +219,13 @@ import {
   moderateForumPost, updateNews,
 } from '@/api/base.js'
 import { getStoredCurrentUser } from '@/utils/authSession.js'
+import { getBaseDomainLabel } from '@/config/navigation.js'
 import './base-d.css'
 
-const storedUser = getStoredCurrentUser()
-const canWrite = computed(() => (storedUser?.permissions || []).includes('base:write'))
-const currentUserId = storedUser?.user?.userId ?? null
+const baseDomainLabel = computed(() => getBaseDomainLabel(getStoredCurrentUser()?.permissions))
+const currentUser = computed(() => getStoredCurrentUser())
+const canWrite = computed(() => (currentUser.value?.permissions || []).includes('base:write'))
+const currentUserId = computed(() => currentUser.value?.user?.userId ?? null)
 
 const activeTab = ref('news')
 const saving = ref(false)
@@ -245,6 +246,8 @@ const loadNews = async (page) => {
     const res = await listNewsPage({ ...newsQuery })
     newsRows.value = res.data.records
     newsTotal.value = Number(res.data.total)
+  } catch {
+    // interceptor shows error toast
   } finally {
     newsLoading.value = false
   }
@@ -272,9 +275,9 @@ const openNewsForm = (news) => {
 }
 
 const saveNews = async () => {
-  await newsFormRef.value.validate()
   saving.value = true
   try {
+    await newsFormRef.value.validate()
     if (newsForm.newsId) {
       await updateNews(newsForm.newsId, newsForm)
     } else {
@@ -283,16 +286,20 @@ const saveNews = async () => {
     ElMessage.success('发布成功')
     newsFormVisible.value = false
     loadNews()
+  } catch {
+    // validation failed or API error
   } finally {
     saving.value = false
   }
 }
 
 const removeNews = async (news) => {
-  await ElMessageBox.confirm(`确定删除「${news.title}」吗？`, '删除确认', { type: 'warning' })
-  await delNews(news.newsId)
-  ElMessage.success('删除成功')
-  loadNews()
+  try {
+    await ElMessageBox.confirm(`确定删除「${news.title}」吗？`, '删除确认', { type: 'warning' })
+    await delNews(news.newsId)
+    ElMessage.success('删除成功')
+    loadNews()
+  } catch { /* user cancelled or API failed */ }
 }
 
 // ===== 校园论坛 =====
@@ -308,6 +315,8 @@ const loadPosts = async (page) => {
     const res = await listForumPostPage({ ...postQuery })
     postRows.value = res.data.records
     postTotal.value = Number(res.data.total)
+  } catch {
+    // interceptor shows error toast
   } finally {
     postLoading.value = false
   }
@@ -322,15 +331,17 @@ const postRules = {
 }
 
 const savePost = async () => {
-  await postFormRef.value.validate()
   saving.value = true
   try {
+    await postFormRef.value.validate()
     await addForumPost({ ...postForm })
     ElMessage.success('发布成功')
     postFormVisible.value = false
     postForm.title = ''
     postForm.content = ''
     loadPosts(1)
+  } catch {
+    // validation failed or API error
   } finally {
     saving.value = false
   }
@@ -344,11 +355,13 @@ const commentLoading = ref(false)
 const commentInput = ref('')
 
 const openPostDetail = async (post) => {
-  const res = await getForumPost(post.postId)
-  activePost.value = { ...post, ...res.data }
-  postDetailVisible.value = true
-  commentInput.value = ''
-  loadComments(post.postId)
+  try {
+    const res = await getForumPost(post.postId)
+    activePost.value = { ...post, ...res.data }
+    postDetailVisible.value = true
+    commentInput.value = ''
+    loadComments(post.postId)
+  } catch { /* interceptor shows error toast */ }
 }
 
 const loadComments = async (postId) => {
@@ -356,15 +369,43 @@ const loadComments = async (postId) => {
   try {
     const res = await listForumComments(postId)
     comments.value = res.data
+  } catch {
+    // interceptor shows error toast
   } finally {
     commentLoading.value = false
   }
 }
 
+/** 同步列表中对应帖子的计数字段（详情抽屉里的 activePost 是克隆） */
+const syncListRow = (postId, patch) => {
+  const row = postRows.value.find((p) => p.postId === postId)
+  if (row) Object.assign(row, patch)
+}
+
+const likedPostIds = ref(new Set())
+
 const like = async (post) => {
-  await likeForumPost(post.postId)
-  post.likeCount += 1
-  ElMessage.success('已点赞')
+  const wasLiked = likedPostIds.value.has(post.postId)
+  try {
+    const res = await likeForumPost(post.postId)
+    const nowLiked = res?.data === true
+    if (nowLiked) {
+      likedPostIds.value.add(post.postId)
+      post.likeCount += 1
+      ElMessage.success('已点赞')
+    } else {
+      likedPostIds.value.delete(post.postId)
+      post.likeCount = Math.max(0, post.likeCount - 1)
+      ElMessage.info('已取消点赞')
+    }
+    syncListRow(post.postId, { likeCount: post.likeCount })
+  } catch {
+    if (wasLiked) {
+      likedPostIds.value.delete(post.postId)
+      post.likeCount = Math.max(0, post.likeCount - 1)
+      syncListRow(post.postId, { likeCount: post.likeCount })
+    }
+  }
 }
 
 const submitComment = async () => {
@@ -374,31 +415,43 @@ const submitComment = async () => {
     commentInput.value = ''
     ElMessage.success('回复成功')
     loadComments(activePost.value.postId)
+    const row = postRows.value.find((p) => p.postId === activePost.value.postId)
+    if (row) row.commentCount = (row.commentCount || 0) + 1
+  } catch {
+    // API error
   } finally {
     saving.value = false
   }
 }
 
 const removeComment = async (comment) => {
-  await ElMessageBox.confirm('确定删除这条回复吗？', '删除确认', { type: 'warning' })
-  await delForumComment(comment.commentId)
-  ElMessage.success('删除成功')
-  loadComments(activePost.value.postId)
+  try {
+    await ElMessageBox.confirm('确定删除这条回复吗？', '删除确认', { type: 'warning' })
+    await delForumComment(comment.commentId)
+    ElMessage.success('删除成功')
+    loadComments(activePost.value.postId)
+    const row = postRows.value.find((p) => p.postId === activePost.value.postId)
+    if (row && row.commentCount > 0) row.commentCount -= 1
+  } catch { /* user cancelled or API failed */ }
 }
 
 const removePost = async (post) => {
-  await ElMessageBox.confirm(`确定删除帖子「${post.title}」吗？`, '删除确认', { type: 'warning' })
-  await delForumPost(post.postId)
-  ElMessage.success('删除成功')
-  postDetailVisible.value = false
-  loadPosts()
+  try {
+    await ElMessageBox.confirm(`确定删除帖子「${post.title}」吗？`, '删除确认', { type: 'warning' })
+    await delForumPost(post.postId)
+    ElMessage.success('删除成功')
+    postDetailVisible.value = false
+    loadPosts()
+  } catch { /* user cancelled or API failed */ }
 }
 
 const moderate = async (post, status) => {
-  await moderateForumPost(post.postId, status)
-  activePost.value.status = status
-  ElMessage.success(status === -1 ? '已封禁该帖子' : '已恢复该帖子')
-  loadPosts()
+  try {
+    await moderateForumPost(post.postId, status)
+    activePost.value.status = status
+    ElMessage.success(status === -1 ? '已封禁该帖子' : '已恢复该帖子')
+    loadPosts()
+  } catch { /* API error, interceptor shows toast */ }
 }
 
 onMounted(() => {
@@ -409,43 +462,52 @@ onMounted(() => {
 
 <style scoped>
 .tab-panel { padding: 0 16px 8px; }
-.filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 4px 0 14px; border-bottom: 1px solid var(--color-border-light); }
-.filter-keyword { width: 220px; }
-.filter-select { width: 130px; }
+.tab-panel :deep(.el-tabs__header) { margin-bottom: 0; }
+.filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 6px 0 18px; border-bottom: 1px solid var(--color-border-light); }
+.filter-keyword { width: 230px; }
+.filter-select { width: 140px; }
 .filter-spacer { flex: 1; }
-.pagination-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; color: var(--color-text-tertiary); font-size: 12px; }
+.pagination-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; color: var(--color-text-tertiary); font-size: 12.5px; }
 
-.news-item { padding: 14px 4px; border-bottom: 1px solid var(--color-border-light); cursor: pointer; }
+.news-item {
+  padding: 16px 8px;
+  border-bottom: 1px solid var(--color-border-light);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background var(--d-transition), padding var(--d-transition);
+}
+.news-item:hover { background: var(--d-accent-soft); padding-left: 12px; }
 .news-item:hover .news-title-line strong { color: var(--d-accent); }
 .news-title-line { display: flex; align-items: center; gap: 8px; }
-.news-title-line strong { font-size: 15px; font-weight: 600; transition: color 0.15s ease; }
-.news-summary { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; margin: 6px 0; color: var(--color-text-secondary); font-size: 13px; }
+.news-title-line strong { font-size: 15px; font-weight: 650; transition: color var(--d-transition); }
+.news-summary { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; margin: 6px 0; color: var(--color-text-secondary); font-size: 13px; line-height: 1.65; }
 .news-meta { display: flex; align-items: center; gap: 16px; color: var(--color-text-tertiary); font-size: 12px; }
 .news-actions { margin-left: auto; }
-.news-detail-meta { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; color: var(--color-text-tertiary); font-size: 13px; }
-.news-detail-content { margin: 0; line-height: 1.85; white-space: pre-wrap; }
+.news-detail-meta { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--color-border-light); color: var(--color-text-tertiary); font-size: 13px; }
+.news-detail-content { margin: 0; line-height: 1.9; white-space: pre-wrap; font-size: 14px; }
 
-.post-item { display: flex; gap: 20px; padding: 14px 4px; border-bottom: 1px solid var(--color-border-light); cursor: pointer; }
+.post-item { display: flex; gap: 22px; padding: 16px 8px; border-bottom: 1px solid var(--color-border-light); border-radius: 8px; cursor: pointer; transition: background var(--d-transition); }
+.post-item:hover { background: var(--d-accent-soft); }
 .post-item:hover .post-title-line strong { color: var(--d-accent); }
 .post-main { min-width: 0; flex: 1; }
 .post-title-line { display: flex; align-items: center; gap: 8px; }
-.post-title-line strong { font-size: 15px; font-weight: 600; transition: color 0.15s ease; }
-.post-summary { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; margin: 6px 0; color: var(--color-text-secondary); font-size: 13px; }
+.post-title-line strong { font-size: 15px; font-weight: 650; transition: color var(--d-transition); }
+.post-summary { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; margin: 6px 0; color: var(--color-text-secondary); font-size: 13px; line-height: 1.65; }
 .post-meta { display: flex; gap: 16px; color: var(--color-text-tertiary); font-size: 12px; }
 .post-stats { display: flex; flex-direction: column; justify-content: center; gap: 6px; color: var(--color-text-tertiary); font-size: 12px; }
 .post-stats span { display: flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
 
 .post-detail-meta { display: flex; align-items: center; gap: 12px; color: var(--color-text-tertiary); font-size: 13px; }
-.post-detail-content { margin: 14px 0; line-height: 1.85; white-space: pre-wrap; }
-.post-detail-actions { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-top: 1px solid var(--color-border-light); border-bottom: 1px solid var(--color-border-light); }
-.comment-heading { margin: 18px 0 6px; font-size: 15px; font-weight: 600; }
-.comment-item { padding: 12px 0; border-bottom: 1px solid var(--color-border-light); }
+.post-detail-content { margin: 16px 0; line-height: 1.9; white-space: pre-wrap; font-size: 14px; }
+.post-detail-actions { display: flex; align-items: center; gap: 10px; padding: 14px 0; border-top: 1px solid var(--color-border-light); border-bottom: 1px solid var(--color-border-light); }
+.comment-heading { margin: 20px 0 8px; font-size: 15px; font-weight: 650; }
+.comment-item { padding: 14px 0; border-bottom: 1px solid var(--color-border-light); }
 .comment-head { display: flex; align-items: center; gap: 12px; font-size: 13px; }
-.comment-head strong { font-weight: 600; }
+.comment-head strong { font-weight: 650; }
 .comment-head span { color: var(--color-text-tertiary); font-size: 12px; }
 .comment-head .el-button { margin-left: auto; }
-.comment-item p { margin: 6px 0 0; font-size: 13px; line-height: 1.7; white-space: pre-wrap; }
-.comment-editor { display: flex; align-items: flex-end; gap: 10px; margin-top: 16px; }
+.comment-item p { margin: 6px 0 0; font-size: 13.5px; line-height: 1.75; white-space: pre-wrap; }
+.comment-editor { display: flex; align-items: flex-end; gap: 10px; margin-top: 18px; }
 .comment-editor .el-input { flex: 1; }
 .pin-check { margin-left: 24px; }
 @media (max-width: 767px) {

@@ -10,7 +10,6 @@
 
     <header class="d-head d-rise" style="--rise: 1">
       <div>
-        <span class="d-head-module">基础数据 · D1</span>
         <h1>教职工与学生信息库</h1>
         <p class="d-head-desc">维护全校师生基础数字档案，支持多条件组合检索</p>
       </div>
@@ -34,15 +33,17 @@
             <el-select v-model="studentQuery.enrollYear" clearable placeholder="入学年份" class="filter-select narrow" @change="loadStudents(1)">
               <el-option v-for="y in yearOptions" :key="y" :label="`${y}级`" :value="y" />
             </el-select>
-            <el-select v-model="studentQuery.status" clearable placeholder="学籍状态" class="filter-select narrow" @change="loadStudents(1)">
+            <el-select v-model="studentQuery.status" clearable placeholder="全部学籍" class="filter-select narrow" @change="loadStudents(1)">
               <el-option v-for="(label, value) in studentStatusMap" :key="value" :label="label" :value="Number(value)" />
             </el-select>
             <el-button type="primary" :icon="Search" @click="loadStudents(1)">查询</el-button>
             <span class="filter-spacer"></span>
             <el-button v-if="canWrite" type="primary" :icon="Plus" @click="openStudentForm()">新增学生</el-button>
+            <el-button v-if="canWrite" :icon="Upload" @click="openImport('student')">导入</el-button>
+            <el-button :icon="Download" :loading="exportingStudents" @click="doExportStudents">导出</el-button>
           </div>
 
-          <el-table v-loading="studentLoading" :data="studentRows">
+          <el-table v-loading="studentLoading" :data="studentRows" @row-click="showStudentDetail" style="cursor:pointer">
             <el-table-column prop="studentNo" label="学号" width="120">
               <template #default="scope"><span class="d-num">{{ scope.row.studentNo }}</span></template>
             </el-table-column>
@@ -66,8 +67,8 @@
             </el-table-column>
             <el-table-column v-if="canWrite" label="操作" width="120" fixed="right">
               <template #default="scope">
-                <el-button link type="primary" @click="openStudentForm(scope.row)">编辑</el-button>
-                <el-button link type="danger" @click="removeStudent(scope.row)">删除</el-button>
+                <el-button link type="primary" @click.stop="openStudentForm(scope.row)">编辑</el-button>
+                <el-button link type="danger" @click.stop="removeStudent(scope.row)">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -90,6 +91,9 @@
             <el-select v-model="staffQuery.deptId" clearable placeholder="全部院系" class="filter-select" @change="loadStaffs(1)">
               <el-option v-for="d in deptOptions" :key="d.deptId" :label="d.deptName" :value="d.deptId" />
             </el-select>
+            <el-select v-model="staffQuery.status" clearable placeholder="全部状态" class="filter-select narrow" @change="loadStaffs(1)">
+              <el-option v-for="(label, value) in staffStatusMap" :key="value" :label="label" :value="Number(value)" />
+            </el-select>
             <el-select v-model="staffQuery.userType" clearable placeholder="人员类别" class="filter-select narrow" @change="loadStaffs(1)">
               <el-option label="教师" :value="2" />
               <el-option label="教职工" :value="3" />
@@ -97,6 +101,8 @@
             <el-button type="primary" :icon="Search" @click="loadStaffs(1)">查询</el-button>
             <span class="filter-spacer"></span>
             <el-button v-if="canWrite" type="primary" :icon="Plus" @click="openStaffForm()">新增教职工</el-button>
+            <el-button v-if="canWrite" :icon="Upload" @click="openImport('staff')">导入</el-button>
+            <el-button :icon="Download" :loading="exportingStaffs" @click="doExportStaffs">导出</el-button>
           </div>
 
           <el-table v-loading="staffLoading" :data="staffRows">
@@ -117,10 +123,10 @@
             <el-table-column prop="position" label="职务" width="100" />
             <el-table-column prop="phone" label="电话" width="120" />
             <el-table-column prop="email" label="邮箱" min-width="150" show-overflow-tooltip />
-            <el-table-column label="状态" width="80" align="center">
+            <el-table-column label="状态" width="90" align="center">
               <template #default="scope">
-                <el-tag size="small" effect="plain" :type="scope.row.status === 1 ? 'success' : 'danger'">
-                  {{ scope.row.status === 1 ? '启用' : '停用' }}
+                <el-tag size="small" effect="plain" :type="staffStatusTag(scope.row.status)">
+                  {{ staffStatusMap[scope.row.status] || '未知' }}
                 </el-tag>
               </template>
             </el-table-column>
@@ -142,6 +148,35 @@
       </el-tabs>
     </section>
 
+    <!-- 学生详情抽屉 -->
+    <el-drawer v-model="detailVisible" title="学生档案" size="min(500px, 88vw)">
+      <div v-if="detailStudent" class="detail-card">
+        <div class="detail-head">
+          <span class="detail-avatar">{{ detailStudent.studentName?.charAt(0) }}</span>
+          <div>
+            <h3>{{ detailStudent.studentName }}</h3>
+            <el-tag size="small" effect="plain" :type="studentStatusTag(detailStudent.status)">{{ studentStatusMap[detailStudent.status] || '未知' }}</el-tag>
+          </div>
+        </div>
+        <div class="detail-grid">
+          <div class="detail-item"><label>学号</label><span class="d-num">{{ detailStudent.studentNo }}</span></div>
+          <div class="detail-item"><label>性别</label><span>{{ genderText(detailStudent.gender) }}</span></div>
+          <div class="detail-item"><label>出生日期</label><span>{{ detailStudent.studentBirth || '—' }}</span></div>
+          <div class="detail-item"><label>年龄</label><span>{{ detailStudent.studentAge ?? '—' }}</span></div>
+          <div class="detail-item"><label>院系</label><span>{{ detailStudent.deptName || '—' }}</span></div>
+          <div class="detail-item"><label>专业</label><span>{{ detailStudent.majorName || '—' }}</span></div>
+          <div class="detail-item"><label>班级</label><span>{{ detailStudent.className || '—' }}</span></div>
+          <div class="detail-item"><label>入学年份</label><span>{{ detailStudent.enrollYear ? detailStudent.enrollYear + '级' : '—' }}</span></div>
+          <div class="detail-item"><label>生源地</label><span>{{ detailStudent.originPlace || '—' }}</span></div>
+          <div class="detail-item"><label>家庭地址</label><span>{{ detailStudent.studentAddress || '—' }}</span></div>
+        </div>
+        <div class="detail-actions">
+          <el-button v-if="canWrite" type="primary" @click="detailVisible = false; openStudentForm(detailStudent)">编辑</el-button>
+          <el-button @click="detailVisible = false">关闭</el-button>
+        </div>
+      </div>
+    </el-drawer>
+
     <!-- 学生表单 -->
     <el-dialog v-model="studentFormVisible" :title="studentForm.studentId ? '编辑学生档案' : '新增学生档案'" width="min(640px, calc(100vw - 32px))">
       <el-form ref="studentFormRef" :model="studentForm" :rules="studentRules" label-position="top" class="form-grid">
@@ -157,7 +192,7 @@
             <el-radio :value="2">女</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="生日">
+        <el-form-item label="出生日期">
           <el-date-picker v-model="studentForm.studentBirth" type="date" value-format="YYYY-MM-DD" style="width: 100%" placeholder="选择日期" />
         </el-form-item>
         <el-form-item label="所属院系" prop="deptId">
@@ -193,6 +228,34 @@
       <template #footer>
         <el-button @click="studentFormVisible = false">取消</el-button>
         <el-button type="primary" :loading="saving" @click="saveStudent">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 批量导入 -->
+    <el-dialog v-model="importVisible" :title="importType === 'student' ? '批量导入学生' : '批量导入教职工'" width="min(520px, calc(100vw - 32px))">
+      <el-alert type="info" :closable="false" style="margin-bottom:14px">
+        <template #title>
+          下载模板，按格式填写后上传。{{ importType === 'student' ? '学号和姓名为必填。' : '工号、姓名、类别为必填。' }}
+        </template>
+      </el-alert>
+      <div style="margin-bottom:14px">
+        <el-button link type="primary" @click="doDownloadTemplate">
+          <el-icon><Download /></el-icon> 下载模板
+        </el-button>
+      </div>
+      <el-upload ref="uploadRef" :auto-upload="false" :limit="1" accept=".xlsx" :on-change="(f) => importFile = f.raw" drag>
+        <el-icon><UploadFilled /></el-icon>
+        <div>拖拽或点击选择 .xlsx 文件</div>
+      </el-upload>
+      <div v-if="importResult" style="margin-top:14px">
+        <el-alert :type="importResult.fail > 0 ? 'warning' : 'success'" :closable="false">
+          <template #title>共 {{ importResult.total }} 行，成功 {{ importResult.success }}，失败 {{ importResult.fail }}</template>
+          <span v-if="importResult.errors" style="font-size:12px;white-space:pre-wrap">{{ importResult.errors }}</span>
+        </el-alert>
+      </div>
+      <template #footer>
+        <el-button @click="importVisible = false">关闭</el-button>
+        <el-button type="primary" :loading="importLoading" :disabled="!importFile" @click="doImport">开始导入</el-button>
       </template>
     </el-dialog>
 
@@ -254,9 +317,10 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowRight, Plus, Search } from '@element-plus/icons-vue'
+import { ArrowRight, Download, Plus, Search, Upload, UploadFilled } from '@element-plus/icons-vue'
 import {
-  addStaff, addStudent, delStudent, disableStaff,
+  addStaff, addStudent, delStudent, disableStaff, downloadStaffTemplate, downloadStudentTemplate,
+  exportStaffs, exportStudents, importStaffs, importStudents,
   listDepartmentPage, listMajorPage, listStaffPage, listStudentByConditionPage,
   updateStaff, updateStudent,
 } from '@/api/base.js'
@@ -270,10 +334,33 @@ const canWrite = computed(() => {
 
 const activeTab = ref('student')
 const saving = ref(false)
+const exportingStudents = ref(false)
+const exportingStaffs = ref(false)
+
+const doExportStudents = async () => {
+  exportingStudents.value = true
+  try { await exportStudents({ deptId: studentQuery.deptId, enrollYear: studentQuery.enrollYear }) }
+  catch { ElMessage.error('导出失败，请稍后重试') }
+  finally { exportingStudents.value = false }
+}
+const doExportStaffs = async () => {
+  exportingStaffs.value = true
+  try { await exportStaffs() }
+  catch { ElMessage.error('导出失败，请稍后重试') }
+  finally { exportingStaffs.value = false }
+}
+const doDownloadTemplate = async () => {
+  try {
+    if (importType.value === 'student') await downloadStudentTemplate()
+    else await downloadStaffTemplate()
+  } catch { ElMessage.error('模板下载失败') }
+}
 const genderText = (gender) => ({ 1: '男', 2: '女' }[gender] || '—')
-const yearOptions = [2023, 2024, 2025, 2026]
+const yearOptions = [2022, 2023, 2024, 2025]
 const studentStatusMap = { 1: '在读', 2: '休学', 3: '毕业', 0: '退学' }
 const studentStatusTag = (status) => ({ 1: 'success', 2: 'warning', 3: 'info', 0: 'danger' }[status] || 'info')
+const staffStatusMap = { 1: '在职', 0: '停用', 2: '退休/离职' }
+const staffStatusTag = (s) => ({ 1: 'success', 0: 'danger', 2: 'warning' }[s] || 'info')
 
 // ===== 院系/专业选项 =====
 const deptOptions = ref([])
@@ -286,8 +373,12 @@ const loadDeptOptions = async () => {
 }
 
 const loadMajorOptions = async (deptId) => {
-  const res = await listMajorPage({ page: 1, size: 200, deptId })
-  return res.data.records
+  try {
+    const res = await listMajorPage({ page: 1, size: 200, deptId })
+    return res.data.records
+  } catch {
+    return []
+  }
 }
 
 // ===== 学生档案 =====
@@ -303,6 +394,8 @@ const loadStudents = async (page) => {
     const res = await listStudentByConditionPage({ ...studentQuery })
     studentRows.value = res.data.records
     studentTotal.value = Number(res.data.total)
+  } catch {
+    // interceptor shows error toast
   } finally {
     studentLoading.value = false
   }
@@ -313,6 +406,10 @@ const onStudentDeptChange = async () => {
   studentMajorOptions.value = studentQuery.deptId ? await loadMajorOptions(studentQuery.deptId) : []
   loadStudents(1)
 }
+
+const detailVisible = ref(false)
+const detailStudent = ref(null)
+const showStudentDetail = (row) => { detailStudent.value = row; detailVisible.value = true }
 
 const studentFormVisible = ref(false)
 const studentFormRef = ref(null)
@@ -347,9 +444,9 @@ const onFormDeptChange = async () => {
 }
 
 const saveStudent = async () => {
-  await studentFormRef.value.validate()
   saving.value = true
   try {
+    await studentFormRef.value.validate()
     const payload = { ...studentForm, studentNo: Number(studentForm.studentNo) }
     if (studentForm.studentId) {
       await updateStudent(studentForm.studentId, payload)
@@ -359,23 +456,27 @@ const saveStudent = async () => {
     ElMessage.success('保存成功')
     studentFormVisible.value = false
     loadStudents()
+  } catch {
+    // validation failed or API error (interceptor already shows toast)
   } finally {
     saving.value = false
   }
 }
 
 const removeStudent = async (row) => {
-  await ElMessageBox.confirm(`确定删除学生「${row.studentName}」（${row.studentNo}）的档案吗？`, '删除确认', { type: 'warning' })
-  await delStudent(row.studentId)
-  ElMessage.success('删除成功')
-  loadStudents()
+  try {
+    await ElMessageBox.confirm(`确定删除学生「${row.studentName}」（${row.studentNo}）的档案吗？`, '删除确认', { type: 'warning' })
+    await delStudent(row.studentId)
+    ElMessage.success('删除成功')
+    loadStudents()
+  } catch { /* user cancelled or API failed */ }
 }
 
 // ===== 教职工档案 =====
 const staffLoading = ref(false)
 const staffRows = ref([])
 const staffTotal = ref(0)
-const staffQuery = reactive({ page: 1, size: 10, keyword: '', deptId: null, userType: null })
+const staffQuery = reactive({ page: 1, size: 10, keyword: '', deptId: null, userType: null, status: null })
 
 const loadStaffs = async (page) => {
   if (page) staffQuery.page = page
@@ -384,6 +485,8 @@ const loadStaffs = async (page) => {
     const res = await listStaffPage({ ...staffQuery })
     staffRows.value = res.data.records
     staffTotal.value = Number(res.data.total)
+  } catch {
+    // interceptor shows error toast
   } finally {
     staffLoading.value = false
   }
@@ -412,9 +515,9 @@ const openStaffForm = (row) => {
 }
 
 const saveStaff = async () => {
-  await staffFormRef.value.validate()
   saving.value = true
   try {
+    await staffFormRef.value.validate()
     if (staffForm.userId) {
       await updateStaff(staffForm.userId, staffForm)
     } else {
@@ -423,20 +526,60 @@ const saveStaff = async () => {
     ElMessage.success('保存成功')
     staffFormVisible.value = false
     loadStaffs()
+  } catch {
+    // validation failed or API error
   } finally {
     saving.value = false
   }
 }
 
 const disableStaffRow = async (row) => {
-  await ElMessageBox.confirm(`确定停用「${row.realName}」（${row.username}）的账号吗？停用后无法登录。`, '停用确认', { type: 'warning' })
-  await disableStaff(row.userId)
-  ElMessage.success('已停用')
-  loadStaffs()
+  try {
+    await ElMessageBox.confirm(`确定停用「${row.realName}」（${row.username}）的账号吗？停用后无法登录。`, '停用确认', { type: 'warning' })
+    await disableStaff(row.userId)
+    ElMessage.success('已停用')
+    loadStaffs()
+  } catch { /* user cancelled or API failed */ }
+}
+
+// ===== 批量导入 =====
+const importVisible = ref(false)
+const importType = ref('student')
+const importFile = ref(null)
+const importLoading = ref(false)
+const importResult = ref(null)
+const uploadRef = ref(null)
+
+const openImport = (type) => {
+  importType.value = type
+  importFile.value = null
+  importResult.value = null
+  uploadRef.value?.clearFiles()
+  importVisible.value = true
+}
+
+const doImport = async () => {
+  if (!importFile.value) return
+  importLoading.value = true
+  importResult.value = null
+  try {
+    const fd = new FormData()
+    fd.append('file', importFile.value)
+    const res = importType.value === 'student' ? await importStudents(fd) : await importStaffs(fd)
+    importResult.value = res.data || { total: 0, success: 0, fail: 0, errors: '' }
+    if (importResult.value.success > 0) {
+      ElMessage.success(`成功导入 ${importResult.value.success} 条`)
+      importType.value === 'student' ? loadStudents() : loadStaffs()
+    }
+  } catch {
+    // interceptor shows error
+  } finally {
+    importLoading.value = false
+  }
 }
 
 onMounted(() => {
-  loadDeptOptions()
+  loadDeptOptions().catch(() => {})
   loadStudents()
   loadStaffs()
 })
@@ -444,15 +587,67 @@ onMounted(() => {
 
 <style scoped>
 .tab-panel { padding: 0 16px 8px; }
-.filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 4px 0 14px; border-bottom: 1px solid var(--color-border-light); margin-bottom: 4px; }
-.filter-keyword { width: 200px; }
+.tab-panel :deep(.el-tabs__header) { margin-bottom: 0; }
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0 18px;
+  border-bottom: 1px solid var(--color-border-light);
+  margin-bottom: 4px;
+}
+.filter-keyword { width: 210px; }
 .filter-select { width: 170px; }
 .filter-select.narrow { width: 120px; }
 .filter-spacer { flex: 1; }
-.pagination-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; color: var(--color-text-tertiary); font-size: 12px; }
-.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 16px; }
+.pagination-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  color: var(--color-text-tertiary);
+  font-size: 12.5px;
+}
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; row-gap: 4px; }
 .form-span-2 { grid-column: span 2; }
-.form-tip { margin-bottom: 14px; }
+.form-tip { margin-bottom: 16px; }
+.detail-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 22px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+.detail-avatar {
+  display: inline-flex;
+  width: 52px; height: 52px;
+  align-items: center; justify-content: center;
+  font-size: 22px; font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, var(--d-accent), #a78bfa);
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
+}
+.detail-head h3 { margin: 0 0 4px; font-size: 18px; font-weight: 650; }
+.detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 22px; }
+.detail-item label {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--color-text-tertiary);
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.detail-item span { font-size: 14px; font-weight: 500; }
+.detail-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--color-border-light);
+}
 @media (max-width: 767px) {
   .filter-keyword, .filter-select, .filter-select.narrow { width: 100%; }
   .form-grid { grid-template-columns: 1fr; }

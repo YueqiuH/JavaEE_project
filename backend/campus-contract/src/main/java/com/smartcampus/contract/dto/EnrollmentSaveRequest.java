@@ -22,7 +22,7 @@ public class EnrollmentSaveRequest implements Serializable {
     private Integer year;
 
     @NotNull(message = "计划招生人数不能为空")
-    @Min(value = 0, message = "计划招生人数不能为负数")
+    @Min(value = 1, message = "计划招生人数不能为 0")
     private Integer planCount;
 
     /** 实际报到人数，迎新期间可随时更新 */

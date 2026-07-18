@@ -40,7 +40,7 @@ public class StudentServiceImpl implements StudentService {
     }
 
     @Override
-    public StudentEntity create(StudentSaveRequest request) {
+    public StudentVo create(StudentSaveRequest request) {
         assertStudentNoAvailable(request.getStudentNo(), null);
         assertDeptMajorConsistent(request.getDeptId(), request.getMajorId());
         StudentEntity student = new StudentEntity();
@@ -49,17 +49,17 @@ public class StudentServiceImpl implements StudentService {
             student.setStatus(1);
         }
         studentMapper.insert(student);
-        return student;
+        return toVo(student);
     }
 
     @Override
-    public StudentEntity update(Long studentId, StudentSaveRequest request) {
+    public StudentVo update(Long studentId, StudentSaveRequest request) {
         StudentEntity student = requireStudent(studentId);
         assertStudentNoAvailable(request.getStudentNo(), studentId);
         assertDeptMajorConsistent(request.getDeptId(), request.getMajorId());
         applyRequest(student, request);
         studentMapper.updateById(student);
-        return student;
+        return toVo(student);
     }
 
     @Override
@@ -114,6 +114,32 @@ public class StudentServiceImpl implements StudentService {
         if (request.getStatus() != null) {
             student.setStatus(request.getStatus());
         }
+    }
+
+    private StudentVo toVo(StudentEntity student) {
+        StudentVo vo = new StudentVo();
+        vo.setStudentId(student.getStudentId());
+        vo.setStudentNo(student.getStudentNo());
+        vo.setStudentName(student.getStudentName());
+        vo.setGender(student.getGender());
+        vo.setStudentBirth(student.getStudentBirth());
+        vo.setStudentAge(student.getStudentAge());
+        vo.setStudentAddress(student.getStudentAddress());
+        vo.setOriginPlace(student.getOriginPlace());
+        vo.setClassName(student.getClassName());
+        vo.setEnrollYear(student.getEnrollYear());
+        vo.setStatus(student.getStatus());
+        vo.setDeptId(student.getDeptId());
+        vo.setMajorId(student.getMajorId());
+        if (student.getDeptId() != null) {
+            var dept = departmentMapper.selectById(student.getDeptId());
+            vo.setDeptName(dept != null ? dept.getDeptName() : null);
+        }
+        if (student.getMajorId() != null) {
+            var major = majorMapper.selectById(student.getMajorId());
+            vo.setMajorName(major != null ? major.getMajorName() : null);
+        }
+        return vo;
     }
 
     /** 校验学号未被其他学生占用 */

@@ -80,4 +80,14 @@ public class EnrollmentController {
         enrollmentService.delete(enrollmentId);
         return CommonResult.success();
     }
+
+    @PostMapping("/sync-actual")
+    @Operation(summary = "一键同步报到数",
+            description = "根据 student 表中真实在读学生数，更新该年度各招生计划的 actual_count 与 report_rate")
+    @RequirePermission("base:write")
+    public CommonResult<Integer> syncActual(
+            @Parameter(description = "年度，默认当年") @RequestParam(required = false) Integer year) {
+        int effectiveYear = year != null ? year : Year.now().getValue();
+        return CommonResult.success(enrollmentService.syncActualFromStudents(effectiveYear));
+    }
 }

@@ -11,9 +11,9 @@ public interface StudentService {
 
     IPage<StudentVo> pageVo(StudentQuery query);
 
-    StudentEntity create(StudentSaveRequest request);
+    StudentVo create(StudentSaveRequest request);
 
-    StudentEntity update(Long studentId, StudentSaveRequest request);
+    StudentVo update(Long studentId, StudentSaveRequest request);
 
     void delete(Long studentId);
 

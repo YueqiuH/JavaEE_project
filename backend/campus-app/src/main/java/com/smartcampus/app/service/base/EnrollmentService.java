@@ -19,4 +19,7 @@ public interface EnrollmentService {
 
     /** 指定年度的全校汇总、院系对比、历年趋势与生源地分布 */
     EnrollmentStatsVo stats(Integer year);
+
+    /** 一键同步：从 student 表真实人数更新 enrollment.actual_count 与 report_rate */
+    int syncActualFromStudents(Integer year);
 }

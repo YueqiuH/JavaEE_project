@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.smartcampus.contract.dto.StaffQuery;
 import com.smartcampus.contract.entity.UserEntity;
 import com.smartcampus.contract.vo.StaffVo;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -22,6 +23,7 @@ public interface StaffMapper extends BaseMapper<UserEntity> {
             LEFT JOIN department d ON d.dept_id = u.dept_id
             WHERE u.user_type IN (2, 3)
               AND (#{q.userType} IS NULL OR u.user_type = #{q.userType})
+              AND (#{q.status} IS NULL OR u.status = #{q.status})
               AND (#{q.deptId} IS NULL OR u.dept_id = #{q.deptId})
               AND (#{q.keyword} IS NULL OR #{q.keyword} = ''
                    OR u.username LIKE CONCAT('%', #{q.keyword}, '%')
@@ -36,4 +38,11 @@ public interface StaffMapper extends BaseMapper<UserEntity> {
             SELECT #{userId}, role_id FROM `role` WHERE role_code = #{roleCode}
             """)
     int assignRole(@Param("userId") Long userId, @Param("roleCode") String roleCode);
+
+    @Delete("""
+            DELETE ur FROM user_role ur
+            JOIN `role` r ON r.role_id = ur.role_id
+            WHERE ur.user_id = #{userId} AND r.role_code = #{roleCode}
+            """)
+    int removeRole(@Param("userId") Long userId, @Param("roleCode") String roleCode);
 }

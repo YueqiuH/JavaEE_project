@@ -43,7 +43,7 @@ public class ForumController {
 
     @GetMapping("/posts")
     @Operation(summary = "分页查询帖子", description = "普通用户仅可见正常帖子；管理员可按状态筛选（1=正常, 0=已删除, -1=已封禁）；错误示例：401001 账号未登录")
-    @RequirePermission("base:read")
+    @RequirePermission("forum:read")
     public CommonResult<PageResult<ForumPostVo>> pagePosts(
             @Valid @ParameterObject PageParam pageParam,
             @Parameter(description = "标题/内容关键字") @RequestParam(required = false) String keyword,
@@ -53,29 +53,28 @@ public class ForumController {
 
     @GetMapping("/posts/{postId}")
     @Operation(summary = "查看帖子详情", description = "浏览数 +1；错误示例：404106 帖子不存在或已删除")
-    @RequirePermission("base:read")
+    @RequirePermission("forum:read")
     public CommonResult<ForumPostVo> getPost(@PathVariable Long postId) {
         return CommonResult.success(forumService.getPost(postId));
     }
 
     @PostMapping("/posts")
     @Operation(summary = "发布帖子", description = "作者取当前登录用户")
-    @RequirePermission("base:read")
+    @RequirePermission("forum:read")
     public CommonResult<ForumPost> createPost(@Valid @RequestBody ForumPostCreateRequest request) {
         return CommonResult.success(forumService.createPost(request));
     }
 
     @PostMapping("/posts/{postId}/likes")
-    @Operation(summary = "点赞帖子", description = "错误示例：409108 帖子已封禁或删除，无法操作")
-    @RequirePermission("base:read")
-    public CommonResult<Void> likePost(@PathVariable Long postId) {
-        forumService.likePost(postId);
-        return CommonResult.success();
+    @Operation(summary = "点赞/取消点赞帖子", description = "返回 true=已赞, false=已取消")
+    @RequirePermission("forum:read")
+    public CommonResult<Boolean> likePost(@PathVariable Long postId) {
+        return CommonResult.success(forumService.likePost(postId));
     }
 
     @DeleteMapping("/posts/{postId}")
     @Operation(summary = "删除帖子", description = "作者本人或管理员可删（软删除）；错误示例：403001 没有该操作权限")
-    @RequirePermission("base:read")
+    @RequirePermission("forum:read")
     public CommonResult<Void> deletePost(@PathVariable Long postId) {
         forumService.deletePost(postId);
         return CommonResult.success();
@@ -92,14 +91,14 @@ public class ForumController {
 
     @GetMapping("/posts/{postId}/comments")
     @Operation(summary = "查询帖子回复列表", description = "错误示例：404106 帖子不存在或已删除")
-    @RequirePermission("base:read")
+    @RequirePermission("forum:read")
     public CommonResult<List<ForumCommentVo>> listComments(@PathVariable Long postId) {
         return CommonResult.success(forumService.listComments(postId));
     }
 
     @PostMapping("/posts/{postId}/comments")
     @Operation(summary = "回复帖子", description = "回复人取当前登录用户；错误示例：409108 帖子已封禁或删除，无法操作")
-    @RequirePermission("base:read")
+    @RequirePermission("forum:read")
     public CommonResult<ForumCommentVo> addComment(@PathVariable Long postId,
                                                    @Valid @RequestBody ForumCommentCreateRequest request) {
         return CommonResult.success(forumService.addComment(postId, request));
@@ -107,7 +106,7 @@ public class ForumController {
 
     @DeleteMapping("/comments/{commentId}")
     @Operation(summary = "删除回复", description = "作者本人或管理员可删（软删除）；错误示例：404107 回复不存在或已删除")
-    @RequirePermission("base:read")
+    @RequirePermission("forum:read")
     public CommonResult<Void> deleteComment(@PathVariable Long commentId) {
         forumService.deleteComment(commentId);
         return CommonResult.success();

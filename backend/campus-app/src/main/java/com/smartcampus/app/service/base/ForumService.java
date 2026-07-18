@@ -20,8 +20,8 @@ public interface ForumService {
 
     ForumPost createPost(ForumPostCreateRequest request);
 
-    /** 点赞（简单计数） */
-    void likePost(Long postId);
+    /** 点赞/取消点赞，返回 true=已赞, false=已取消 */
+    boolean likePost(Long postId);
 
     /** 作者本人或管理员删除帖子（软删除） */
     void deletePost(Long postId);

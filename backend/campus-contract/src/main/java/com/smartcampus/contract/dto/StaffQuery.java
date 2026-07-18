@@ -18,4 +18,7 @@ public class StaffQuery extends PageParam {
 
     /** 人员类别: 2=教师, 3=教职工 */
     private Integer userType;
+
+    /** 状态: 1=在职, 0=停用, 2=退休/离职 */
+    private Integer status;
 }

@@ -10,12 +10,11 @@
 
     <header class="d-head d-rise" style="--rise: 1">
       <div>
-        <span class="d-head-module">基础数据 · D3</span>
         <h1>学生特征多维统计</h1>
         <p class="d-head-desc">按院系、专业、班级逐级穿透，分析在校生结构与生源分布</p>
       </div>
       <div class="d-head-side">
-        <el-select v-model="filter.enrollYear" clearable placeholder="全部年级" class="year-select" @change="loadStats">
+        <el-select ref="yearSelectRef" v-model="filter.enrollYear" clearable placeholder="全部年级" class="year-select" @change="loadStats" @visible-change="onYearDropdownChange">
           <el-option v-for="y in yearOptions" :key="y" :label="`${y}级`" :value="y" />
         </el-select>
         <el-button :icon="RefreshLeft" @click="resetDrill">重置</el-button>
@@ -87,14 +86,13 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { ArrowRight, InfoFilled, RefreshLeft } from '@element-plus/icons-vue'
 import { getStudentStats, listDepartmentPage, listMajorPage } from '@/api/base.js'
 import EChart from './components/EChart.vue'
 import './base-d.css'
 
-const CURRENT_YEAR = new Date().getFullYear()
-const yearOptions = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2, CURRENT_YEAR - 3]
+const yearOptions = [2022, 2023, 2024, 2025]
 
 const loading = ref(false)
 const stats = ref({})
@@ -116,7 +114,9 @@ const loadStats = async () => {
   loading.value = true
   try {
     const res = await getStudentStats({ ...filter })
-    stats.value = res.data
+    stats.value = res.data || {}
+  } catch {
+    stats.value = {}
   } finally {
     loading.value = false
   }
@@ -141,8 +141,12 @@ const drillToDept = async (dept) => {
   selectedMajor.value = null
   filter.deptId = dept.deptId
   filter.majorId = null
-  const res = await listMajorPage({ page: 1, size: 200, deptId: dept.deptId })
-  majorList.value = res.data.records
+  try {
+    const res = await listMajorPage({ page: 1, size: 200, deptId: dept.deptId })
+    majorList.value = res.data.records
+  } catch {
+    majorList.value = []
+  }
   await loadStats()
 }
 
@@ -159,8 +163,8 @@ const ACCENT = '#8a4d8f'
 
 const barOption = (rows, color, rotate = 24) => ({
   tooltip: { trigger: 'axis' },
-  grid: { left: 8, right: 12, top: 14, bottom: 6, containLabel: true },
-  xAxis: { type: 'category', data: (rows || []).map((r) => r.name), axisLabel: { interval: 0, rotate } },
+  grid: { left: 12, right: 16, top: 14, bottom: rotate ? 80 : 20, containLabel: true },
+  xAxis: { type: 'category', data: (rows || []).map((r) => r.name), axisLabel: { interval: 0, rotate, fontSize: 11, formatter: (v) => v.length > 6 ? v.slice(0, 5) + '…' : v } },
   yAxis: { type: 'value' },
   series: [{ type: 'bar', data: (rows || []).map((r) => r.value), ...(color ? { itemStyle: { color } } : {}) }],
 })
@@ -187,7 +191,7 @@ const courseChartOption = computed(() => {
   const rows = [...(stats.value.coursePreference || [])].reverse()
   return {
     tooltip: { trigger: 'axis' },
-    grid: { left: 8, right: 20, top: 8, bottom: 6, containLabel: true },
+    grid: { left: 20, right: 24, top: 8, bottom: 6, containLabel: true },
     xAxis: { type: 'value' },
     yAxis: { type: 'category', data: rows.map((r) => r.name) },
     series: [{ type: 'bar', data: rows.map((r) => r.value), itemStyle: { color: '#c77800', borderRadius: [0, 3, 3, 0] }, barMaxWidth: 20 }],
@@ -195,21 +199,35 @@ const courseChartOption = computed(() => {
 })
 
 onMounted(async () => {
-  const res = await listDepartmentPage({ page: 1, size: 200 })
-  deptList.value = res.data.records
+  try {
+    const res = await listDepartmentPage({ page: 1, size: 200 })
+    deptList.value = res.data.records
+  } catch { /* interceptor shows error toast */ }
   await loadStats()
 })
+
+const yearSelectRef = ref(null)
+let yearDropdownOpen = false
+const onYearDropdownChange = (v) => { yearDropdownOpen = v }
+const closeYearDropdown = () => { if (yearDropdownOpen && yearSelectRef.value) yearSelectRef.value.blur() }
+onMounted(() => { window.addEventListener('scroll', closeYearDropdown, true) })
+onUnmounted(() => { window.removeEventListener('scroll', closeYearDropdown, true) })
 </script>
 
 <style scoped>
-.year-select { width: 118px; }
-.drill-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 16px; padding: 10px 16px; }
-.drill-label { margin-right: 6px; color: var(--color-text-tertiary); font-size: 12px; }
-.drill-arrow { color: var(--color-text-tertiary); font-size: 11px; }
-.drill-total { color: var(--color-text-secondary); font-size: 13px; }
-.drill-total strong { color: var(--d-accent); font-size: 15px; }
+.year-select { width: 124px; }
+.drill-bar {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: 4px; margin-bottom: 18px;
+  padding: 12px 18px;
+  background: #fafafa;
+}
+.drill-label { margin-right: 6px; color: var(--color-text-tertiary); font-size: 12px; font-weight: 500; }
+.drill-arrow { color: #c4b5fd; font-size: 11px; }
+.drill-total { color: var(--color-text-secondary); font-size: 13px; margin-left: auto; }
+.drill-total strong { color: var(--d-accent); font-size: 15px; font-weight: 700; }
 .drill-tip { margin-left: 8px; color: var(--color-text-tertiary); cursor: help; }
-.chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .span-2 { grid-column: span 2; }
 @media (max-width: 1199px) { .chart-grid { grid-template-columns: 1fr; } .span-2 { grid-column: span 1; } }
 </style>
