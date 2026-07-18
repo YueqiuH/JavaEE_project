@@ -27,6 +27,9 @@ public class LabBookingVo {
     private String status;
     private LocalDateTime createTime;
     private LocalDateTime cancelledAt;
+    private LocalDateTime checkInAt;
+    private LocalDateTime checkOutAt;
+    private LocalDateTime expiresAt;
     private LocalDateTime completedAt;
     private LocalDateTime updatedAt;
 }

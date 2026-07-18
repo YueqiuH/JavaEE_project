@@ -1,4 +1,5 @@
 import request from '@/utils/request.js'
+import { getAccessToken } from '@/utils/authToken.js'
 
 export const STUDENT_API_PREFIX = '/api/v1/student'
 
@@ -84,6 +85,27 @@ export const createCompetitionTeam = (competitionId, data) => request.post(`${ST
 
 export const updateCompetitionTeam = (id, data) => request.put(`${STUDENT_API_PREFIX}/competition-teams/${id}`, data)
 
+export const uploadCompetitionMaterial = (id, file) => {
+  const data = new FormData()
+  data.append('file', file)
+  return request.put(`${STUDENT_API_PREFIX}/competition-teams/${id}/material`, data)
+}
+
+export const downloadCompetitionMaterial = async (id) => {
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8888'
+  const response = await fetch(`${apiBaseUrl}${STUDENT_API_PREFIX}/competition-teams/${id}/material`, {
+    headers: { Authorization: `Bearer ${getAccessToken()}` },
+  })
+  if (!response.ok) {
+    const result = await response.json().catch(() => ({}))
+    throw new Error(result.message || '报名材料下载失败')
+  }
+  const disposition = response.headers.get('content-disposition') || ''
+  const encodedName = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1]
+  const fileName = encodedName ? decodeURIComponent(encodedName) : null
+  return { blob: await response.blob(), fileName }
+}
+
 export const inviteCompetitionMember = (id, studentNo) => request.post(`${STUDENT_API_PREFIX}/competition-teams/${id}/invitations`, { studentNo })
 
 export const removeCompetitionMember = (teamId, memberId) => request.delete(`${STUDENT_API_PREFIX}/competition-teams/${teamId}/members/${memberId}`)
@@ -95,6 +117,9 @@ export const listMyCompetitionInvitations = (params) => request.get(`${STUDENT_A
 export const respondCompetitionInvitation = (memberId, decision) => request.post(`${STUDENT_API_PREFIX}/competition-invitations/${memberId}/responses`, { decision })
 
 export const listCompetitionReviews = (params) => request.get(`${STUDENT_API_PREFIX}/competition-reviews`, { params })
+
+export const listCompetitionTeams = (competitionId, params) =>
+  request.get(`${STUDENT_API_PREFIX}/competitions/${competitionId}/teams`, { params })
 
 export const reviewCompetitionTeam = (id, data) => request.post(`${STUDENT_API_PREFIX}/competition-teams/${id}/reviews`, data)
 
@@ -129,6 +154,10 @@ export const getLabBooking = (id) => request.get(`${STUDENT_API_PREFIX}/lab-book
 export const createLabBooking = (data) => request.post(`${STUDENT_API_PREFIX}/lab-bookings`, data)
 
 export const cancelLabBooking = (id) => request.delete(`${STUDENT_API_PREFIX}/lab-bookings/${id}`)
+
+export const checkInLabBooking = (id) => request.post(`${STUDENT_API_PREFIX}/lab-bookings/${id}/check-ins`)
+
+export const checkOutLabBooking = (id) => request.post(`${STUDENT_API_PREFIX}/lab-bookings/${id}/check-outs`)
 
 export const completeLabBooking = (id) => request.post(`${STUDENT_API_PREFIX}/lab-bookings/${id}/completions`)
 

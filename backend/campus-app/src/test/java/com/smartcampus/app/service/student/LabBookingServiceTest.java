@@ -14,7 +14,6 @@ import com.smartcampus.contract.entity.Lab;
 import com.smartcampus.contract.entity.LabBooking;
 import com.smartcampus.contract.entity.LabBookingNotice;
 import com.smartcampus.contract.entity.LabOpenSlot;
-import com.smartcampus.contract.entity.LabResource;
 import com.smartcampus.contract.entity.StudentEntity;
 import com.smartcampus.contract.vo.student.LabBookingVo;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -27,12 +26,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
@@ -64,11 +63,12 @@ class LabBookingServiceTest {
     }
 
     @Test
-    void studentCannotBookOutsideOpenSlot() {
+    void studentCannotBookWhenLabCapacityIsFull() {
         prepareStudentBooking();
-        when(slotMapper.countContainingSlots(eq(10L), any(), eq(3), eq(4))).thenReturn(0);
+        when(bookingMapper.countStudentActiveLabBookings(eq(10L), eq(1L), any(), any())).thenReturn(0);
+        when(bookingMapper.countActiveLabBookings(eq(10L), any(), any())).thenReturn(1);
 
-        assertCode(() -> service.createBooking(bookingRequest()), LabBookingErrorCodes.OUTSIDE_OPEN_SLOT.getCode());
+        assertCode(() -> service.createBooking(bookingRequest()), LabBookingErrorCodes.LAB_CAPACITY_FULL.getCode());
         verify(bookingMapper, never()).insert(any(LabBooking.class));
     }
 
@@ -82,48 +82,38 @@ class LabBookingServiceTest {
     }
 
     @Test
-    void studentCannotBookOccupiedResource() {
+    void studentCannotCreateSecondActiveBookingForSameLab() {
         prepareStudentBooking();
-        when(slotMapper.countContainingSlots(eq(10L), any(), eq(3), eq(4))).thenReturn(1);
-        when(bookingMapper.countResourceConflicts(eq(20L), any(), eq(3), eq(4))).thenReturn(1);
+        when(bookingMapper.countStudentActiveLabBookings(eq(10L), eq(1L), any(), any())).thenReturn(1);
 
-        assertCode(() -> service.createBooking(bookingRequest()), LabBookingErrorCodes.RESOURCE_CONFLICT.getCode());
+        assertCode(() -> service.createBooking(bookingRequest()), LabBookingErrorCodes.ACTIVE_BOOKING_EXISTS.getCode());
         verify(bookingMapper, never()).insert(any(LabBooking.class));
     }
 
     @Test
-    void studentCannotCreateOverlappingPersonalBooking() {
+    void successfulDailyBookingCreatesReservationAndNotice() {
         prepareStudentBooking();
-        when(slotMapper.countContainingSlots(eq(10L), any(), eq(3), eq(4))).thenReturn(1);
-        when(bookingMapper.countResourceConflicts(eq(20L), any(), eq(3), eq(4))).thenReturn(0);
-        when(bookingMapper.countStudentConflicts(eq(1L), any(), eq(3), eq(4))).thenReturn(1);
-
-        assertCode(() -> service.createBooking(bookingRequest()), LabBookingErrorCodes.STUDENT_TIME_CONFLICT.getCode());
-        verify(bookingMapper, never()).insert(any(LabBooking.class));
-    }
-
-    @Test
-    void successfulBookingOccupiesEveryPeriodAndCreatesNotice() {
-        prepareStudentBooking();
-        when(slotMapper.countContainingSlots(eq(10L), any(), eq(3), eq(4))).thenReturn(1);
-        when(bookingMapper.countResourceConflicts(eq(20L), any(), eq(3), eq(4))).thenReturn(0);
-        when(bookingMapper.countStudentConflicts(eq(1L), any(), eq(3), eq(4))).thenReturn(0);
+        when(bookingMapper.countStudentActiveLabBookings(eq(10L), eq(1L), any(), any())).thenReturn(0);
+        when(bookingMapper.countActiveLabBookings(eq(10L), any(), any())).thenReturn(0);
         doAnswer(invocation -> {
             LabBooking booking = invocation.getArgument(0);
             booking.setBookingId(30L);
             return 1;
         }).when(bookingMapper).insert(any(LabBooking.class));
-        when(bookingMapper.insertPeriod(eq(30L), eq(20L), eq(1L), any(), anyInt())).thenReturn(1);
         when(noticeMapper.insert(any(LabBookingNotice.class))).thenReturn(1);
         LabBookingVo view = new LabBookingVo();
         view.setBookingId(30L);
-        view.setStatusCode(LabBookingStatus.BOOKED.code());
+        view.setStatusCode(LabBookingStatus.RESERVED.code());
         when(bookingMapper.selectBookingView(30L)).thenReturn(view);
 
         LabBookingVo result = service.createBooking(bookingRequest());
 
-        assertThat(result.getStatus()).isEqualTo("BOOKED");
-        verify(bookingMapper, times(2)).insertPeriod(eq(30L), eq(20L), eq(1L), any(), anyInt());
+        assertThat(result.getStatus()).isEqualTo("RESERVED");
+        ArgumentCaptor<LabBooking> saved = ArgumentCaptor.forClass(LabBooking.class);
+        verify(bookingMapper).insert(saved.capture());
+        assertThat(saved.getValue().getBookingDate()).isEqualTo(LocalDate.now());
+        assertThat(saved.getValue().getResourceId()).isNull();
+        assertThat(saved.getValue().getExpiresAt()).isNotNull();
         ArgumentCaptor<LabBookingNotice> notice = ArgumentCaptor.forClass(LabBookingNotice.class);
         verify(noticeMapper).insert(notice.capture());
         assertThat(notice.getValue().getTitle()).isEqualTo("实验室预约成功");
@@ -131,10 +121,49 @@ class LabBookingServiceTest {
     }
 
     @Test
+    void studentCanCheckInReservedBookingAndCheckOut() {
+        CurrentUserContext.set(studentSession());
+        when(labMapper.selectStudentByNo(600001L)).thenReturn(student(1L));
+        LabBooking reserved = booking(30L, 1L, LabBookingStatus.RESERVED);
+        reserved.setExpiresAt(java.time.LocalDateTime.now().plusMinutes(20));
+        when(bookingMapper.selectById(30L)).thenReturn(reserved);
+        Lab lab = lab(10L, 2L);
+        lab.setStatus(1);
+        when(labMapper.selectByIdForUpdate(10L)).thenReturn(lab);
+        when(bookingMapper.update(isNull(), any())).thenReturn(1);
+        LabBookingVo checkedIn = new LabBookingVo();
+        checkedIn.setStatusCode(LabBookingStatus.CHECKED_IN.code());
+        when(bookingMapper.selectBookingView(30L)).thenReturn(checkedIn);
+
+        assertThat(service.checkIn(30L).getStatus()).isEqualTo("CHECKED_IN");
+
+        LabBooking active = booking(30L, 1L, LabBookingStatus.CHECKED_IN);
+        when(bookingMapper.selectById(30L)).thenReturn(active);
+        LabBookingVo checkedOut = new LabBookingVo();
+        checkedOut.setStatusCode(LabBookingStatus.CHECKED_OUT.code());
+        when(bookingMapper.selectBookingView(30L)).thenReturn(checkedOut);
+
+        assertThat(service.checkOut(30L).getStatus()).isEqualTo("CHECKED_OUT");
+        verify(bookingMapper, times(2)).update(isNull(), any());
+    }
+
+    @Test
+    void studentGetsExplicitErrorWhenCheckInHasExpired() {
+        CurrentUserContext.set(studentSession());
+        when(labMapper.selectStudentByNo(600001L)).thenReturn(student(1L));
+        LabBooking expired = booking(30L, 1L, LabBookingStatus.EXPIRED);
+        expired.setExpiresAt(LocalDateTime.now().minusMinutes(1));
+        when(bookingMapper.selectById(30L)).thenReturn(expired);
+
+        assertCode(() -> service.checkIn(30L), LabBookingErrorCodes.CHECK_IN_EXPIRED.getCode());
+        verify(bookingMapper, never()).update(any(), any());
+    }
+
+    @Test
     void studentCannotCancelAnotherStudentsBooking() {
         CurrentUserContext.set(studentSession());
         when(labMapper.selectStudentByNo(600001L)).thenReturn(student(1L));
-        LabBooking booking = booking(30L, 99L, LabBookingStatus.BOOKED);
+        LabBooking booking = booking(30L, 99L, LabBookingStatus.RESERVED);
         when(bookingMapper.selectById(30L)).thenReturn(booking);
 
         assertCode(() -> service.cancelBooking(30L), LabBookingErrorCodes.BOOKING_NOT_OWNED.getCode());
@@ -177,7 +206,7 @@ class LabBookingServiceTest {
     @Test
     void teacherCannotCompleteBookingFromAnotherLab() {
         CurrentUserContext.set(teacherSession());
-        when(bookingMapper.selectById(30L)).thenReturn(booking(30L, 1L, LabBookingStatus.BOOKED));
+        when(bookingMapper.selectById(30L)).thenReturn(booking(30L, 1L, LabBookingStatus.CHECKED_IN));
         when(labMapper.selectById(10L)).thenReturn(lab(10L, 88L));
 
         assertCode(() -> service.completeBooking(30L), LabBookingErrorCodes.LAB_NOT_OWNED.getCode());
@@ -200,24 +229,16 @@ class LabBookingServiceTest {
     private void prepareStudentBooking() {
         CurrentUserContext.set(studentSession());
         when(labMapper.selectStudentByNo(600001L)).thenReturn(student(1L));
-        LabResource resource = new LabResource();
-        resource.setResourceId(20L);
-        resource.setLabId(10L);
-        resource.setResourceName("图形工作站 A01");
-        resource.setStatus(1);
-        when(resourceMapper.selectById(20L)).thenReturn(resource);
         Lab lab = lab(10L, 2L);
         lab.setLabName("计算机实践实验室");
         lab.setStatus(1);
-        when(labMapper.selectById(10L)).thenReturn(lab);
+        lab.setCapacity(1);
+        when(labMapper.selectByIdForUpdate(10L)).thenReturn(lab);
     }
 
     private LabBookingRequest bookingRequest() {
         LabBookingRequest request = new LabBookingRequest();
-        request.setResourceId(20L);
-        request.setBookingDate(LocalDate.now().plusDays(2));
-        request.setStartPeriod(3);
-        request.setEndPeriod(4);
+        request.setLabId(10L);
         request.setPurpose("课程实践");
         return request;
     }
@@ -252,7 +273,7 @@ class LabBookingServiceTest {
         booking.setBookingId(id);
         booking.setLabId(10L);
         booking.setStudentId(studentId);
-        booking.setBookingDate(LocalDate.now().plusDays(2));
+        booking.setBookingDate(LocalDate.now());
         booking.setStatus(status.code());
         return booking;
     }
@@ -267,6 +288,7 @@ class LabBookingServiceTest {
     private AuthSession studentSession() {
         return new AuthSession(1L, "600001", 1, Set.of("STUDENT"), Set.of(
                 "lab:booking:create", "lab:booking:read-self", "lab:booking:cancel-self",
+                "lab:booking:check-in-self", "lab:booking:check-out-self",
                 "lab:notice:read-self", "lab:notice:mark-self", "lab:read"), 0);
     }
 

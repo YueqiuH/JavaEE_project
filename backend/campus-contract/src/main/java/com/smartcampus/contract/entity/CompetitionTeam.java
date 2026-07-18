@@ -21,6 +21,10 @@ public class CompetitionTeam implements Serializable {
     private String teamName;
     private Long leaderId;
     private String materialUrl;
+    private String materialStorageName;
+    private String materialOriginalName;
+    private String materialContentType;
+    private Long materialSize;
     private String materialDescription;
     private Integer status;
     private Long reviewerId;

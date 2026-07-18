@@ -1,6 +1,7 @@
 package com.smartcampus.app.service.student;
 
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.smartcampus.app.dao.student.CompetitionMapper;
 import com.smartcampus.app.dao.student.CompetitionMemberMapper;
 import com.smartcampus.app.dao.student.CompetitionTeamMapper;
@@ -10,6 +11,7 @@ import com.smartcampus.common.exception.BusinessException;
 import com.smartcampus.contract.dto.student.CompetitionInvitationResponseRequest;
 import com.smartcampus.contract.dto.student.CompetitionRequest;
 import com.smartcampus.contract.dto.student.CompetitionReviewRequest;
+import com.smartcampus.contract.dto.student.CompetitionTeamRequest;
 import com.smartcampus.contract.entity.Competition;
 import com.smartcampus.contract.entity.CompetitionMember;
 import com.smartcampus.contract.entity.CompetitionTeam;
@@ -24,10 +26,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
+import org.springframework.mock.web.MockMultipartFile;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -42,6 +46,8 @@ class CompetitionServiceTest {
     private CompetitionTeamMapper teamMapper;
     @Mock
     private CompetitionMemberMapper memberMapper;
+    @Mock
+    private CompetitionMaterialStorage materialStorage;
 
     @AfterEach
     void clearCurrentUser() {
@@ -86,7 +92,7 @@ class CompetitionServiceTest {
         CurrentUserContext.set(studentSession());
         when(memberMapper.selectStudentByNo(600001L)).thenReturn(student(1L, 600001L));
         CompetitionTeam team = team(20L, CompetitionTeamStatus.FORMING);
-        team.setMaterialUrl(null);
+        team.setMaterialStorageName(null);
         when(teamMapper.selectById(20L)).thenReturn(team);
         when(competitionMapper.selectById(10L)).thenReturn(competition(10L, CompetitionStatus.OPEN));
         when(memberMapper.countAcceptedMembers(20L)).thenReturn(1);
@@ -149,6 +155,68 @@ class CompetitionServiceTest {
     }
 
     @Test
+    void teacherCannotListTeamsForAnotherTeachersCompetition() {
+        CurrentUserContext.set(teacherSession());
+        Competition competition = competition(10L, CompetitionStatus.OPEN);
+        competition.setPublisherId(99L);
+        when(competitionMapper.selectById(10L)).thenReturn(competition);
+
+        assertCode(() -> service().listCompetitionTeams(10L, 1, 10, "APPROVED"),
+                CompetitionErrorCodes.COMPETITION_NOT_OWNED.getCode());
+        verify(teamMapper, never()).selectTeamPage(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void teacherListsApprovedTeamsForExactOwnedCompetition() {
+        CurrentUserContext.set(teacherSession());
+        when(competitionMapper.selectById(10L)).thenReturn(competition(10L, CompetitionStatus.OPEN));
+        Page<CompetitionTeamVo> resultPage = new Page<>(1, 10);
+        resultPage.setRecords(List.of(teamView(20L, CompetitionTeamStatus.APPROVED)));
+        resultPage.setTotal(1);
+        when(teamMapper.selectTeamPage(any(), isNull(), eq(2L), eq(10L),
+                eq(CompetitionTeamStatus.APPROVED.code()))).thenReturn(resultPage);
+        when(memberMapper.selectMembers(20L)).thenReturn(List.of());
+
+        var result = service().listCompetitionTeams(10L, 1, 10, "APPROVED");
+
+        assertThat(result.getTotal()).isEqualTo(1);
+        verify(teamMapper).selectTeamPage(any(), isNull(), eq(2L), eq(10L),
+                eq(CompetitionTeamStatus.APPROVED.code()));
+    }
+
+    @Test
+    void leaderCanUploadMaterialForManageableTeam() {
+        CurrentUserContext.set(studentSession());
+        when(memberMapper.selectStudentByNo(600001L)).thenReturn(student(1L, 600001L));
+        when(teamMapper.selectById(20L)).thenReturn(team(20L, CompetitionTeamStatus.FORMING));
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "报名表.pdf", "application/pdf", "content".getBytes());
+        when(materialStorage.store(file)).thenReturn(
+                new CompetitionMaterialStorage.StoredMaterial("stored.pdf", "报名表.pdf", "application/pdf", 7));
+        when(teamMapper.updateById(any(CompetitionTeam.class))).thenReturn(1);
+        when(teamMapper.selectTeamView(20L)).thenReturn(teamView(20L, CompetitionTeamStatus.FORMING));
+        when(memberMapper.selectMembers(20L)).thenReturn(List.of());
+
+        CompetitionTeamVo result = service().uploadMaterial(20L, file);
+
+        assertThat(result.getStatus()).isEqualTo("FORMING");
+        verify(teamMapper).updateById(any(CompetitionTeam.class));
+    }
+
+    @Test
+    void studentCannotDownloadAnotherTeamsMaterial() {
+        CurrentUserContext.set(studentSession());
+        when(memberMapper.selectStudentByNo(600001L)).thenReturn(student(1L, 600001L));
+        CompetitionTeamVo view = teamView(20L, CompetitionTeamStatus.SUBMITTED);
+        when(teamMapper.selectTeamView(20L)).thenReturn(view);
+        when(memberMapper.selectMembers(20L)).thenReturn(List.of());
+        when(memberMapper.selectTeamMember(20L, 1L)).thenReturn(null);
+
+        assertCode(() -> service().downloadMaterial(20L), CompetitionErrorCodes.TEAM_NOT_VISIBLE.getCode());
+        verify(materialStorage, never()).load(any());
+    }
+
+    @Test
     void studentCannotRespondToAnotherStudentsInvitation() {
         CurrentUserContext.set(studentSession());
         when(memberMapper.selectStudentByNo(600001L)).thenReturn(student(1L, 600001L));
@@ -166,7 +234,7 @@ class CompetitionServiceTest {
     }
 
     private CompetitionService service() {
-        return new CompetitionService(competitionMapper, teamMapper, memberMapper);
+        return new CompetitionService(competitionMapper, teamMapper, memberMapper, materialStorage);
     }
 
     private void assertCode(Runnable action, int code) {
@@ -193,7 +261,7 @@ class CompetitionServiceTest {
         team.setTeamId(id);
         team.setCompetitionId(10L);
         team.setLeaderId(1L);
-        team.setMaterialUrl("https://example.com/material.pdf");
+        team.setMaterialStorageName("material.pdf");
         team.setStatus(status.code());
         return team;
     }

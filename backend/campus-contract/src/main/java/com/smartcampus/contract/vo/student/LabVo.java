@@ -19,6 +19,7 @@ public class LabVo {
     private String status;
     private Long resourceCount;
     private Long upcomingSlotCount;
+    private Long activeBookingCount;
     private LocalDate nextOpenDate;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

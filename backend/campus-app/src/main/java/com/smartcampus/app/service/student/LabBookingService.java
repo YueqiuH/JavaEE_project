@@ -67,6 +67,7 @@ public class LabBookingService {
 
     public PageResult<LabVo> listLabs(long page, long size, String statusName) {
         AuthSession session = requireAnyRole("lab:read");
+        expireStaleBookings();
         boolean student = session.roles().contains(STUDENT_ROLE);
         Long managerId = student ? null : session.userId();
         Integer status = student ? Integer.valueOf(1) : parseAvailabilityStatus(statusName);
@@ -214,15 +215,18 @@ public class LabBookingService {
 
     public PageResult<LabBookingVo> listMyBookings(long page, long size, String statusName) {
         StudentEntity student = requireStudent("lab:booking:read-self");
+        expireStaleBookings();
         return listBookings(page, size, student.getStudentId(), null, parseBookingStatus(statusName));
     }
 
     public PageResult<LabBookingVo> listManagedBookings(long page, long size, String statusName) {
         AuthSession session = requireTeacher("lab:booking:read-managed");
+        expireStaleBookings();
         return listBookings(page, size, null, session.userId(), parseBookingStatus(statusName));
     }
 
     public LabBookingVo getBooking(Long id) {
+        expireStaleBookings();
         AuthSession session = CurrentUserContext.require();
         LabBookingVo booking = requireBookingView(id);
         if (session.roles().contains(STUDENT_ROLE)) {
@@ -243,57 +247,40 @@ public class LabBookingService {
     @Transactional
     public LabBookingVo createBooking(LabBookingRequest request) {
         StudentEntity student = requireStudent("lab:booking:create");
-        validatePeriod(request.getStartPeriod(), request.getEndPeriod());
-        if (request.getBookingDate().isBefore(LocalDate.now())) {
-            throw new BusinessException(LabBookingErrorCodes.DATE_IN_PAST);
-        }
-        LabResource resource = requireResource(request.getResourceId());
-        Lab lab = requireLab(resource.getLabId());
+        LocalDate today = LocalDate.now();
+        LocalDateTime now = LocalDateTime.now();
+        bookingMapper.expireStaleBookings(today, now);
+        Lab lab = requireLabForUpdate(request.getLabId());
         if (!Objects.equals(lab.getStatus(), 1)) throw new BusinessException(LabBookingErrorCodes.LAB_UNAVAILABLE);
-        if (!Objects.equals(resource.getStatus(), 1)) throw new BusinessException(LabBookingErrorCodes.RESOURCE_UNAVAILABLE);
-        if (slotMapper.countContainingSlots(lab.getLabId(), request.getBookingDate(),
-                request.getStartPeriod(), request.getEndPeriod()) == 0) {
-            throw new BusinessException(LabBookingErrorCodes.OUTSIDE_OPEN_SLOT);
+        if (bookingMapper.countStudentActiveLabBookings(
+                lab.getLabId(), student.getStudentId(), today, now) > 0) {
+            throw new BusinessException(LabBookingErrorCodes.ACTIVE_BOOKING_EXISTS);
         }
-        if (bookingMapper.countResourceConflicts(resource.getResourceId(), request.getBookingDate(),
-                request.getStartPeriod(), request.getEndPeriod()) > 0) {
-            throw new BusinessException(LabBookingErrorCodes.RESOURCE_CONFLICT);
-        }
-        if (bookingMapper.countStudentConflicts(student.getStudentId(), request.getBookingDate(),
-                request.getStartPeriod(), request.getEndPeriod()) > 0) {
-            throw new BusinessException(LabBookingErrorCodes.STUDENT_TIME_CONFLICT);
+        if (bookingMapper.countActiveLabBookings(lab.getLabId(), today, now) >= lab.getCapacity()) {
+            throw new BusinessException(LabBookingErrorCodes.LAB_CAPACITY_FULL);
         }
 
-        LocalDateTime now = LocalDateTime.now();
         LabBooking booking = new LabBooking();
         booking.setBookingNo(createNumber("LB"));
         booking.setLabId(lab.getLabId());
-        booking.setResourceId(resource.getResourceId());
         booking.setStudentId(student.getStudentId());
-        booking.setBookingDate(request.getBookingDate());
-        booking.setStartPeriod(request.getStartPeriod());
-        booking.setEndPeriod(request.getEndPeriod());
+        booking.setBookingDate(today);
         booking.setPurpose(request.getPurpose().trim());
-        booking.setStatus(LabBookingStatus.BOOKED.code());
+        booking.setStatus(LabBookingStatus.RESERVED.code());
         booking.setCreateTime(now);
+        booking.setExpiresAt(now.plusMinutes(30));
         booking.setUpdatedAt(now);
         try {
             if (bookingMapper.insert(booking) != 1) throw new BusinessException(GlobalErrorCodeConstants.ADD_ERROR);
-            for (int period = request.getStartPeriod(); period <= request.getEndPeriod(); period++) {
-                bookingMapper.insertPeriod(booking.getBookingId(), resource.getResourceId(),
-                        student.getStudentId(), request.getBookingDate(), period);
-            }
         } catch (DuplicateKeyException exception) {
-            throw new BusinessException(LabBookingErrorCodes.RESOURCE_CONFLICT);
+            throw new BusinessException(LabBookingErrorCodes.ACTIVE_BOOKING_EXISTS);
         }
 
         LabBookingNotice notice = new LabBookingNotice();
         notice.setBookingId(booking.getBookingId());
         notice.setStudentId(student.getStudentId());
         notice.setTitle("实验室预约成功");
-        notice.setContent("已成功预约" + lab.getLabName() + "的" + resource.getResourceName()
-                + "，时间为" + request.getBookingDate() + "第" + request.getStartPeriod()
-                + "-" + request.getEndPeriod() + "节。");
+        notice.setContent("已获得" + lab.getLabName() + "今日使用名额，请在30分钟内完成签到。");
         notice.setIsRead(0);
         notice.setCreatedAt(now);
         if (noticeMapper.insert(notice) != 1) throw new BusinessException(GlobalErrorCodeConstants.ADD_ERROR);
@@ -303,23 +290,57 @@ public class LabBookingService {
     @Transactional
     public LabBookingVo cancelBooking(Long id) {
         StudentEntity student = requireStudent("lab:booking:cancel-self");
+        expireStaleBookings();
         LabBooking booking = requireBooking(id);
         if (!student.getStudentId().equals(booking.getStudentId())) {
             throw new BusinessException(LabBookingErrorCodes.BOOKING_NOT_OWNED);
         }
-        requireBookingStatus(booking, LabBookingStatus.BOOKED);
-        if (booking.getBookingDate().isBefore(LocalDate.now())) {
-            throw new BusinessException(LabBookingErrorCodes.INVALID_BOOKING_STATUS);
-        }
+        requireBookingToday(booking);
+        requireBookingStatus(booking, LabBookingStatus.RESERVED);
         UpdateWrapper<LabBooking> update = new UpdateWrapper<LabBooking>()
                 .eq("booking_id", id)
-                .eq("status", LabBookingStatus.BOOKED.code())
+                .eq("status", LabBookingStatus.RESERVED.code())
                 .set("status", LabBookingStatus.CANCELLED.code())
                 .set("cancelled_at", LocalDateTime.now())
                 .set("updated_at", LocalDateTime.now());
         updateBooking(update);
-        bookingMapper.deletePeriods(id);
         return requireBookingView(id);
+    }
+
+    @Transactional
+    public LabBookingVo checkIn(Long id) {
+        StudentEntity student = requireStudent("lab:booking:check-in-self");
+        expireStaleBookings();
+        LabBooking booking = requireBooking(id);
+        requireOwnedBooking(booking, student.getStudentId());
+        requireBookingToday(booking);
+        if (Objects.equals(booking.getStatus(), LabBookingStatus.EXPIRED.code())
+                || (Objects.equals(booking.getStatus(), LabBookingStatus.RESERVED.code())
+                && booking.getExpiresAt() != null
+                && !booking.getExpiresAt().isAfter(LocalDateTime.now()))) {
+            throw new BusinessException(LabBookingErrorCodes.CHECK_IN_EXPIRED);
+        }
+        requireBookingStatus(booking, LabBookingStatus.RESERVED);
+        Lab lab = requireLabForUpdate(booking.getLabId());
+        if (!Objects.equals(lab.getStatus(), 1)) throw new BusinessException(LabBookingErrorCodes.LAB_UNAVAILABLE);
+        LocalDateTime now = LocalDateTime.now();
+        UpdateWrapper<LabBooking> update = new UpdateWrapper<LabBooking>()
+                .eq("booking_id", id)
+                .eq("status", LabBookingStatus.RESERVED.code())
+                .set("status", LabBookingStatus.CHECKED_IN.code())
+                .set("check_in_at", now)
+                .set("updated_at", now);
+        updateBooking(update);
+        return requireBookingView(id);
+    }
+
+    @Transactional
+    public LabBookingVo checkOut(Long id) {
+        StudentEntity student = requireStudent("lab:booking:check-out-self");
+        LabBooking booking = requireBooking(id);
+        requireOwnedBooking(booking, student.getStudentId());
+        requireBookingToday(booking);
+        return checkOutBooking(booking);
     }
 
     @Transactional
@@ -330,19 +351,22 @@ public class LabBookingService {
         if (!session.userId().equals(lab.getManagerId())) {
             throw new BusinessException(LabBookingErrorCodes.LAB_NOT_OWNED);
         }
-        requireBookingStatus(booking, LabBookingStatus.BOOKED);
-        if (booking.getBookingDate().isAfter(LocalDate.now())) {
-            throw new BusinessException(LabBookingErrorCodes.FUTURE_BOOKING_CANNOT_COMPLETE);
-        }
+        requireBookingToday(booking);
+        return checkOutBooking(booking);
+    }
+
+    private LabBookingVo checkOutBooking(LabBooking booking) {
+        requireBookingStatus(booking, LabBookingStatus.CHECKED_IN);
         LocalDateTime now = LocalDateTime.now();
         UpdateWrapper<LabBooking> update = new UpdateWrapper<LabBooking>()
-                .eq("booking_id", id)
-                .eq("status", LabBookingStatus.BOOKED.code())
-                .set("status", LabBookingStatus.COMPLETED.code())
+                .eq("booking_id", booking.getBookingId())
+                .eq("status", LabBookingStatus.CHECKED_IN.code())
+                .set("status", LabBookingStatus.CHECKED_OUT.code())
+                .set("check_out_at", now)
                 .set("completed_at", now)
                 .set("updated_at", now);
         updateBooking(update);
-        return requireBookingView(id);
+        return requireBookingView(booking.getBookingId());
     }
 
     public PageResult<LabBookingNoticeVo> listNotices(long page, long size, Integer isRead) {
@@ -410,6 +434,12 @@ public class LabBookingService {
         return lab;
     }
 
+    private Lab requireLabForUpdate(Long id) {
+        Lab lab = labMapper.selectByIdForUpdate(id);
+        if (lab == null) throw new BusinessException(LabBookingErrorCodes.LAB_NOT_FOUND);
+        return lab;
+    }
+
     private Lab requireLab(Long id) {
         Lab lab = labMapper.selectById(id);
         if (lab == null) throw new BusinessException(LabBookingErrorCodes.LAB_NOT_FOUND);
@@ -471,6 +501,22 @@ public class LabBookingService {
         if (!Objects.equals(booking.getStatus(), expected.code())) {
             throw new BusinessException(LabBookingErrorCodes.INVALID_BOOKING_STATUS);
         }
+    }
+
+    private void requireOwnedBooking(LabBooking booking, Long studentId) {
+        if (!studentId.equals(booking.getStudentId())) {
+            throw new BusinessException(LabBookingErrorCodes.BOOKING_NOT_OWNED);
+        }
+    }
+
+    private void requireBookingToday(LabBooking booking) {
+        if (!LocalDate.now().equals(booking.getBookingDate())) {
+            throw new BusinessException(LabBookingErrorCodes.BOOKING_NOT_TODAY);
+        }
+    }
+
+    private void expireStaleBookings() {
+        bookingMapper.expireStaleBookings(LocalDate.now(), LocalDateTime.now());
     }
 
     private void updateBooking(UpdateWrapper<LabBooking> update) {

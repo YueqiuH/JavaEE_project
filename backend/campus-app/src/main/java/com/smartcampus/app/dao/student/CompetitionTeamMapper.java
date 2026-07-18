@@ -15,7 +15,8 @@ public interface CompetitionTeamMapper extends BaseMapper<CompetitionTeam> {
             SELECT t.team_id, t.registration_no, t.competition_id, c.title AS competition_title,
                    c.deadline AS competition_deadline, c.min_members, c.max_members, c.publisher_id,
                    t.team_name, t.leader_id, leader.student_no AS leader_no,
-                   leader.student_name AS leader_name, t.material_url, t.material_description,
+                   leader.student_name AS leader_name, t.material_original_name, t.material_content_type,
+                   t.material_size, t.material_description,
                    t.status AS status_code, t.reviewer_id, reviewer.username AS reviewer_name,
                    t.review_opinion, t.apply_time, t.submitted_at, t.reviewed_at, t.updated_at,
                    (SELECT COUNT(*) FROM competition_member m
@@ -34,6 +35,7 @@ public interface CompetitionTeamMapper extends BaseMapper<CompetitionTeam> {
                             AND own_member.invitation_status = 1)
             </if>
             <if test="publisherId != null">AND c.publisher_id = #{publisherId}</if>
+            <if test="competitionId != null">AND t.competition_id = #{competitionId}</if>
             <if test="status != null">AND t.status = #{status}</if>
             ORDER BY t.updated_at DESC, t.team_id DESC
             </script>
@@ -42,6 +44,7 @@ public interface CompetitionTeamMapper extends BaseMapper<CompetitionTeam> {
             Page<CompetitionTeamVo> page,
             @Param("studentId") Long studentId,
             @Param("publisherId") Long publisherId,
+            @Param("competitionId") Long competitionId,
             @Param("status") Integer status
     );
 
@@ -49,7 +52,8 @@ public interface CompetitionTeamMapper extends BaseMapper<CompetitionTeam> {
             SELECT t.team_id, t.registration_no, t.competition_id, c.title AS competition_title,
                    c.deadline AS competition_deadline, c.min_members, c.max_members, c.publisher_id,
                    t.team_name, t.leader_id, leader.student_no AS leader_no,
-                   leader.student_name AS leader_name, t.material_url, t.material_description,
+                   leader.student_name AS leader_name, t.material_original_name, t.material_content_type,
+                   t.material_size, t.material_description,
                    t.status AS status_code, t.reviewer_id, reviewer.username AS reviewer_name,
                    t.review_opinion, t.apply_time, t.submitted_at, t.reviewed_at, t.updated_at,
                    (SELECT COUNT(*) FROM competition_member m

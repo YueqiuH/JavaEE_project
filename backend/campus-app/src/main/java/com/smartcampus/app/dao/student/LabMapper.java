@@ -21,7 +21,10 @@ public interface LabMapper extends BaseMapper<Lab> {
                    l.created_at, l.updated_at,
                    (SELECT COUNT(*) FROM lab_resource r WHERE r.lab_id = l.lab_id AND r.status = 1) AS resource_count,
                    (SELECT COUNT(*) FROM lab_open_slot s WHERE s.lab_id = l.lab_id AND s.open_date &gt;= CURRENT_DATE) AS upcoming_slot_count,
-                   (SELECT MIN(s.open_date) FROM lab_open_slot s WHERE s.lab_id = l.lab_id AND s.open_date &gt;= CURRENT_DATE) AS next_open_date
+                   (SELECT MIN(s.open_date) FROM lab_open_slot s WHERE s.lab_id = l.lab_id AND s.open_date &gt;= CURRENT_DATE) AS next_open_date,
+                   (SELECT COUNT(*) FROM lab_booking b WHERE b.lab_id = l.lab_id
+                    AND b.booking_date = CURRENT_DATE
+                    AND (b.status = 4 OR (b.status = 1 AND b.expires_at &gt; CURRENT_TIMESTAMP))) AS active_booking_count
             FROM lab l
             LEFT JOIN user manager ON manager.user_id = l.manager_id
             WHERE 1 = 1
@@ -44,10 +47,16 @@ public interface LabMapper extends BaseMapper<Lab> {
                    l.created_at, l.updated_at,
                    (SELECT COUNT(*) FROM lab_resource r WHERE r.lab_id = l.lab_id AND r.status = 1) AS resource_count,
                    (SELECT COUNT(*) FROM lab_open_slot s WHERE s.lab_id = l.lab_id AND s.open_date >= CURRENT_DATE) AS upcoming_slot_count,
-                   (SELECT MIN(s.open_date) FROM lab_open_slot s WHERE s.lab_id = l.lab_id AND s.open_date >= CURRENT_DATE) AS next_open_date
+                   (SELECT MIN(s.open_date) FROM lab_open_slot s WHERE s.lab_id = l.lab_id AND s.open_date >= CURRENT_DATE) AS next_open_date,
+                   (SELECT COUNT(*) FROM lab_booking b WHERE b.lab_id = l.lab_id
+                    AND b.booking_date = CURRENT_DATE
+                    AND (b.status = 4 OR (b.status = 1 AND b.expires_at > CURRENT_TIMESTAMP))) AS active_booking_count
             FROM lab l
             LEFT JOIN user manager ON manager.user_id = l.manager_id
             WHERE l.lab_id = #{id}
             """)
     LabVo selectLabView(@Param("id") Long id);
+
+    @Select("SELECT * FROM lab WHERE lab_id = #{id} FOR UPDATE")
+    Lab selectByIdForUpdate(@Param("id") Long id);
 }

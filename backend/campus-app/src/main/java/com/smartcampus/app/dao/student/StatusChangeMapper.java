@@ -67,13 +67,15 @@ public interface StatusChangeMapper extends BaseMapper<StudentStatusChange> {
             WHERE 1 = 1
             <if test="studentId != null">AND c.student_id = #{studentId}</if>
             <if test="status != null">AND c.status = #{status}</if>
+            <if test="excludeDraft">AND c.status != 0</if>
             ORDER BY c.updated_at DESC, c.change_id DESC
             </script>
             """)
     IPage<StatusChangeApplicationVo> selectApplicationPage(
             Page<StatusChangeApplicationVo> page,
             @Param("studentId") Long studentId,
-            @Param("status") Integer status
+            @Param("status") Integer status,
+            @Param("excludeDraft") boolean excludeDraft
     );
 
     @Select("""

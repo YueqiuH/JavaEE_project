@@ -1,8 +1,10 @@
 package com.smartcampus.app.service.student;
 
 import com.smartcampus.app.dao.student.StatusChangeMapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.smartcampus.auth.context.CurrentUserContext;
 import com.smartcampus.auth.model.AuthSession;
+import com.smartcampus.common.enums.GlobalErrorCodeConstants;
 import com.smartcampus.common.exception.BusinessException;
 import com.smartcampus.contract.dto.student.StatusChangeApplicationRequest;
 import com.smartcampus.contract.dto.student.StatusChangeReviewRequest;
@@ -16,11 +18,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -129,6 +135,54 @@ class StatusChangeServiceTest {
 
         assertThat(result.getStatus()).isEqualTo("ACADEMIC_REVIEW");
         verify(statusChangeMapper).update(any(), any());
+    }
+
+    @Test
+    void teacherCanListAllSubmittedHistoryWithoutDrafts() {
+        CurrentUserContext.set(teacherSession());
+        Page<StatusChangeApplicationVo> queryResult = new Page<>(1, 10);
+        StatusChangeApplicationVo approved = new StatusChangeApplicationVo();
+        approved.setChangeId(10L);
+        approved.setStatusCode(StatusChangeStatus.APPROVED.code());
+        queryResult.setRecords(List.of(approved));
+        queryResult.setTotal(1);
+        when(statusChangeMapper.selectApplicationPage(any(), isNull(), isNull(), eq(true)))
+                .thenReturn(queryResult);
+
+        var result = new StatusChangeService(statusChangeMapper)
+                .listForReview(1, 10, "ALL", null);
+
+        assertThat(result.getTotal()).isEqualTo(1);
+        assertThat(result.getRecords().getFirst().getStatus()).isEqualTo("APPROVED");
+        verify(statusChangeMapper).selectApplicationPage(any(), isNull(), isNull(), eq(true));
+    }
+
+    @Test
+    void teacherCanFilterAllRecordsByCompletedStatus() {
+        CurrentUserContext.set(teacherSession());
+        Page<StatusChangeApplicationVo> queryResult = new Page<>(1, 10);
+        queryResult.setRecords(List.of());
+        when(statusChangeMapper.selectApplicationPage(any(), isNull(),
+                eq(StatusChangeStatus.ACADEMIC_REJECTED.code()), eq(true))).thenReturn(queryResult);
+
+        new StatusChangeService(statusChangeMapper)
+                .listForReview(1, 10, "ALL", "ACADEMIC_REJECTED");
+
+        verify(statusChangeMapper).selectApplicationPage(any(), isNull(),
+                eq(StatusChangeStatus.ACADEMIC_REJECTED.code()), eq(true));
+    }
+
+    @Test
+    void studentCannotListTeachersStatusChangeHistory() {
+        CurrentUserContext.set(studentSession());
+
+        assertThatThrownBy(() -> new StatusChangeService(statusChangeMapper)
+                .listForReview(1, 10, "ALL", null))
+                .isInstanceOf(BusinessException.class)
+                .extracting(error -> ((BusinessException) error).getErrorCode().getCode())
+                .isEqualTo(GlobalErrorCodeConstants.FORBIDDEN.getCode());
+
+        verify(statusChangeMapper, never()).selectApplicationPage(any(), any(), any(), anyBoolean());
     }
 
     private StatusChangeApplicationRequest validRequest() {

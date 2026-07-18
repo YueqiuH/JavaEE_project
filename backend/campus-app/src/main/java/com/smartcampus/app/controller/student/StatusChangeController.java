@@ -73,12 +73,13 @@ public class StatusChangeController {
 
     @GetMapping("/status-change-reviews")
     @RequirePermission("status:review:read")
-    @Operation(summary = "查询教师的学籍异动审核队列")
+    @Operation(summary = "查询教师可见的学籍异动记录与审核队列")
     public CommonResult<PageResult<StatusChangeApplicationVo>> listForReview(
-            @RequestParam @Pattern(regexp = "COUNSELOR|ACADEMIC") String stage,
+            @RequestParam(defaultValue = "ALL") @Pattern(regexp = "COUNSELOR|ACADEMIC|ALL") String stage,
+            @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "1") @Min(1) long page,
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) long size) {
-        return CommonResult.success(statusChangeService.listForReview(page, size, stage));
+        return CommonResult.success(statusChangeService.listForReview(page, size, stage, status));
     }
 
     @GetMapping("/status-changes/{id}")

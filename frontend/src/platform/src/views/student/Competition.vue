@@ -49,7 +49,7 @@
           <el-table-column label="报名截止" min-width="135"><template #default="{ row }">{{ formatDate(row.deadline) }}</template></el-table-column>
           <el-table-column label="组队要求" min-width="140"><template #default="{ row }">{{ row.minMembers }}-{{ row.maxMembers }} 人 / {{ row.teamCount }} 队</template></el-table-column>
           <el-table-column label="状态" width="105"><template #default="{ row }"><el-tag :type="competitionStatusMeta(row.status).type">{{ competitionStatusMeta(row.status).label }}</el-tag></template></el-table-column>
-          <el-table-column label="操作" width="220" fixed="right">
+          <el-table-column label="操作" :width="isTeacher ? 290 : 220" fixed="right">
             <template #default="{ row }">
               <div class="row-actions" @click.stop>
                 <el-button link :icon="View" @click="openCompetitionDetail(row)">查看</el-button>
@@ -58,6 +58,7 @@
                   <el-button v-else-if="canCreateTeam" link type="primary" :icon="Plus" @click="openTeamDialog(null, row)">发起组队</el-button>
                 </template>
                 <template v-else>
+                  <el-button link type="primary" :icon="User" @click="openCompetitionTeams(row)">参赛队伍</el-button>
                   <el-button v-if="row.status === 'DRAFT' && canManageCompetition" link type="primary" :icon="EditPen" @click="openCompetitionDialog(row)">修改</el-button>
                   <el-button v-if="row.status === 'DRAFT' && canManageCompetition" link type="primary" :icon="Promotion" @click="publish(row)">发布</el-button>
                   <el-button v-if="row.status === 'OPEN' && canManageCompetition" link type="danger" :icon="Close" @click="closeRegistration(row)">关闭</el-button>
@@ -149,7 +150,18 @@
       <div v-if="teamCompetition" class="dialog-target"><strong>{{ teamCompetition.title || teamCompetition.competitionTitle }}</strong><span>{{ teamCompetition.minMembers }}-{{ teamCompetition.maxMembers }} 人组队</span></div>
       <el-form ref="teamFormRef" :model="teamForm" :rules="teamRules" label-position="top">
         <el-form-item label="队伍名称" prop="teamName"><el-input v-model="teamForm.teamName" maxlength="64" show-word-limit placeholder="请输入队伍名称" /></el-form-item>
-        <el-form-item label="报名材料链接" prop="materialUrl"><el-input v-model="teamForm.materialUrl" placeholder="https://..." clearable /></el-form-item>
+        <el-form-item label="报名材料文件">
+          <div class="material-upload">
+            <div v-if="editingTeam?.materialOriginalName && !materialFile" class="current-material">
+              <span><strong>{{ editingTeam.materialOriginalName }}</strong><small>{{ formatFileSize(editingTeam.materialSize) }}</small></span>
+              <el-button link type="primary" :icon="Download" @click="downloadMaterial(editingTeam)">下载</el-button>
+            </div>
+            <el-upload ref="materialUploadRef" :auto-upload="false" :limit="1" :accept="materialAccept" :on-change="handleMaterialChange" :on-remove="handleMaterialRemove" :on-exceed="handleMaterialExceed">
+              <el-button :icon="UploadFilled">{{ editingTeam?.materialOriginalName ? '替换文件' : '选择文件' }}</el-button>
+              <template #tip><div class="el-upload__tip">支持 PDF、Word、Excel、ZIP，单个文件不超过 20MB</div></template>
+            </el-upload>
+          </div>
+        </el-form-item>
         <el-form-item label="材料说明" prop="materialDescription"><el-input v-model="teamForm.materialDescription" type="textarea" :rows="4" maxlength="1000" show-word-limit placeholder="说明项目方案、成员分工或材料内容" /></el-form-item>
       </el-form>
       <template #footer><el-button @click="teamDialogOpen = false">取消</el-button><el-button type="primary" :loading="saving" @click="saveTeam">{{ editingTeam ? '保存修改' : '创建队伍' }}</el-button></template>
@@ -173,7 +185,7 @@
       <div v-if="competitionDetail" class="detail-content">
         <div class="detail-title"><div><small>{{ competitionDetail.competitionNo }}</small><h2>{{ competitionDetail.title }}</h2><span>{{ competitionDetail.publisherName }}</span></div><el-tag :type="competitionStatusMeta(competitionDetail.status).type">{{ competitionStatusMeta(competitionDetail.status).label }}</el-tag></div>
         <dl><dt>报名截止</dt><dd>{{ formatDate(competitionDetail.deadline) }}</dd><dt>组队人数</dt><dd>{{ competitionDetail.minMembers }}-{{ competitionDetail.maxMembers }} 人</dd><dt>入选名额</dt><dd>{{ competitionDetail.approvedTeamCount }} / {{ competitionDetail.maxTeamCount }} 队</dd><dt>竞赛介绍</dt><dd class="pre-wrap">{{ competitionDetail.description }}</dd><dt>参赛要求</dt><dd class="pre-wrap">{{ competitionDetail.requirements }}</dd></dl>
-        <div class="drawer-actions"><el-button v-if="isStudent && competitionDetail.myTeamId" :icon="User" @click="openTeamDetailById(competitionDetail.myTeamId)">查看我的队伍</el-button><el-button v-else-if="isStudent && canCreateTeam" type="primary" :icon="Plus" @click="openTeamDialog(null, competitionDetail)">发起组队</el-button></div>
+        <div class="drawer-actions"><el-button v-if="isTeacher" type="primary" :icon="User" @click="openCompetitionTeams(competitionDetail)">查看参赛队伍</el-button><el-button v-if="isStudent && competitionDetail.myTeamId" :icon="User" @click="openTeamDetailById(competitionDetail.myTeamId)">查看我的队伍</el-button><el-button v-else-if="isStudent && canCreateTeam" type="primary" :icon="Plus" @click="openTeamDialog(null, competitionDetail)">发起组队</el-button></div>
       </div>
     </el-drawer>
 
@@ -181,7 +193,7 @@
       <div v-if="teamDetail" class="detail-content">
         <div class="detail-title"><div><small>{{ teamDetail.registrationNo }}</small><h2>{{ teamDetail.teamName }}</h2><span>{{ teamDetail.competitionTitle }}</span></div><el-tag :type="teamStatusMeta(teamDetail.status).type">{{ teamStatusMeta(teamDetail.status).label }}</el-tag></div>
         <section class="member-section"><div class="section-heading"><h3>队伍成员</h3><el-button v-if="isStudent && isLeader(teamDetail) && isTeamManageable(teamDetail) && canManageTeam" link type="primary" :icon="CirclePlus" @click="openInviteDialog(teamDetail)">邀请队员</el-button></div><div class="member-list"><div v-for="member in teamDetail.members" :key="member.memberId"><span><strong>{{ member.studentName }}</strong><small>{{ member.studentNo }} · {{ member.role }}</small></span><el-tag :type="invitationStatusMeta(member.invitationStatus).type" size="small">{{ invitationStatusMeta(member.invitationStatus).label }}</el-tag><el-button v-if="isStudent && member.role !== '队长' && isLeader(teamDetail) && isTeamManageable(teamDetail) && canManageTeam" link type="danger" :icon="Close" aria-label="移除成员" @click="removeMember(teamDetail, member)" /></div></div></section>
-        <dl><dt>报名材料</dt><dd><a v-if="teamDetail.materialUrl" :href="teamDetail.materialUrl" target="_blank" rel="noopener">打开材料链接</a><span v-else>尚未提交</span></dd><dt>材料说明</dt><dd class="pre-wrap">{{ teamDetail.materialDescription || '暂无说明' }}</dd><template v-if="teamDetail.reviewOpinion"><dt>审核意见</dt><dd class="review-opinion">{{ teamDetail.reviewOpinion }}</dd></template></dl>
+        <dl><dt>报名材料</dt><dd><el-button v-if="teamDetail.materialOriginalName" link type="primary" :icon="Download" @click="downloadMaterial(teamDetail)">{{ teamDetail.materialOriginalName }}</el-button><span v-else>尚未上传</span><small v-if="teamDetail.materialSize" class="file-size">{{ formatFileSize(teamDetail.materialSize) }}</small></dd><dt>材料说明</dt><dd class="pre-wrap">{{ teamDetail.materialDescription || '暂无说明' }}</dd><template v-if="teamDetail.reviewOpinion"><dt>审核意见</dt><dd class="review-opinion">{{ teamDetail.reviewOpinion }}</dd></template></dl>
         <div class="drawer-actions"><el-button v-if="isStudent && isLeader(teamDetail) && isTeamManageable(teamDetail) && canManageTeam" :icon="EditPen" @click="openTeamDialog(teamDetail)">编辑材料</el-button><el-button v-if="isStudent && isLeader(teamDetail) && isTeamManageable(teamDetail) && canSubmitTeam" type="primary" :icon="Promotion" @click="submitTeam(teamDetail)">提交报名</el-button><el-button v-if="isTeacher && teamDetail.status === 'SUBMITTED' && canReview" type="primary" :icon="CircleCheck" @click="openReviewDialog(teamDetail)">开始审核</el-button></div>
       </div>
     </el-drawer>
@@ -189,16 +201,18 @@
 </template>
 
 <script setup>
-import { computed, inject, reactive, ref, watch } from 'vue'
-import { Bell, CircleCheck, CirclePlus, Close, EditPen, List, Plus, Promotion, Refresh, Trophy, User, View } from '@element-plus/icons-vue'
+import { computed, inject, nextTick, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { Bell, CircleCheck, CirclePlus, Close, Download, EditPen, List, Plus, Promotion, Refresh, Trophy, UploadFilled, User, View } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  closeCompetition, createCompetition, createCompetitionTeam, getCompetition, getCompetitionTeam,
+  closeCompetition, createCompetition, createCompetitionTeam, downloadCompetitionMaterial, getCompetition, getCompetitionTeam,
   inviteCompetitionMember, listCompetitionReviews, listCompetitions, listMyCompetitionInvitations,
   listMyCompetitionTeams, publishCompetition, removeCompetitionMember, respondCompetitionInvitation,
-  reviewCompetitionTeam, submitCompetitionTeam, updateCompetition, updateCompetitionTeam,
+  reviewCompetitionTeam, submitCompetitionTeam, updateCompetition, updateCompetitionTeam, uploadCompetitionMaterial,
 } from '@/api/student.js'
 
+const router = useRouter()
 const currentUser = inject('currentUser', ref(null))
 const roles = computed(() => new Set(currentUser.value?.roles || []))
 const permissions = computed(() => new Set(currentUser.value?.permissions || []))
@@ -236,6 +250,7 @@ const teamStatusMeta = (status) => teamStatusMap[status] || { label: status || '
 const invitationStatusMeta = (status) => invitationStatusMap[status] || { label: status || '未知', type: 'info' }
 const formatDate = (value) => value ? new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium' }).format(new Date(`${value}T00:00:00`)) : '--'
 const formatDateTime = (value) => value ? new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '未提交'
+const formatFileSize = (size) => size ? (size < 1024 * 1024 ? `${Math.ceil(size / 1024)} KB` : `${(size / 1024 / 1024).toFixed(1)} MB`) : ''
 const isLeader = (team) => String(team.leaderNo) === String(currentUser.value?.user?.username)
 const isTeamManageable = (team) => ['FORMING', 'RETURNED'].includes(team.status)
 const disablePastDate = (date) => date.getTime() < new Date().setHours(0, 0, 0, 0)
@@ -276,15 +291,23 @@ const openCompetitionDialog = (row = null) => { editingCompetition.value = row; 
 const saveCompetition = async () => { await competitionFormRef.value.validate(); if (competitionForm.minMembers > competitionForm.maxMembers) return ElMessage.warning('最少人数不能大于最多人数'); saving.value = true; try { editingCompetition.value ? await updateCompetition(editingCompetition.value.competitionId, { ...competitionForm }) : await createCompetition({ ...competitionForm }); ElMessage.success(editingCompetition.value ? '竞赛草稿已更新' : '竞赛草稿已创建'); competitionDialogOpen.value = false; await loadData() } finally { saving.value = false } }
 const publish = async (row) => { await ElMessageBox.confirm('发布后竞赛将对学生开放报名，且不能再修改，确认发布？', '发布竞赛', { type: 'warning', confirmButtonText: '确认发布' }); await publishCompetition(row.competitionId); ElMessage.success('竞赛已发布'); await loadData() }
 const closeRegistration = async (row) => { await ElMessageBox.confirm('关闭后学生不能再组队或提交报名，确认关闭？', '关闭报名', { type: 'warning', confirmButtonText: '确认关闭' }); await closeCompetition(row.competitionId); ElMessage.success('竞赛报名已关闭'); await loadData() }
+const openCompetitionTeams = (row) => { competitionDetailOpen.value = false; router.push({ name: 'competitionTeams', params: { competitionId: row.competitionId } }) }
 
 const teamDialogOpen = ref(false)
 const teamFormRef = ref()
 const editingTeam = ref(null)
 const teamCompetition = ref(null)
-const teamForm = reactive({ teamName: '', materialUrl: '', materialDescription: '' })
-const teamRules = { teamName: [{ required: true, message: '请填写队伍名称', trigger: 'blur' }], materialUrl: [{ type: 'url', message: '请输入完整的 http(s) 链接', trigger: 'blur' }] }
-const openTeamDialog = (team = null, competition = null) => { editingTeam.value = team; teamCompetition.value = competition || team; Object.assign(teamForm, team ? { teamName: team.teamName, materialUrl: team.materialUrl || '', materialDescription: team.materialDescription || '' } : { teamName: '', materialUrl: '', materialDescription: '' }); teamDialogOpen.value = true }
-const saveTeam = async () => { await teamFormRef.value.validate(); saving.value = true; try { const payload = { ...teamForm, materialUrl: teamForm.materialUrl || null, materialDescription: teamForm.materialDescription || null }; const result = editingTeam.value ? await updateCompetitionTeam(editingTeam.value.teamId, payload) : await createCompetitionTeam(teamCompetition.value.competitionId, payload); ElMessage.success(editingTeam.value ? '队伍信息已更新' : '队伍已创建'); teamDialogOpen.value = false; await loadData(); if (editingTeam.value && teamDetailOpen.value) teamDetail.value = result.data } finally { saving.value = false } }
+const teamForm = reactive({ teamName: '', materialDescription: '' })
+const teamRules = { teamName: [{ required: true, message: '请填写队伍名称', trigger: 'blur' }] }
+const materialAccept = '.pdf,.doc,.docx,.xls,.xlsx,.zip'
+const materialUploadRef = ref()
+const materialFile = ref(null)
+const openTeamDialog = (team = null, competition = null) => { editingTeam.value = team; teamCompetition.value = competition || team; materialFile.value = null; Object.assign(teamForm, team ? { teamName: team.teamName, materialDescription: team.materialDescription || '' } : { teamName: '', materialDescription: '' }); teamDialogOpen.value = true; nextTick(() => materialUploadRef.value?.clearFiles()) }
+const handleMaterialChange = (uploadFile) => { if (uploadFile.size > 20 * 1024 * 1024) { materialUploadRef.value?.clearFiles(); materialFile.value = null; return ElMessage.warning('报名材料不能超过 20MB') } materialFile.value = uploadFile.raw }
+const handleMaterialRemove = () => { materialFile.value = null }
+const handleMaterialExceed = () => ElMessage.warning('一次只能选择一个报名材料文件')
+const saveTeam = async () => { await teamFormRef.value.validate(); saving.value = true; const wasEditing = Boolean(editingTeam.value); try { const payload = { teamName: teamForm.teamName, materialDescription: teamForm.materialDescription || null }; let result = wasEditing ? await updateCompetitionTeam(editingTeam.value.teamId, payload) : await createCompetitionTeam(teamCompetition.value.competitionId, payload); if (!wasEditing) editingTeam.value = result.data; if (materialFile.value) result = await uploadCompetitionMaterial(result.data.teamId, materialFile.value); ElMessage.success(wasEditing ? '队伍信息已更新' : '队伍已创建'); teamDialogOpen.value = false; await loadData(); if (wasEditing && teamDetailOpen.value) teamDetail.value = result.data } finally { saving.value = false } }
+const downloadMaterial = async (team) => { try { const result = await downloadCompetitionMaterial(team.teamId); const url = URL.createObjectURL(result.blob); const link = document.createElement('a'); link.href = url; link.download = result.fileName || team.materialOriginalName; link.click(); URL.revokeObjectURL(url) } catch (error) { ElMessage.error(error.message || '报名材料下载失败') } }
 
 const competitionDetailOpen = ref(false)
 const competitionDetail = ref(null)
@@ -317,7 +340,7 @@ watch([isStudent, isTeacher], ([student, teacher]) => { if (student) activeTab.v
 </script>
 
 <style scoped>
-.competition-workspace{width:min(1180px,calc(100% - 56px));margin:0 auto;padding:32px 0 48px}.workspace-header{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:24px}.workspace-header h1{margin:2px 0 4px;font-size:26px;font-weight:650;letter-spacing:0}.workspace-header p{margin:0;color:var(--color-text-secondary)}.workspace-header .eyebrow{color:var(--color-brand-600);font-size:12px;font-weight:700}.data-panel{min-height:430px;padding:0 22px 20px}.workspace-tabs{margin:0}.workspace-tabs :deep(.el-tabs__header){margin:0}.workspace-tabs :deep(.el-tabs__content){display:none}.workspace-tabs :deep(.el-tabs__nav-wrap::after){height:1px;background:var(--color-border-light)}.tab-label{display:inline-flex;align-items:center;gap:6px}.panel-toolbar{display:flex;min-height:70px;align-items:center;justify-content:space-between;gap:20px}.panel-toolbar>div:first-child{display:flex;align-items:baseline;gap:10px}.panel-toolbar h2{margin:0;font-size:17px;font-weight:600}.panel-toolbar span{color:var(--color-text-tertiary);font-size:13px}.filter-actions{display:flex;align-items:center;gap:8px}.filter-actions .el-select{width:145px}.desktop-table :deep(.el-table__row){cursor:pointer}.desktop-table :deep(th.el-table__cell){color:var(--color-text-secondary);background:#f8fafb;font-weight:600}.cell-subtitle{display:block;margin-top:2px;color:var(--color-text-tertiary)}.row-actions{display:flex;align-items:center;white-space:nowrap}.desktop-empty{padding:48px 0}.mobile-records{display:none}.el-pagination{justify-content:flex-end;margin-top:20px}.full-width{width:100%!important}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.dialog-target{display:flex;flex-direction:column;gap:4px;margin:-4px 0 18px;padding:12px 14px;background:var(--color-brand-50);border-left:3px solid var(--color-brand-600)}.dialog-target span{color:var(--color-text-secondary);font-size:13px}.detail-content{padding:0 4px 24px}.detail-title{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding-bottom:20px;border-bottom:1px solid var(--color-border-light)}.detail-title h2{margin:4px 0;font-size:20px;letter-spacing:0}.detail-title span,.detail-title small{color:var(--color-text-tertiary)}.detail-content dl{display:grid;grid-template-columns:88px 1fr;gap:18px 12px;margin:24px 0}.detail-content dt{color:var(--color-text-tertiary)}.detail-content dd{min-width:0;margin:0}.detail-content a{color:var(--color-brand-600)}.pre-wrap{white-space:pre-wrap}.review-opinion{padding:10px 12px;background:#fff8e8;border-left:3px solid var(--color-warning)}.drawer-actions{display:flex;justify-content:flex-end;gap:8px;padding-top:18px;border-top:1px solid var(--color-border-light)}.member-section{margin:22px 0}.section-heading{display:flex;align-items:center;justify-content:space-between}.section-heading h3{margin:0;font-size:16px}.member-list{display:grid;gap:8px;margin-top:12px}.member-list>div{display:grid;grid-template-columns:minmax(0,1fr) auto 32px;align-items:center;gap:10px;padding:10px 12px;background:#f8fafb;border:1px solid var(--color-border-light);border-radius:6px}.member-list span{display:flex;min-width:0;flex-direction:column}.member-list small{color:var(--color-text-tertiary)}.mobile-actions{display:flex;gap:8px;margin-top:8px}
+.competition-workspace{width:min(1180px,calc(100% - 56px));margin:0 auto;padding:32px 0 48px}.workspace-header{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:24px}.workspace-header h1{margin:2px 0 4px;font-size:26px;font-weight:650;letter-spacing:0}.workspace-header p{margin:0;color:var(--color-text-secondary)}.workspace-header .eyebrow{color:var(--color-brand-600);font-size:12px;font-weight:700}.data-panel{min-height:430px;padding:0 22px 20px}.workspace-tabs{margin:0}.workspace-tabs :deep(.el-tabs__header){margin:0}.workspace-tabs :deep(.el-tabs__content){display:none}.workspace-tabs :deep(.el-tabs__nav-wrap::after){height:1px;background:var(--color-border-light)}.tab-label{display:inline-flex;align-items:center;gap:6px}.panel-toolbar{display:flex;min-height:70px;align-items:center;justify-content:space-between;gap:20px}.panel-toolbar>div:first-child{display:flex;align-items:baseline;gap:10px}.panel-toolbar h2{margin:0;font-size:17px;font-weight:600}.panel-toolbar span{color:var(--color-text-tertiary);font-size:13px}.filter-actions{display:flex;align-items:center;gap:8px}.filter-actions .el-select{width:145px}.desktop-table :deep(.el-table__row){cursor:pointer}.desktop-table :deep(th.el-table__cell){color:var(--color-text-secondary);background:#f8fafb;font-weight:600}.cell-subtitle{display:block;margin-top:2px;color:var(--color-text-tertiary)}.row-actions{display:flex;align-items:center;white-space:nowrap}.desktop-empty{padding:48px 0}.mobile-records{display:none}.el-pagination{justify-content:flex-end;margin-top:20px}.full-width{width:100%!important}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.dialog-target{display:flex;flex-direction:column;gap:4px;margin:-4px 0 18px;padding:12px 14px;background:var(--color-brand-50);border-left:3px solid var(--color-brand-600)}.dialog-target span{color:var(--color-text-secondary);font-size:13px}.detail-content{padding:0 4px 24px}.detail-title{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding-bottom:20px;border-bottom:1px solid var(--color-border-light)}.detail-title h2{margin:4px 0;font-size:20px;letter-spacing:0}.detail-title span,.detail-title small{color:var(--color-text-tertiary)}.detail-content dl{display:grid;grid-template-columns:88px 1fr;gap:18px 12px;margin:24px 0}.detail-content dt{color:var(--color-text-tertiary)}.detail-content dd{min-width:0;margin:0}.detail-content a{color:var(--color-brand-600)}.pre-wrap{white-space:pre-wrap}.review-opinion{padding:10px 12px;background:#fff8e8;border-left:3px solid var(--color-warning)}.drawer-actions{display:flex;justify-content:flex-end;gap:8px;padding-top:18px;border-top:1px solid var(--color-border-light)}.member-section{margin:22px 0}.section-heading{display:flex;align-items:center;justify-content:space-between}.section-heading h3{margin:0;font-size:16px}.member-list{display:grid;gap:8px;margin-top:12px}.member-list>div{display:grid;grid-template-columns:minmax(0,1fr) auto 32px;align-items:center;gap:10px;padding:10px 12px;background:#f8fafb;border:1px solid var(--color-border-light);border-radius:6px}.member-list span{display:flex;min-width:0;flex-direction:column}.member-list small{color:var(--color-text-tertiary)}.mobile-actions{display:flex;gap:8px;margin-top:8px}.material-upload{width:100%}.current-material{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;padding:10px 12px;background:#f8fafb;border:1px solid var(--color-border-light);border-radius:6px}.current-material span{display:flex;min-width:0;flex-direction:column}.current-material strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.current-material small,.file-size{margin-left:8px;color:var(--color-text-tertiary)}
 @media(max-width:991px){.competition-workspace{width:calc(100% - 40px)}}
 @media(max-width:767px){.competition-workspace{width:calc(100% - 24px);padding:22px 0 36px}.workspace-header{align-items:flex-start;margin-bottom:18px}.workspace-header h1{font-size:21px}.workspace-header>div>p:last-child{font-size:13px}.workspace-header .el-button{flex:0 0 auto}.data-panel{padding:0;background:transparent;border:0}.workspace-tabs{padding:0 4px}.workspace-tabs :deep(.el-tabs__nav){display:flex;width:100%}.workspace-tabs :deep(.el-tabs__item){min-width:0;flex:1;justify-content:center;padding:0 5px}.tab-label{gap:4px;font-size:13px}.panel-toolbar{min-height:64px}.panel-toolbar>div:first-child{display:block}.filter-actions .el-select{width:122px}.desktop-table,.desktop-empty{display:none}.mobile-records{display:flex;min-height:170px;flex-direction:column;gap:8px}.mobile-record{display:flex;width:100%;flex-direction:column;gap:4px;padding:14px;color:var(--color-text-secondary);text-align:left;background:#fff;border:1px solid var(--color-border-light);border-radius:6px}.record-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;color:var(--color-text-primary)}.record-top strong{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.record-top .el-tag{flex:0 0 auto}.mobile-record small{color:var(--color-text-tertiary)}.mobile-empty{width:100%;background:#fff;border:1px solid var(--color-border-light);border-radius:6px}.el-pagination{justify-content:center}.form-grid{grid-template-columns:1fr}.detail-content dl{grid-template-columns:76px 1fr}.drawer-actions{flex-wrap:wrap}.member-list>div{grid-template-columns:minmax(0,1fr) auto 28px}}
 </style>

@@ -159,7 +159,7 @@ public class LabBookingController {
 
     @PostMapping("/lab-bookings")
     @RequirePermission("lab:booking:create")
-    @Operation(summary = "学生预约实验设备或工位")
+    @Operation(summary = "学生预约实验室当天使用名额")
     public CommonResult<LabBookingVo> createBooking(@Valid @RequestBody LabBookingRequest request) {
         return CommonResult.success(labBookingService.createBooking(request));
     }
@@ -171,9 +171,23 @@ public class LabBookingController {
         return CommonResult.success(labBookingService.cancelBooking(id));
     }
 
+    @PostMapping("/lab-bookings/{id}/check-ins")
+    @RequirePermission("lab:booking:check-in-self")
+    @Operation(summary = "学生为本人当天预约签到")
+    public CommonResult<LabBookingVo> checkIn(@PathVariable Long id) {
+        return CommonResult.success(labBookingService.checkIn(id));
+    }
+
+    @PostMapping("/lab-bookings/{id}/check-outs")
+    @RequirePermission("lab:booking:check-out-self")
+    @Operation(summary = "学生为本人使用中的预约签退")
+    public CommonResult<LabBookingVo> checkOut(@PathVariable Long id) {
+        return CommonResult.success(labBookingService.checkOut(id));
+    }
+
     @PostMapping("/lab-bookings/{id}/completions")
     @RequirePermission("lab:booking:complete-managed")
-    @Operation(summary = "教师完成本人实验室的预约")
+    @Operation(summary = "教师为本人实验室的使用中预约强制签退")
     public CommonResult<LabBookingVo> completeBooking(@PathVariable Long id) {
         return CommonResult.success(labBookingService.completeBooking(id));
     }

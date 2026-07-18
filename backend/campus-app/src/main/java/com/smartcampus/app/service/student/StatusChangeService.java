@@ -67,16 +67,26 @@ public class StatusChangeService {
     }
 
     public PageResult<StatusChangeApplicationVo> listMine(long page, long size, String statusName) {
-        return listApplications(page, size, requireStudent().getStudentId(), parseStatus(statusName));
+        return listApplications(page, size, requireStudent().getStudentId(), parseStatus(statusName), false);
     }
 
-    public PageResult<StatusChangeApplicationVo> listForReview(long page, long size, String stage) {
-        Integer status = switch (stage == null ? "" : stage.toUpperCase()) {
+    public PageResult<StatusChangeApplicationVo> listForReview(
+            long page, long size, String stage, String statusName) {
+        AuthSession session = CurrentUserContext.require();
+        if (!session.roles().contains(TEACHER_ROLE) || !session.hasPermission(REVIEW_PERMISSION)) {
+            throw new BusinessException(GlobalErrorCodeConstants.FORBIDDEN);
+        }
+        String reviewStage = stage == null ? "ALL" : stage.toUpperCase();
+        Integer status = switch (reviewStage) {
             case "COUNSELOR" -> StatusChangeStatus.COUNSELOR_REVIEW.code();
             case "ACADEMIC" -> StatusChangeStatus.ACADEMIC_REVIEW.code();
+            case "ALL" -> parseStatus(statusName);
             default -> throw new BusinessException(GlobalErrorCodeConstants.BAD_REQUEST);
         };
-        return listApplications(page, size, null, status);
+        if ("ALL".equals(reviewStage) && Integer.valueOf(StatusChangeStatus.DRAFT.code()).equals(status)) {
+            throw new BusinessException(GlobalErrorCodeConstants.BAD_REQUEST);
+        }
+        return listApplications(page, size, null, status, true);
     }
 
     public StatusChangeApplicationVo getApplication(Long id) {
@@ -192,9 +202,11 @@ public class StatusChangeService {
         return requireApplicationView(id);
     }
 
-    private PageResult<StatusChangeApplicationVo> listApplications(long page, long size, Long studentId, Integer status) {
+    private PageResult<StatusChangeApplicationVo> listApplications(
+            long page, long size, Long studentId, Integer status, boolean excludeDraft) {
         Page<StatusChangeApplicationVo> queryPage = new Page<>(page, size);
-        IPage<StatusChangeApplicationVo> result = statusChangeMapper.selectApplicationPage(queryPage, studentId, status);
+        IPage<StatusChangeApplicationVo> result = statusChangeMapper.selectApplicationPage(
+                queryPage, studentId, status, excludeDraft);
         result.getRecords().forEach(this::translateStatus);
         return PageResult.from(result);
     }

@@ -18,6 +18,11 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,6 +32,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.nio.charset.StandardCharsets;
 
 @Validated
 @RestController
@@ -97,6 +106,17 @@ public class CompetitionController {
         return CommonResult.success(competitionService.listMyTeams(page, size, status));
     }
 
+    @GetMapping("/competitions/{id}/teams")
+    @RequirePermission("competition:review:read-self")
+    @Operation(summary = "教师查询本人指定竞赛的全部参赛队伍")
+    public CommonResult<PageResult<CompetitionTeamVo>> listCompetitionTeams(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "1") @Min(1) long page,
+            @RequestParam(defaultValue = "10") @Min(1) @Max(100) long size,
+            @RequestParam(required = false) String status) {
+        return CommonResult.success(competitionService.listCompetitionTeams(id, page, size, status));
+    }
+
     @GetMapping("/competition-teams/{id}")
     @Operation(summary = "按归属查询竞赛队伍详情")
     public CommonResult<CompetitionTeamVo> getTeam(@PathVariable Long id) {
@@ -119,6 +139,37 @@ public class CompetitionController {
             @PathVariable Long id,
             @Valid @RequestBody CompetitionTeamRequest request) {
         return CommonResult.success(competitionService.updateTeam(id, request));
+    }
+
+    @PutMapping(value = "/competition-teams/{id}/material", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @RequirePermission("competition:team:manage-self")
+    @Operation(summary = "队长上传或替换报名材料文件")
+    public CommonResult<CompetitionTeamVo> uploadMaterial(
+            @PathVariable Long id,
+            @RequestPart("file") MultipartFile file) {
+        return CommonResult.success(competitionService.uploadMaterial(id, file));
+    }
+
+    @GetMapping("/competition-teams/{id}/material")
+    @Operation(summary = "按队伍归属下载报名材料")
+    public ResponseEntity<Resource> downloadMaterial(@PathVariable Long id) {
+        CompetitionService.DownloadMaterial material = competitionService.downloadMaterial(id);
+        MediaType mediaType;
+        try {
+            mediaType = MediaType.parseMediaType(material.contentType());
+        } catch (RuntimeException exception) {
+            mediaType = MediaType.APPLICATION_OCTET_STREAM;
+        }
+        ContentDisposition disposition = ContentDisposition.attachment()
+                .filename(material.fileName(), StandardCharsets.UTF_8)
+                .build();
+        ResponseEntity.BodyBuilder response = ResponseEntity.ok()
+                .contentType(mediaType)
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString());
+        if (material.size() != null) {
+            response.contentLength(material.size());
+        }
+        return response.body(material.resource());
     }
 
     @PostMapping("/competition-teams/{id}/invitations")

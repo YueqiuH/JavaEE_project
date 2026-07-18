@@ -11,9 +11,6 @@ public class CompetitionTeamRequest {
     @Size(max = 64, message = "队伍名称不能超过64个字符")
     private String teamName;
 
-    @Size(max = 256, message = "材料链接不能超过256个字符")
-    private String materialUrl;
-
     @Size(max = 1000, message = "材料说明不能超过1000个字符")
     private String materialDescription;
 }

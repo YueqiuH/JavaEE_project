@@ -25,8 +25,10 @@ import com.smartcampus.contract.vo.student.CompetitionMemberVo;
 import com.smartcampus.contract.vo.student.CompetitionTeamVo;
 import com.smartcampus.contract.vo.student.CompetitionVo;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -44,14 +46,17 @@ public class CompetitionService {
     private final CompetitionMapper competitionMapper;
     private final CompetitionTeamMapper teamMapper;
     private final CompetitionMemberMapper memberMapper;
+    private final CompetitionMaterialStorage materialStorage;
 
     public CompetitionService(
             CompetitionMapper competitionMapper,
             CompetitionTeamMapper teamMapper,
-            CompetitionMemberMapper memberMapper) {
+            CompetitionMemberMapper memberMapper,
+            CompetitionMaterialStorage materialStorage) {
         this.competitionMapper = competitionMapper;
         this.teamMapper = teamMapper;
         this.memberMapper = memberMapper;
+        this.materialStorage = materialStorage;
     }
 
     public PageResult<CompetitionVo> listCompetitions(long page, long size, String statusName) {
@@ -149,14 +154,22 @@ public class CompetitionService {
     public PageResult<CompetitionTeamVo> listMyTeams(long page, long size, String statusName) {
         AuthSession session = requireStudent("competition:team:read-self");
         StudentEntity student = requireStudent(session);
-        return listTeams(page, size, student.getStudentId(), null, parseTeamStatus(statusName));
+        return listTeams(page, size, student.getStudentId(), null, null, parseTeamStatus(statusName));
     }
 
     public PageResult<CompetitionTeamVo> listReviews(long page, long size, String statusName) {
         AuthSession session = requireTeacher("competition:review:read-self");
         Integer status = statusName == null || statusName.isBlank()
                 ? CompetitionTeamStatus.SUBMITTED.code() : parseTeamStatus(statusName);
-        return listTeams(page, size, null, session.userId(), status);
+        return listTeams(page, size, null, session.userId(), null, status);
+    }
+
+    public PageResult<CompetitionTeamVo> listCompetitionTeams(
+            Long competitionId, long page, long size, String statusName) {
+        requireTeacher("competition:review:read-self");
+        requireOwnedCompetition(competitionId);
+        return listTeams(page, size, null, CurrentUserContext.require().userId(),
+                competitionId, parseTeamStatus(statusName));
     }
 
     public PageResult<CompetitionInvitationVo> listMyInvitations(long page, long size, String statusName) {
@@ -249,6 +262,47 @@ public class CompetitionService {
             throw new BusinessException(GlobalErrorCodeConstants.UPDATE_ERROR);
         }
         return requireTeamView(id);
+    }
+
+    @Transactional
+    public CompetitionTeamVo uploadMaterial(Long id, MultipartFile file) {
+        AuthSession session = requireStudent("competition:team:manage-self");
+        StudentEntity student = requireStudent(session);
+        CompetitionTeam current = requireLeaderTeam(id, student.getStudentId());
+        requireManageableTeam(current);
+
+        CompetitionMaterialStorage.StoredMaterial stored = materialStorage.store(file);
+        CompetitionTeam update = new CompetitionTeam();
+        update.setTeamId(id);
+        update.setMaterialStorageName(stored.storageName());
+        update.setMaterialOriginalName(stored.originalName());
+        update.setMaterialContentType(stored.contentType());
+        update.setMaterialSize(stored.size());
+        update.setMaterialUrl(null);
+        update.setUpdatedAt(LocalDateTime.now());
+        try {
+            if (teamMapper.updateById(update) != 1) {
+                throw new BusinessException(GlobalErrorCodeConstants.UPDATE_ERROR);
+            }
+        } catch (RuntimeException exception) {
+            materialStorage.deleteQuietly(stored.storageName());
+            throw exception;
+        }
+        materialStorage.deleteQuietly(current.getMaterialStorageName());
+        return requireTeamView(id);
+    }
+
+    public DownloadMaterial downloadMaterial(Long id) {
+        getTeam(id);
+        CompetitionTeam team = requireTeam(id);
+        if (team.getMaterialStorageName() == null || team.getMaterialStorageName().isBlank()) {
+            throw new BusinessException(CompetitionErrorCodes.MATERIAL_FILE_NOT_FOUND);
+        }
+        return new DownloadMaterial(
+                materialStorage.load(team.getMaterialStorageName()),
+                team.getMaterialOriginalName(),
+                team.getMaterialContentType(),
+                team.getMaterialSize());
     }
 
     @Transactional
@@ -377,7 +431,7 @@ public class CompetitionService {
         if (acceptedMembers < competition.getMinMembers() || acceptedMembers > competition.getMaxMembers()) {
             throw new BusinessException(CompetitionErrorCodes.TEAM_SIZE_INVALID);
         }
-        if (team.getMaterialUrl() == null || team.getMaterialUrl().isBlank()) {
+        if (team.getMaterialStorageName() == null || team.getMaterialStorageName().isBlank()) {
             throw new BusinessException(CompetitionErrorCodes.MATERIAL_REQUIRED);
         }
         LocalDateTime now = LocalDateTime.now();
@@ -433,9 +487,10 @@ public class CompetitionService {
     }
 
     private PageResult<CompetitionTeamVo> listTeams(
-            long page, long size, Long studentId, Long publisherId, Integer status) {
+            long page, long size, Long studentId, Long publisherId, Long competitionId, Integer status) {
         Page<CompetitionTeamVo> query = new Page<>(page, size);
-        IPage<CompetitionTeamVo> result = teamMapper.selectTeamPage(query, studentId, publisherId, status);
+        IPage<CompetitionTeamVo> result = teamMapper.selectTeamPage(
+                query, studentId, publisherId, competitionId, status);
         result.getRecords().forEach(this::enrichTeam);
         return PageResult.from(result);
     }
@@ -608,8 +663,10 @@ public class CompetitionService {
 
     private void copyTeam(CompetitionTeamRequest request, CompetitionTeam team) {
         team.setTeamName(request.getTeamName().trim());
-        team.setMaterialUrl(normalize(request.getMaterialUrl()));
         team.setMaterialDescription(normalize(request.getMaterialDescription()));
+    }
+
+    public record DownloadMaterial(Resource resource, String fileName, String contentType, Long size) {
     }
 
     private Integer parseCompetitionStatus(String name) {

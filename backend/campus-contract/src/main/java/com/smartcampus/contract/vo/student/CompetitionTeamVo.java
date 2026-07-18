@@ -21,7 +21,9 @@ public class CompetitionTeamVo {
     private Long leaderId;
     private Long leaderNo;
     private String leaderName;
-    private String materialUrl;
+    private String materialOriginalName;
+    private String materialContentType;
+    private Long materialSize;
     private String materialDescription;
     private Integer statusCode;
     private String status;

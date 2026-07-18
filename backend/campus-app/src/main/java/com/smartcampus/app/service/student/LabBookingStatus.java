@@ -1,9 +1,11 @@
 package com.smartcampus.app.service.student;
 
 public enum LabBookingStatus {
-    BOOKED(1),
+    RESERVED(1),
     CANCELLED(2),
-    COMPLETED(3);
+    CHECKED_OUT(3),
+    CHECKED_IN(4),
+    EXPIRED(5);
 
     private final int code;
 

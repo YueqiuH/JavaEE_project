@@ -24,4 +24,8 @@ public interface LabBookingErrorCodes {
     ErrorCode SLOT_HAS_BOOKINGS = new ErrorCode(409509, "开放时段已有有效预约，不能修改或删除", HttpStatus.CONFLICT);
     ErrorCode INVALID_BOOKING_STATUS = new ErrorCode(409510, "当前预约状态不允许执行此操作", HttpStatus.CONFLICT);
     ErrorCode FUTURE_BOOKING_CANNOT_COMPLETE = new ErrorCode(409511, "未来的预约不能标记为已完成", HttpStatus.CONFLICT);
+    ErrorCode LAB_CAPACITY_FULL = new ErrorCode(409512, "实验室今日预约名额已满", HttpStatus.CONFLICT);
+    ErrorCode ACTIVE_BOOKING_EXISTS = new ErrorCode(409513, "本人今日已预约该实验室", HttpStatus.CONFLICT);
+    ErrorCode CHECK_IN_EXPIRED = new ErrorCode(409514, "预约已超过30分钟签到期限", HttpStatus.CONFLICT);
+    ErrorCode BOOKING_NOT_TODAY = new ErrorCode(409515, "只能操作当天的实验室预约", HttpStatus.CONFLICT);
 }

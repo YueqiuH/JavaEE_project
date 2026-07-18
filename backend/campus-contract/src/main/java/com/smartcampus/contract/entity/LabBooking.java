@@ -28,6 +28,9 @@ public class LabBooking implements Serializable {
     private Integer status;
     private LocalDateTime createTime;
     private LocalDateTime cancelledAt;
+    private LocalDateTime checkInAt;
+    private LocalDateTime checkOutAt;
+    private LocalDateTime expiresAt;
     private LocalDateTime completedAt;
     private LocalDateTime updatedAt;
 }
