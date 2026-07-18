@@ -53,3 +53,37 @@ export const submitStatusChange = (id) => request.post(`${STUDENT_API_PREFIX}/st
 export const withdrawStatusChange = (id) => request.delete(`${STUDENT_API_PREFIX}/status-changes/${id}`)
 
 export const reviewStatusChange = (id, data) => request.post(`${STUDENT_API_PREFIX}/status-changes/${id}/reviews`, data)
+
+export const listCompetitions = (params) => request.get(`${STUDENT_API_PREFIX}/competitions`, { params })
+
+export const getCompetition = (id) => request.get(`${STUDENT_API_PREFIX}/competitions/${id}`)
+
+export const createCompetition = (data) => request.post(`${STUDENT_API_PREFIX}/competitions`, data)
+
+export const updateCompetition = (id, data) => request.put(`${STUDENT_API_PREFIX}/competitions/${id}`, data)
+
+export const publishCompetition = (id) => request.post(`${STUDENT_API_PREFIX}/competitions/${id}/publications`)
+
+export const closeCompetition = (id) => request.post(`${STUDENT_API_PREFIX}/competitions/${id}/closures`)
+
+export const listMyCompetitionTeams = (params) => request.get(`${STUDENT_API_PREFIX}/competition-teams/mine`, { params })
+
+export const getCompetitionTeam = (id) => request.get(`${STUDENT_API_PREFIX}/competition-teams/${id}`)
+
+export const createCompetitionTeam = (competitionId, data) => request.post(`${STUDENT_API_PREFIX}/competitions/${competitionId}/teams`, data)
+
+export const updateCompetitionTeam = (id, data) => request.put(`${STUDENT_API_PREFIX}/competition-teams/${id}`, data)
+
+export const inviteCompetitionMember = (id, studentNo) => request.post(`${STUDENT_API_PREFIX}/competition-teams/${id}/invitations`, { studentNo })
+
+export const removeCompetitionMember = (teamId, memberId) => request.delete(`${STUDENT_API_PREFIX}/competition-teams/${teamId}/members/${memberId}`)
+
+export const submitCompetitionTeam = (id) => request.post(`${STUDENT_API_PREFIX}/competition-teams/${id}/submissions`)
+
+export const listMyCompetitionInvitations = (params) => request.get(`${STUDENT_API_PREFIX}/competition-invitations/mine`, { params })
+
+export const respondCompetitionInvitation = (memberId, decision) => request.post(`${STUDENT_API_PREFIX}/competition-invitations/${memberId}/responses`, { decision })
+
+export const listCompetitionReviews = (params) => request.get(`${STUDENT_API_PREFIX}/competition-reviews`, { params })
+
+export const reviewCompetitionTeam = (id, data) => request.post(`${STUDENT_API_PREFIX}/competition-teams/${id}/reviews`, data)
