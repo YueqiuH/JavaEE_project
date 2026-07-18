@@ -10,9 +10,11 @@ import com.smartcampus.auth.context.CurrentUserContext;
 import com.smartcampus.auth.permission.RequirePermission;
 import com.smartcampus.common.exception.BusinessException;
 import com.smartcampus.common.result.CommonResult;
+import com.smartcampus.common.result.PageResult;
 import com.smartcampus.contract.entity.Fee;
 import com.smartcampus.contract.entity.Payment;
 import com.smartcampus.contract.vo.CardBalanceVo;
+import com.smartcampus.contract.vo.StudentFeeOverviewVo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +28,8 @@ import java.util.List;
 @RequestMapping("/api/v1/office/fee")
 @Tag(name = "学杂费交纳与流水查询")
 public class FeeController {
+    private static final List<String> OVERVIEW_STATUSES = List.of("欠费", "已缴清", "未出账");
+
     @Autowired private IFeeService feeService;
     @Autowired private IPaymentService paymentService;
 
@@ -93,6 +97,24 @@ public class FeeController {
                 .eq(Payment::getStudentId, studentId)
                 .in(Payment::getPaymentType, "一卡通充值", "消费")
                 .orderByDesc(Payment::getPaymentTime).last("LIMIT 5")));
+    }
+
+    @GetMapping("/students")
+    @RequirePermission(OfficePermissions.FEE_OVERVIEW_READ)
+    @Operation(summary = "管理员或校领导分页查看学生缴费情况")
+    public CommonResult<PageResult<StudentFeeOverviewVo>> studentFeeOverview(
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String status) {
+        if (page < 1 || size < 1 || size > 100) {
+            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "分页参数不合法，size 必须在 1-100 之间");
+        }
+        if (status != null && !status.isBlank() && !OVERVIEW_STATUSES.contains(status)) {
+            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "缴费状态必须为欠费、已缴清或未出账");
+        }
+        return CommonResult.success(PageResult.from(
+                feeService.getStudentFeeOverview(page, size, keyword, status)));
     }
 
     @GetMapping("/card/balance")

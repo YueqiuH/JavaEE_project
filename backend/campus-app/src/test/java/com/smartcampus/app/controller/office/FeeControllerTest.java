@@ -3,6 +3,7 @@ package com.smartcampus.app.controller.office;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.smartcampus.app.enums.OfficeErrorCodeConstants;
 import com.smartcampus.app.service.office.IFeeService;
 import com.smartcampus.app.service.office.IPaymentService;
@@ -13,6 +14,7 @@ import com.smartcampus.common.result.CommonResult;
 import com.smartcampus.contract.entity.Fee;
 import com.smartcampus.contract.entity.Payment;
 import com.smartcampus.contract.vo.CardBalanceVo;
+import com.smartcampus.contract.vo.StudentFeeOverviewVo;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -24,6 +26,7 @@ import org.apache.ibatis.builder.MapperBuilderAssistant;
 
 import java.math.BigDecimal;
 import java.util.Set;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -86,6 +89,25 @@ class FeeControllerTest {
 
         assertEquals(new BigDecimal("88.50"), result.getData().getBalance());
         verify(paymentService).getCardBalance(1L);
+    }
+
+    @Test
+    void returnsStudentFeeOverviewForAdmin() {
+        StudentFeeOverviewVo row = new StudentFeeOverviewVo();
+        row.setStudentId(1L);
+        row.setStudentNo("600001");
+        row.setStudentName("测试学生");
+        row.setUnpaidAmount(new BigDecimal("100.00"));
+        row.setPaymentStatus("欠费");
+        Page<StudentFeeOverviewVo> data = new Page<>(1, 20, 1);
+        data.setRecords(List.of(row));
+        when(feeService.getStudentFeeOverview(1, 20, "600001", "欠费")).thenReturn(data);
+
+        var result = controller.studentFeeOverview(1, 20, "600001", "欠费");
+
+        assertEquals(1, result.getData().getTotal());
+        assertEquals("600001", result.getData().getRecords().getFirst().getStudentNo());
+        assertEquals("欠费", result.getData().getRecords().getFirst().getPaymentStatus());
     }
 
     private AuthSession session(Long userId) {

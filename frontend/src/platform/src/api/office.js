@@ -8,8 +8,8 @@ export const feeAPI = {
   pay: (feeId) => request.post(`${OFFICE_API_PREFIX}/fee/pay/${feeId}`),
   getCardBalance: () => request.get(`${OFFICE_API_PREFIX}/fee/card/balance`),
   getRecentPayments: () => request.get(`${OFFICE_API_PREFIX}/fee/payment/recent`),
+  getStudentOverview: (params) => request.get(`${OFFICE_API_PREFIX}/fee/students`, { params }),
 }
-
 export const assetAPI = {
   list: (deptId) => request.get(`${OFFICE_API_PREFIX}/asset/list`, { params: deptId ? { deptId } : {} }),
   inventory: (deptId) => request.get(`${OFFICE_API_PREFIX}/asset/inventory`, { params: deptId ? { deptId } : {} }),
@@ -56,9 +56,4 @@ export const meetingAPI = {
   summary: (meetingId) => request.get(`${OFFICE_API_PREFIX}/meeting/${meetingId}/summary`),
   notifications: () => request.get(`${OFFICE_API_PREFIX}/meeting/notifications`),
   readNotification: (notifyId) => request.post(`${OFFICE_API_PREFIX}/meeting/notifications/${notifyId}/read`),
-}
-
-export const aiApprovalAPI = {
-  summary: (docId) => request.post(`${OFFICE_API_PREFIX}/ai-approval/summary/${docId}`),
-  recommend: (docId, data) => request.post(`${OFFICE_API_PREFIX}/ai-approval/recommend/${docId}`, data),
 }

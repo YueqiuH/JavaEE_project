@@ -48,8 +48,6 @@ const router = createRouter({
         { path: 'work-plan', name: 'workPlan', component: () => import('@/views/office/WorkPlan.vue'), meta: featureMeta('工作计划', 'office', 'work-plan') },
         { path: 'document-oa', name: 'documentOA', component: () => import('@/views/office/DocumentOA.vue'), meta: featureMeta('公文流转 OA', 'office', 'document-oa') },
         { path: 'meeting-notice', name: 'meetingNotice', component: () => import('@/views/office/MeetingNotice.vue'), meta: featureMeta('会议与通知', 'office', 'meeting-notice') },
-        { path: 'ai-approval', name: 'aiApproval', component: () => import('@/views/office/AiApproval.vue'), meta: featureMeta('AI 审批助手', 'office', 'ai-approval') },
-
         { path: 'user-management', name: 'userManagement', component: () => import('@/views/base/UserManagement.vue'), meta: featureMeta('师生信息库', 'base', 'user-management') },
         { path: 'enrollment-stats', name: 'enrollmentStats', component: () => import('@/views/base/EnrollmentStats.vue'), meta: featureMeta('招生统计', 'base', 'enrollment-stats') },
         { path: 'student-analytics', name: 'studentAnalytics', component: () => import('@/views/base/StudentAnalytics.vue'), meta: featureMeta('学生多维统计', 'base', 'student-analytics') },

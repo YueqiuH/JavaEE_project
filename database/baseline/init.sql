@@ -674,6 +674,7 @@ INSERT INTO `role` (`role_code`, `role_name`) VALUES
     ('STUDENT', '学生'),
     ('TEACHER', '教师'),
     ('STAFF', '教职工'),
+    ('LEADER', '校领导'),
     ('ADMIN', '系统管理员')
 ON DUPLICATE KEY UPDATE `role_name` = VALUES(`role_name`);
 
@@ -683,18 +684,20 @@ INSERT INTO `permission` (`permission_code`, `permission_name`) VALUES
     ('office:read', '读取办公数据'), ('office:write', '维护办公数据'),
     ('base:read', '读取基础数据'), ('base:write', '维护基础数据'), ('admin:manage', '系统管理'),
     ('fee:self:read', '查询本人账单与流水'), ('fee:self:pay', '支付本人账单'), ('fee:manage', '管理费用账单'),
+    ('fee:overview:read', '查询学生缴费概览'),
     ('asset:read', '读取资产台账'), ('asset:apply', '提交资产申请'), ('asset:manage', '管理和审批资产'),
     ('work-plan:self', '维护本人工作计划'), ('work-plan:manage', '管理和点评工作计划'),
     ('document:self', '发起并查看本人公文'), ('document:approve', '审批流转至本人的公文'),
     ('document:manage', '管理公文审批资格与流程'),
     ('meeting:self', '查看并反馈本人会议'), ('meeting:manage', '发布和管理会议'),
-    ('notification:self:read', '读取本人通知'), ('ai-approval:use', '使用AI审批助手')
+    ('notification:self:read', '读取本人通知')
 ON DUPLICATE KEY UPDATE `permission_name` = VALUES(`permission_name`);
 
 INSERT INTO `user` (`username`, `password`, `user_type`, `status`) VALUES
     ('600001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1),
     ('700001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 2, 1),
     ('800001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 3, 1),
+    ('leader', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 3, 1),
     ('admin', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 4, 1)
 ON DUPLICATE KEY UPDATE `password` = VALUES(`password`), `user_type` = VALUES(`user_type`), `status` = VALUES(`status`);
 
@@ -703,6 +706,7 @@ SELECT u.user_id, r.role_id FROM `user` u JOIN `role` r ON
     (u.username = '600001' AND r.role_code = 'STUDENT') OR
     (u.username = '700001' AND r.role_code = 'TEACHER') OR
     (u.username = '800001' AND r.role_code = 'STAFF') OR
+    (u.username = 'leader' AND r.role_code = 'LEADER') OR
     (u.username = 'admin' AND r.role_code = 'ADMIN');
 
 INSERT IGNORE INTO `role_permission` (`role_id`, `permission_id`)
@@ -714,13 +718,15 @@ SELECT r.role_id, p.permission_id FROM `role` r CROSS JOIN `permission` p WHERE
     OR (r.role_code = 'TEACHER' AND p.permission_code IN (
         'teaching:read', 'teaching:write', 'student:read', 'base:read', 'office:read',
         'asset:read', 'asset:apply', 'work-plan:self', 'document:self', 'document:approve',
-        'meeting:self', 'meeting:manage', 'notification:self:read', 'ai-approval:use'))
+        'meeting:self', 'meeting:manage', 'notification:self:read'))
     OR (r.role_code = 'STAFF' AND p.permission_code IN (
         'student:read', 'student:write', 'office:read', 'office:write', 'base:read',
         'fee:self:read', 'fee:self:pay', 'fee:manage',
         'asset:read', 'asset:apply', 'asset:manage',
         'work-plan:self', 'work-plan:manage', 'document:self', 'document:approve',
-        'meeting:self', 'meeting:manage', 'notification:self:read', 'ai-approval:use'));
+        'meeting:self', 'meeting:manage', 'notification:self:read'))
+    OR (r.role_code = 'LEADER' AND p.permission_code IN (
+        'office:read', 'fee:overview:read'));
 
 INSERT INTO `document_approver` (`user_id`, `display_name`, `status`)
 SELECT u.user_id,

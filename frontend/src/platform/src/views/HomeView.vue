@@ -98,7 +98,7 @@ const displayName = computed(() => currentUser.value?.user?.realName || currentU
 const avatarText = computed(() => displayName.value.slice(0, 1).toUpperCase())
 const roleLabel = computed(() => {
   const role = [...(currentUser.value?.roles || [])][0]
-  return { STUDENT: '学生', TEACHER: '教师', STAFF: '教职工', ADMIN: '管理员' }[role] || role || '用户'
+  return { STUDENT: '学生', TEACHER: '教师', STAFF: '教职工', LEADER: '校领导', ADMIN: '管理员' }[role] || role || '用户'
 })
 
 const loadCurrentUser = async () => {

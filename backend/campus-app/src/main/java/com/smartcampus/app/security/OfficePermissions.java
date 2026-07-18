@@ -6,6 +6,7 @@ public final class OfficePermissions {
     public static final String FEE_SELF_READ = "fee:self:read";
     public static final String FEE_SELF_PAY = "fee:self:pay";
     public static final String FEE_MANAGE = "fee:manage";
+    public static final String FEE_OVERVIEW_READ = "fee:overview:read";
     public static final String ASSET_READ = "asset:read";
     public static final String ASSET_APPLY = "asset:apply";
     public static final String ASSET_MANAGE = "asset:manage";
@@ -17,8 +18,6 @@ public final class OfficePermissions {
     public static final String MEETING_SELF = "meeting:self";
     public static final String MEETING_MANAGE = "meeting:manage";
     public static final String NOTIFICATION_SELF_READ = "notification:self:read";
-    public static final String AI_APPROVAL_USE = "ai-approval:use";
-
     private OfficePermissions() {
     }
 }
