@@ -11,18 +11,16 @@ import java.time.LocalDateTime;
 
 @Data
 @ToString
-@TableName(value = "lab")
-public class Lab implements Serializable {
+@TableName("lab_booking_notice")
+public class LabBookingNotice implements Serializable {
 
     @TableId(type = IdType.AUTO)
-    private Long labId;
-    private String labNo;
-    private String labName;
-    private String location;
-    private Integer capacity;
-    private String description;
-    private Long managerId;
-    private Integer status;
+    private Long noticeId;
+    private Long bookingId;
+    private Long studentId;
+    private String title;
+    private String content;
+    private Integer isRead;
     private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private LocalDateTime readAt;
 }

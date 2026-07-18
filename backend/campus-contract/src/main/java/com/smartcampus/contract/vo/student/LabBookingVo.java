@@ -1,31 +1,30 @@
-package com.smartcampus.contract.entity;
+package com.smartcampus.contract.vo.student;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
-import lombok.ToString;
 
-import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
-@ToString
-@TableName(value = "lab_booking")
-public class LabBooking implements Serializable {
-
-    @TableId(type = IdType.AUTO)
+public class LabBookingVo {
     private Long bookingId;
     private String bookingNo;
     private Long labId;
+    private String labName;
+    private String location;
     private Long resourceId;
+    private String resourceNo;
+    private String resourceName;
+    private String resourceType;
     private Long studentId;
+    private Long studentNo;
+    private String studentName;
     private LocalDate bookingDate;
     private Integer startPeriod;
     private Integer endPeriod;
     private String purpose;
-    private Integer status;
+    private Integer statusCode;
+    private String status;
     private LocalDateTime createTime;
     private LocalDateTime cancelledAt;
     private LocalDateTime completedAt;

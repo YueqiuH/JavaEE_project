@@ -7,22 +7,21 @@ import lombok.Data;
 import lombok.ToString;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
 @ToString
-@TableName(value = "lab")
-public class Lab implements Serializable {
+@TableName("lab_open_slot")
+public class LabOpenSlot implements Serializable {
 
     @TableId(type = IdType.AUTO)
+    private Long slotId;
     private Long labId;
-    private String labNo;
-    private String labName;
-    private String location;
-    private Integer capacity;
-    private String description;
-    private Long managerId;
-    private Integer status;
+    private LocalDate openDate;
+    private Integer startPeriod;
+    private Integer endPeriod;
+    private Long createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
