@@ -38,9 +38,8 @@ const router = createRouter({
         { path: 'scholarship', name: 'scholarship', component: () => import('@/views/student/Scholarship.vue'), meta: featureMeta('奖助贷评审', 'student', 'scholarship') },
         { path: 'teaching-evaluation', name: 'teachingEvaluation', component: () => import('@/views/student/TeachingEvaluation.vue'), meta: featureMeta('评教反馈', 'student', 'teaching-evaluation') },
         { path: 'competition', name: 'competition', component: () => import('@/views/student/Competition.vue'), meta: featureMeta('学科竞赛', 'student', 'competition') },
+        { path: 'competition/:competitionId/teams', name: 'competitionTeams', component: () => import('@/views/student/CompetitionTeams.vue'), meta: featureMeta('竞赛队伍', 'student', 'competition') },
         { path: 'lab-booking', name: 'labBooking', component: () => import('@/views/student/LabBooking.vue'), meta: featureMeta('实验室预约', 'student', 'lab-booking') },
-        { path: 'ai-psychology', name: 'aiPsychology', component: () => import('@/views/student/AiPsychology.vue'), meta: featureMeta('AI 心理预警', 'student', 'ai-psychology') },
-
         { path: 'fee-payment', name: 'feePayment', component: () => import('@/views/office/FeePayment.vue'), meta: featureMeta('学杂费交纳', 'office', 'fee-payment') },
         { path: 'asset-management', name: 'assetManagement', component: () => import('@/views/office/AssetManagement.vue'), meta: featureMeta('固定资产管理', 'office', 'asset-management') },
         { path: 'work-plan', name: 'workPlan', component: () => import('@/views/office/WorkPlan.vue'), meta: featureMeta('工作计划', 'office', 'work-plan') },

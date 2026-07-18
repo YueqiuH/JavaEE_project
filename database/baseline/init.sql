@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS `user` (
     `user_id`    BIGINT       NOT NULL AUTO_INCREMENT COMMENT '用户主键ID',
     `username`   VARCHAR(64)  NOT NULL                COMMENT '用户名/账号',
     `password`   VARCHAR(100) NOT NULL                COMMENT 'BCrypt密码哈希',
-    `user_type`  TINYINT      NOT NULL DEFAULT 1      COMMENT '人员类别: 1=学生, 2=辅导员, 3=教职工, 4=教务处管理员',
+    `user_type`  TINYINT      NOT NULL DEFAULT 1      COMMENT '人员类别: 1=学生, 2=教师, 3=教职工, 4=管理员',
     `status`     TINYINT      NOT NULL DEFAULT 1      COMMENT '状态: 1=启用, 0=停用',
     `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -300,32 +300,61 @@ CREATE TABLE IF NOT EXISTS `graduation_report` (
 -- 学籍异动申请表
 CREATE TABLE IF NOT EXISTS `student_status_change` (
     `change_id`     BIGINT       NOT NULL AUTO_INCREMENT COMMENT '异动主键ID',
+    `application_no` VARCHAR(32) NOT NULL                COMMENT '申请编号',
     `student_id`    BIGINT       NOT NULL                COMMENT '学生ID',
-    `change_type`   VARCHAR(16)  NOT NULL                COMMENT '类型：休学/复学/转专业/退学',
+    `change_type`   VARCHAR(32)  NOT NULL                COMMENT '类型：SUSPENSION/RESUMPTION/MAJOR_CHANGE/WITHDRAWAL',
     `reason`        VARCHAR(512) NOT NULL                COMMENT '申请原因',
     `new_major_id`  BIGINT       DEFAULT NULL            COMMENT '转专业-新专业ID',
-    `status`        INT          DEFAULT 0               COMMENT '状态：0=辅导员审核中, 1=教务审核中, 2=已通过, 3=已拒绝',
+    `desired_effective_date` DATE NOT NULL                COMMENT '期望生效日期',
+    `status`        INT          NOT NULL DEFAULT 0       COMMENT '0=草稿,1=辅导员初审,2=教务复审,3=通过,4=初审拒绝,5=复审拒绝,6=撤回',
     `counselor_id`  BIGINT       DEFAULT NULL            COMMENT '辅导员ID',
     `counselor_opinion` VARCHAR(256) DEFAULT NULL        COMMENT '辅导员意见',
-    `admin_id`      BIGINT       DEFAULT NULL            COMMENT '教务管理员ID',
-    `admin_opinion` VARCHAR(256) DEFAULT NULL            COMMENT '教务意见',
-    `apply_time`    DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '申请时间',
-    PRIMARY KEY (`change_id`)
+    `counselor_reviewed_at` DATETIME DEFAULT NULL         COMMENT '辅导员审核时间',
+    `academic_reviewer_id` BIGINT DEFAULT NULL            COMMENT '教务复审人ID',
+    `academic_opinion` VARCHAR(256) DEFAULT NULL          COMMENT '教务复审意见',
+    `academic_reviewed_at` DATETIME DEFAULT NULL          COMMENT '教务复审时间',
+    `apply_time`    DATETIME     DEFAULT NULL             COMMENT '提交时间',
+    `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`change_id`),
+    UNIQUE KEY `uk_status_change_application_no` (`application_no`),
+    KEY `idx_status_change_student_status` (`student_id`, `status`),
+    KEY `idx_status_change_status_updated` (`status`, `updated_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='学籍异动申请表';
+
+-- 学生非核心联系信息扩展表（成员 B 维护，不改写共享 student 基础档案）
+CREATE TABLE IF NOT EXISTS `student_profile_extension` (
+    `student_id` BIGINT NOT NULL,
+    `current_address` VARCHAR(128) DEFAULT NULL,
+    `phone` VARCHAR(20) DEFAULT NULL,
+    `email` VARCHAR(128) DEFAULT NULL,
+    `emergency_contact` VARCHAR(32) DEFAULT NULL,
+    `emergency_phone` VARCHAR(20) DEFAULT NULL,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`student_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='学生非核心联系信息扩展表';
 
 -- 奖助贷申请表
 CREATE TABLE IF NOT EXISTS `scholarship` (
     `scholarship_id`   BIGINT       NOT NULL AUTO_INCREMENT COMMENT '申请主键ID',
+    `application_no`   VARCHAR(32)  NOT NULL                COMMENT '申请编号',
     `student_id`       BIGINT       NOT NULL                COMMENT '学生ID',
-    `scholarship_type` VARCHAR(16)  NOT NULL                COMMENT '类型：奖学金/困难补助/助学贷款',
+    `scholarship_type` VARCHAR(32)  NOT NULL                COMMENT '类型：SCHOLARSHIP/DIFFICULTY_GRANT/STUDENT_LOAN',
     `title`            VARCHAR(128) NOT NULL                COMMENT '申请标题',
     `reason`           TEXT         NOT NULL                COMMENT '申请理由',
     `attachment_url`   VARCHAR(256) DEFAULT NULL            COMMENT '附件地址',
-    `status`           INT          DEFAULT 0               COMMENT '状态：0=待审核, 1=已通过, 2=已拒绝',
+    `status`           INT          NOT NULL DEFAULT 0      COMMENT '状态：0=草稿,1=已提交,2=已退回,3=已通过,4=已拒绝,5=已撤回,6=已入选',
     `reviewer_id`      BIGINT       DEFAULT NULL            COMMENT '审核人ID',
     `review_opinion`   VARCHAR(256) DEFAULT NULL            COMMENT '审核意见',
-    `apply_time`       DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '申请时间',
-    PRIMARY KEY (`scholarship_id`)
+    `apply_time`       DATETIME     DEFAULT NULL             COMMENT '提交时间',
+    `reviewed_at`      DATETIME     DEFAULT NULL             COMMENT '评审时间',
+    `selected_at`      DATETIME     DEFAULT NULL             COMMENT '入选时间',
+    `created_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`scholarship_id`),
+    UNIQUE KEY `uk_scholarship_application_no` (`application_no`),
+    KEY `idx_scholarship_student_status` (`student_id`, `status`),
+    KEY `idx_scholarship_status_updated` (`status`, `updated_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='奖助贷申请表';
 
 -- 评教表
@@ -401,30 +430,6 @@ CREATE TABLE IF NOT EXISTS `lab_booking` (
     `create_time`  DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '预约时间',
     PRIMARY KEY (`booking_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='实验室预约表';
-
--- 心理问卷表
-CREATE TABLE IF NOT EXISTS `psychology_questionnaire` (
-    `questionnaire_id` BIGINT       NOT NULL AUTO_INCREMENT COMMENT '问卷主键ID',
-    `student_id`       BIGINT       NOT NULL                COMMENT '学生ID',
-    `answers`          TEXT         DEFAULT NULL            COMMENT '问卷答案JSON',
-    `risk_level`       VARCHAR(8)   DEFAULT NULL            COMMENT '风险等级：红/橙/黄/绿',
-    `ai_analysis`      TEXT         DEFAULT NULL            COMMENT 'AI分析结果',
-    `submit_time`      DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '提交时间',
-    PRIMARY KEY (`questionnaire_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='心理问卷表';
-
--- 心理预警记录表
-CREATE TABLE IF NOT EXISTS `psychology_warning` (
-    `warning_id`       BIGINT      NOT NULL AUTO_INCREMENT COMMENT '预警主键ID',
-    `student_id`       BIGINT      NOT NULL                COMMENT '学生ID',
-    `warning_level`    VARCHAR(8)  NOT NULL                COMMENT '预警等级：红/橙/黄',
-    `reason`           TEXT        DEFAULT NULL            COMMENT '预警原因',
-    `counselor_id`     BIGINT      DEFAULT NULL            COMMENT '接收预警的辅导员ID',
-    `is_read`          INT         DEFAULT 0               COMMENT '是否已读：0=未读, 1=已读',
-    `handle_remark`    TEXT        DEFAULT NULL            COMMENT '处理备注',
-    `create_time`      DATETIME    DEFAULT CURRENT_TIMESTAMP COMMENT '预警时间',
-    PRIMARY KEY (`warning_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='心理预警记录表';
 
 -- ============================================
 -- 成员 C：协同办公表
@@ -602,9 +607,9 @@ CREATE TABLE IF NOT EXISTS `forum_comment` (
 
 INSERT INTO `role` (`role_code`, `role_name`) VALUES
     ('STUDENT', '学生'),
-    ('COUNSELOR', '辅导员'),
+    ('TEACHER', '教师'),
     ('STAFF', '教职工'),
-    ('ADMIN', '教务处管理员')
+    ('ADMIN', '系统管理员')
 ON DUPLICATE KEY UPDATE `role_name` = VALUES(`role_name`);
 
 INSERT INTO `permission` (`permission_code`, `permission_name`) VALUES
@@ -613,33 +618,59 @@ INSERT INTO `permission` (`permission_code`, `permission_name`) VALUES
     ('office:read', '读取办公数据'), ('office:write', '维护办公数据'),
     ('base:read', '读取基础数据'), ('base:write', '维护基础数据'),
     ('admin:manage', '系统管理'),
-    ('counselor:read', '辅导员查阅'), ('counselor:write', '辅导员管理')
+    ('scholarship:application:read-self', '查看本人奖助贷申请'),
+    ('scholarship:application:create', '创建奖助贷申请'),
+    ('scholarship:application:update-self', '修改本人奖助贷申请'),
+    ('scholarship:application:submit-self', '提交本人奖助贷申请'),
+    ('scholarship:application:withdraw-self', '撤回本人奖助贷申请'),
+    ('scholarship:review:read', '查看奖助贷评审队列'),
+    ('scholarship:review:submit', '提交奖助贷评审结论'),
+    ('scholarship:result:generate', '生成奖助贷资助名单'),
+    ('status:profile:read-self', '查看本人非核心信息'),
+    ('status:profile:update-self', '修改本人非核心信息'),
+    ('status:change:read-self', '查看本人学籍异动申请'),
+    ('status:change:create', '创建学籍异动申请'),
+    ('status:change:update-self', '修改本人学籍异动草稿'),
+    ('status:change:submit-self', '提交本人学籍异动申请'),
+    ('status:change:withdraw-self', '撤回本人学籍异动申请'),
+    ('status:review:read', '查看学籍异动审核队列'),
+    ('status:review:submit', '提交学籍异动审核结论')
 ON DUPLICATE KEY UPDATE `permission_name` = VALUES(`permission_name`);
 
 INSERT INTO `user` (`username`, `password`, `user_type`, `status`) VALUES
     ('600001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1),
-    ('700001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 3, 1),
-    ('800001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 2, 1),
-    ('admin',  '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 4, 1)
+    ('700001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 2, 1),
+    ('800001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 3, 1),
+    ('admin', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 4, 1)
 ON DUPLICATE KEY UPDATE `password` = VALUES(`password`), `user_type` = VALUES(`user_type`), `status` = VALUES(`status`);
 
 INSERT IGNORE INTO `user_role` (`user_id`, `role_id`)
 SELECT u.user_id, r.role_id FROM `user` u JOIN `role` r ON
     (u.username = '600001' AND r.role_code = 'STUDENT') OR
-    (u.username = '700001' AND r.role_code = 'COUNSELOR') OR
+    (u.username = '700001' AND r.role_code = 'TEACHER') OR
     (u.username = '800001' AND r.role_code = 'STAFF') OR
-    (u.username = 'admin'  AND r.role_code = 'ADMIN');
+    (u.username = 'admin' AND r.role_code = 'ADMIN');
 
 INSERT IGNORE INTO `role_permission` (`role_id`, `permission_id`)
 SELECT r.role_id, p.permission_id FROM `role` r CROSS JOIN `permission` p WHERE
-    -- 教务处管理员: 所有权限（最高权限）
     r.role_code = 'ADMIN'
-    -- 教职工: 教务读写 + 学生查阅 + 办公读写 + 基础数据
-    OR (r.role_code = 'STAFF' AND p.permission_code IN ('teaching:read', 'teaching:write', 'student:read', 'office:read', 'office:write', 'base:read', 'base:write'))
-    -- 辅导员: 学生事务读写 + 基础查阅 + 辅导员专属
-    OR (r.role_code = 'COUNSELOR' AND p.permission_code IN ('teaching:read', 'student:read', 'student:write', 'base:read', 'counselor:read', 'counselor:write'))
-    -- 学生: 教务查阅 + 学生事务读写 + 基础查阅（最低权限）
-    OR (r.role_code = 'STUDENT' AND p.permission_code IN ('teaching:read', 'student:read', 'student:write', 'base:read'));
+    OR (r.role_code = 'STUDENT' AND p.permission_code IN (
+        'teaching:read', 'student:read', 'student:write', 'base:read',
+        'scholarship:application:read-self', 'scholarship:application:create',
+        'scholarship:application:update-self', 'scholarship:application:submit-self',
+        'scholarship:application:withdraw-self',
+        'status:profile:read-self', 'status:profile:update-self', 'status:change:read-self',
+        'status:change:create', 'status:change:update-self', 'status:change:submit-self',
+        'status:change:withdraw-self'))
+    OR (r.role_code = 'TEACHER' AND p.permission_code IN (
+        'teaching:read', 'teaching:write', 'student:read', 'base:read',
+        'scholarship:review:read', 'scholarship:review:submit', 'scholarship:result:generate',
+        'status:review:read', 'status:review:submit'))
+    OR (r.role_code = 'STAFF' AND p.permission_code IN ('student:read', 'student:write', 'office:read', 'office:write', 'base:read'));
+
+INSERT INTO `student` (`student_name`, `student_no`, `student_age`)
+SELECT '演示学生', 600001, 20
+WHERE NOT EXISTS (SELECT 1 FROM `student` WHERE `student_no` = 600001);
 
 INSERT INTO `menu` (`title`, `path`, `permission_code`, `sort_order`) VALUES
     ('教务核心', '/home/course-schedule', 'teaching:read', 10),

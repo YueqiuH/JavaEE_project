@@ -550,153 +550,180 @@ CREATE TABLE IF NOT EXISTS `forum_comment` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='论坛回复表';
 
 -- =====================================
--- 测试种子数据（含学生/教师/成绩/选课）
+-- 测试种子数据 v2
 -- =====================================
-DELETE FROM score WHERE 1=1;
-DELETE FROM course_selection WHERE 1=1;
-DELETE FROM schedule WHERE 1=1;
-DELETE FROM course_capacity WHERE 1=1;
-DELETE FROM course WHERE 1=1;
-DELETE FROM classroom WHERE 1=1;
+DELETE FROM score WHERE 1=1; DELETE FROM course_selection WHERE 1=1;
+DELETE FROM schedule WHERE 1=1; DELETE FROM course_capacity WHERE 1=1;
+DELETE FROM course WHERE 1=1; DELETE FROM classroom WHERE 1=1;
 DELETE FROM student WHERE 1=1;
-DELETE FROM user WHERE username LIKE '60%' AND user_id > 2;
-DELETE FROM user WHERE username = 'teacher01' OR username = 'teacher02';
+DELETE FROM user WHERE username REGEXP '^(202[34]|00000|1000|2000)';
 
--- 教师账号（教职工 user_type=3）
-INSERT INTO user (username, password, user_type, status) VALUES
-('teacher01', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 3, 1),
-('teacher02', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 3, 1)
-ON DUPLICATE KEY UPDATE username=VALUES(username);
+-- 教务处5人(工号00000001-00000005)
+INSERT INTO user (username,password,user_type,status) VALUES
+('00000001','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',4,1),
+('00000002','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',4,1),
+('00000003','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',4,1),
+('00000004','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',4,1),
+('00000005','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',4,1);
+-- 教职工5人(工号10000001-10000005)
+INSERT INTO user (username,password,user_type,status) VALUES
+('10000001','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',3,1),
+('10000002','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',3,1),
+('10000003','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',3,1),
+('10000004','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',3,1),
+('10000005','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',3,1);
+-- 辅导员3人(工号20000001-20000003)
+INSERT INTO user (username,password,user_type,status) VALUES
+('20000001','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',2,1),
+('20000002','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',2,1),
+('20000003','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',2,1);
+-- 学生30人(2023级15+2024级15, 学号=username)
+INSERT INTO user (username,password,user_type,status) VALUES
+('20230001','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20230002','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20230003','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20230004','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20230005','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20230006','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20230007','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20230008','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20230009','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20230010','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20230011','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20230012','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20230013','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20230014','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20230015','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20240001','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20240002','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20240003','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20240004','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20240005','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20240006','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20240007','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20240008','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20240009','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20240010','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20240011','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20240012','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20240013','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20240014','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1),
+('20240015','$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy',1,1);
 
--- 学生账号（user_type=1，学号 600001-600010）
-INSERT INTO user (username, password, user_type, status) VALUES
-('600001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1),
-('600002', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1),
-('600003', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1),
-('600004', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1),
-('600005', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1),
-('600006', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1),
-('600007', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1),
-('600008', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1),
-('600009', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1),
-('600010', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1)
-ON DUPLICATE KEY UPDATE username=VALUES(username);
-
--- 学生档案
-INSERT INTO student (student_id, student_name, student_no, grade_id, student_age) VALUES
-(2,  '林同学', 600001, 1, 20),
-(6,  '张伟',   600002, 1, 19),
-(7,  '李娜',   600003, 1, 20),
-(8,  '王强',   600004, 1, 21),
-(9,  '赵敏',   600005, 2, 19),
-(10, '陈静',   600006, 2, 20),
-(11, '刘洋',   600007, 2, 21),
-(12, '周杰',   600008, 3, 19),
-(13, '吴芳',   600009, 3, 20),
-(14, '孙鹏',   600010, 3, 21)
-ON DUPLICATE KEY UPDATE student_name=VALUES(student_name);
-
--- 学生角色分配
 INSERT IGNORE INTO user_role (user_id, role_id)
 SELECT u.user_id, r.role_id FROM user u JOIN role r ON
-    u.username LIKE '60%' AND r.role_code = 'STUDENT';
+  (u.username LIKE '2023%' AND r.role_code='STUDENT') OR
+  (u.username LIKE '2024%' AND r.role_code='STUDENT') OR
+  (u.username LIKE '1000%' AND r.role_code='STAFF') OR
+  (u.username LIKE '2000%' AND r.role_code='COUNSELOR') OR
+  (u.username LIKE '00000%' AND r.role_code='ADMIN');
 
--- 教室
-INSERT INTO classroom (classroom_id, classroom_name, building, capacity, type, status) VALUES
-(1, '教学楼A101', 'A栋', 60,  '普通教室', 1),
-(2, '教学楼A102', 'A栋', 45,  '普通教室', 1),
-(3, '教学楼B201', 'B栋', 80,  '多媒体',   1),
-(4, '实验楼C101', 'C栋', 30,  '实验室',   1),
-(5, '实验楼C102', 'C栋', 30,  '实验室',   1),
-(6, '阶梯教室D101','D栋', 120, '阶梯教室', 1)
-ON DUPLICATE KEY UPDATE classroom_name=VALUES(classroom_name);
+INSERT INTO student (student_id, student_name, student_no, grade_id, student_age)
+SELECT u.user_id, ELT(1+MOD(u.user_id,15),'张伟','李娜','王强','赵敏','陈静','刘洋','周杰','吴芳','孙鹏','郑丽','马超','黄婷','许磊','林峰','何雪'),
+  u.username, IF(u.username LIKE '2023%',1,2), 18+MOD(u.user_id,4)
+FROM user u WHERE u.username LIKE '2023%' OR u.username LIKE '2024%';
 
--- 课程
+-- 100间教室 A/B/C/D栋各20间(大10+小10) E实验楼20间实验室
+INSERT INTO classroom (classroom_id,classroom_name,building,capacity,type,status) VALUES
+(1,'A101','A栋',120,'大教室',1),(2,'A102','A栋',110,'大教室',1),(3,'A103','A栋',130,'大教室',1),
+(4,'A104','A栋',100,'大教室',1),(5,'A105','A栋',120,'大教室',1),(6,'A106','A栋',110,'大教室',1),
+(7,'A107','A栋',130,'大教室',1),(8,'A108','A栋',100,'大教室',1),(9,'A109','A栋',120,'大教室',1),
+(10,'A110','A栋',110,'大教室',1),(11,'A111','A栋',50,'小教室',1),(12,'A112','A栋',45,'小教室',1),
+(13,'A113','A栋',55,'小教室',1),(14,'A114','A栋',50,'小教室',1),(15,'A115','A栋',45,'小教室',1),
+(16,'A116','A栋',55,'小教室',1),(17,'A117','A栋',50,'小教室',1),(18,'A118','A栋',45,'小教室',1),
+(19,'A119','A栋',55,'小教室',1),(20,'A120','A栋',50,'小教室',1),
+(21,'B101','B栋',120,'大教室',1),(22,'B102','B栋',110,'大教室',1),(23,'B103','B栋',130,'大教室',1),
+(24,'B104','B栋',100,'大教室',1),(25,'B105','B栋',120,'大教室',1),(26,'B106','B栋',110,'大教室',1),
+(27,'B107','B栋',130,'大教室',1),(28,'B108','B栋',100,'大教室',1),(29,'B109','B栋',120,'大教室',1),
+(30,'B110','B栋',110,'大教室',1),(31,'B111','B栋',50,'小教室',1),(32,'B112','B栋',45,'小教室',1),
+(33,'B113','B栋',55,'小教室',1),(34,'B114','B栋',50,'小教室',1),(35,'B115','B栋',45,'小教室',1),
+(36,'B116','B栋',55,'小教室',1),(37,'B117','B栋',50,'小教室',1),(38,'B118','B栋',45,'小教室',1),
+(39,'B119','B栋',55,'小教室',1),(40,'B120','B栋',50,'小教室',1),
+(41,'C101','C栋',120,'大教室',1),(42,'C102','C栋',110,'大教室',1),(43,'C103','C栋',130,'大教室',1),
+(44,'C104','C栋',100,'大教室',1),(45,'C105','C栋',120,'大教室',1),(46,'C106','C栋',110,'大教室',1),
+(47,'C107','C栋',130,'大教室',1),(48,'C108','C栋',100,'大教室',1),(49,'C109','C栋',120,'大教室',1),
+(50,'C110','C栋',110,'大教室',1),(51,'C111','C栋',50,'小教室',1),(52,'C112','C栋',45,'小教室',1),
+(53,'C113','C栋',55,'小教室',1),(54,'C114','C栋',50,'小教室',1),(55,'C115','C栋',45,'小教室',1),
+(56,'C116','C栋',55,'小教室',1),(57,'C117','C栋',50,'小教室',1),(58,'C118','C栋',45,'小教室',1),
+(59,'C119','C栋',55,'小教室',1),(60,'C120','C栋',50,'小教室',1),
+(61,'D101','D栋',120,'大教室',1),(62,'D102','D栋',110,'大教室',1),(63,'D103','D栋',130,'大教室',1),
+(64,'D104','D栋',100,'大教室',1),(65,'D105','D栋',120,'大教室',1),(66,'D106','D栋',110,'大教室',1),
+(67,'D107','D栋',130,'大教室',1),(68,'D108','D栋',100,'大教室',1),(69,'D109','D栋',120,'大教室',1),
+(70,'D110','D栋',110,'大教室',1),(71,'D111','D栋',50,'小教室',1),(72,'D112','D栋',45,'小教室',1),
+(73,'D113','D栋',55,'小教室',1),(74,'D114','D栋',50,'小教室',1),(75,'D115','D栋',45,'小教室',1),
+(76,'D116','D栋',55,'小教室',1),(77,'D117','D栋',50,'小教室',1),(78,'D118','D栋',45,'小教室',1),
+(79,'D119','D栋',55,'小教室',1),(80,'D120','D栋',50,'小教室',1),
+(81,'E101','实验楼E',30,'实验室',1),(82,'E102','实验楼E',25,'实验室',1),(83,'E103','实验楼E',30,'实验室',1),
+(84,'E104','实验楼E',25,'实验室',1),(85,'E105','实验楼E',30,'实验室',1),(86,'E106','实验楼E',25,'实验室',1),
+(87,'E107','实验楼E',30,'实验室',1),(88,'E108','实验楼E',25,'实验室',1),(89,'E109','实验楼E',30,'实验室',1),
+(90,'E110','实验楼E',25,'实验室',1),(91,'E111','实验楼E',30,'实验室',1),(92,'E112','实验楼E',25,'实验室',1),
+(93,'E113','实验楼E',30,'实验室',1),(94,'E114','实验楼E',25,'实验室',1),(95,'E115','实验楼E',30,'实验室',1),
+(96,'E116','实验楼E',25,'实验室',1),(97,'E117','实验楼E',30,'实验室',1),(98,'E118','实验楼E',25,'实验室',1),
+(99,'E119','实验楼E',30,'实验室',1),(100,'E120','实验楼E',25,'实验室',1);
+
+-- 10门课程
 INSERT INTO course (course_id, course_name, course_code, classification, credit, weekly_frequency, is_active) VALUES
-(1,  '高等数学(上)',      'MATH101', '必修', 5, 2, 1),
-(2,  '线性代数',          'MATH102', '必修', 3, 2, 1),
-(3,  '大学物理',          'PHYS101', '必修', 4, 2, 1),
-(4,  '大学英语(三)',      'ENGL101', '必修', 3, 2, 1),
-(5,  '数据结构与算法',    'CS201',   '必修', 4, 2, 1),
-(6,  '操作系统',          'CS301',   '必修', 3, 1, 1),
-(7,  '马克思主义原理',    'POLI101', '必修', 2, 1, 1),
-(8,  '大学体育(三)',      'PE101',   '必修', 1, 1, 1),
-(9,  'Python程序设计',    'CS105',   '选修', 2, 1, 1),
-(10, '数据库原理与应用',  'CS202',   '限选', 3, 2, 1)
+(1,'高等数学(上)','MATH101','必修',5,2,1),(2,'线性代数','MATH102','必修',3,2,1),
+(3,'大学物理','PHYS101','必修',4,2,1),(4,'大学英语(三)','ENGL101','必修',3,2,1),
+(5,'数据结构与算法','CS201','必修',4,2,1),(6,'操作系统','CS301','必修',3,1,1),
+(7,'马克思主义原理','POLI101','必修',2,1,1),(8,'大学体育(三)','PE101','必修',1,1,1),
+(9,'Python程序设计','CS105','选修',2,1,1),(10,'数据库原理与应用','CS202','限选',3,2,1)
 ON DUPLICATE KEY UPDATE course_name=VALUES(course_name);
 
--- 容量
 INSERT INTO course_capacity (course_id, semester, max_capacity, current_count, min_capacity) VALUES
-(1,'2025-2026-1',60,50,15),(2,'2025-2026-1',50,45,15),
-(3,'2025-2026-1',55,48,15),(4,'2025-2026-1',45,42,15),
-(5,'2025-2026-1',40,38,15),(6,'2025-2026-1',35,30,10),
-(7,'2025-2026-1',80,78,20),(8,'2025-2026-1',30,28,10),
-(9,'2025-2026-1',60,55,15),(10,'2025-2026-1',40,35,10)
+(1,'2025-2026-1',120,30,15),(2,'2025-2026-1',100,30,15),(3,'2025-2026-1',110,30,15),
+(4,'2025-2026-1',90,30,15),(5,'2025-2026-1',80,30,15),(6,'2025-2026-1',70,30,10),
+(7,'2025-2026-1',150,30,20),(8,'2025-2026-1',60,30,10),(9,'2025-2026-1',100,30,15),(10,'2025-2026-1',80,30,10)
 ON DUPLICATE KEY UPDATE current_count=VALUES(current_count);
 
--- 排课（teacherId: 3=700001, 4=800001, 5=admin, 后续=teacher01/02）
-INSERT INTO schedule (course_id, classroom_id, teacher_id, semester, week_day, start_period, end_period, start_week, end_week, schedule_type, week_pattern) VALUES
-(1, 6, 3, '2025-2026-1', 1, 1, 2, 1, 16, '正常', 'every'),
-(1, 6, 3, '2025-2026-1', 3, 3, 5, 1, 16, '正常', 'every'),
-(2, 1, 3, '2025-2026-1', 2, 3, 5, 1, 16, '正常', 'every'),
-(3, 3, 3, '2025-2026-1', 3, 8, 10, 1, 16, '正常', 'every'),
-(4, 2, 4, '2025-2026-1', 4, 3, 5, 1, 16, '正常', 'every'),
-(5, 3, 4, '2025-2026-1', 5, 8, 10, 1, 16, '正常', 'every'),
-(6, 1, 3, '2025-2026-1', 1, 8, 10, 1, 16, '正常', 'every'),
-(7, 6, 4, '2025-2026-1', 2, 1, 2, 1, 16, '正常', 'every'),
-(8, 4, 5, '2025-2026-1', 5, 6, 7, 1, 16, '正常', 'every'),
-(9, 5, 4, '2025-2026-1', 3, 1, 2, 1, 16, '正常', 'every'),
-(10,1, 3, '2025-2026-1', 4, 8, 10, 1, 16, '正常', 'every')
-ON DUPLICATE KEY UPDATE week_day=VALUES(week_day);
+-- 排课 (teacher_id用教职工user_id)
+INSERT INTO schedule (course_id,classroom_id,teacher_id,semester,week_day,start_period,end_period,start_week,end_week,schedule_type,week_pattern) VALUES
+(1,1,(SELECT user_id FROM user WHERE username='10000001'),'2025-2026-1',1,1,2,1,16,'正常','every'),
+(1,1,(SELECT user_id FROM user WHERE username='10000001'),'2025-2026-1',3,3,5,1,16,'正常','every'),
+(2,21,(SELECT user_id FROM user WHERE username='10000002'),'2025-2026-1',2,3,5,1,16,'正常','every'),
+(3,41,(SELECT user_id FROM user WHERE username='10000003'),'2025-2026-1',3,8,10,1,16,'正常','every'),
+(4,11,(SELECT user_id FROM user WHERE username='10000004'),'2025-2026-1',4,3,5,1,16,'正常','every'),
+(5,61,(SELECT user_id FROM user WHERE username='10000005'),'2025-2026-1',5,8,10,1,16,'正常','every'),
+(6,21,(SELECT user_id FROM user WHERE username='10000001'),'2025-2026-1',1,8,10,1,16,'正常','every'),
+(7,61,(SELECT user_id FROM user WHERE username='10000002'),'2025-2026-1',2,1,2,1,16,'正常','every'),
+(8,81,(SELECT user_id FROM user WHERE username='10000003'),'2025-2026-1',5,6,7,1,16,'正常','every'),
+(9,31,(SELECT user_id FROM user WHERE username='10000004'),'2025-2026-1',3,1,2,1,16,'正常','every'),
+(10,11,(SELECT user_id FROM user WHERE username='10000005'),'2025-2026-1',4,8,10,1,16,'正常','every');
 
--- 选课（学生2=600001, 6-14=600002-600010）
-INSERT INTO course_selection (student_id, course_id, schedule_id, semester, status, select_time) VALUES
-(2, 1, 1, '2025-2026-1', 1, NOW()),(2, 2, 3, '2025-2026-1', 1, NOW()),
-(2, 4, 5, '2025-2026-1', 1, NOW()),(2, 7, 8, '2025-2026-1', 1, NOW()),
-(2, 9, 10,'2025-2026-1', 1, NOW()),
-(6, 1, 1, '2025-2026-1', 1, NOW()),(6, 3, 4, '2025-2026-1', 1, NOW()),
-(6, 5, 6, '2025-2026-1', 1, NOW()),(6, 8, 9, '2025-2026-1', 1, NOW()),
-(7, 2, 3, '2025-2026-1', 1, NOW()),(7, 4, 5, '2025-2026-1', 1, NOW()),
-(7, 6, 7, '2025-2026-1', 1, NOW()),(7,10,11,'2025-2026-1', 1, NOW()),
-(8, 1, 1, '2025-2026-1', 1, NOW()),(8, 9,10,'2025-2026-1', 1, NOW()),
-(9, 3, 4, '2025-2026-1', 1, NOW()),(9, 5, 6, '2025-2026-1', 1, NOW()),
-(9, 7, 8, '2025-2026-1', 1, NOW()),
-(10,2, 3, '2025-2026-1', 1, NOW()),(10,4, 5,'2025-2026-1', 1, NOW()),
-(10,6, 7, '2025-2026-1', 1, NOW()),
-(11,1, 1, '2025-2026-1', 1, NOW()),(11,8, 9,'2025-2026-1', 1, NOW()),
-(12,5, 6, '2025-2026-1', 1, NOW()),(12,10,11,'2025-2026-1', 1, NOW()),
-(13,3, 4, '2025-2026-1', 1, NOW()),(13,7, 8,'2025-2026-1', 1, NOW()),
-(14,2, 3, '2025-2026-1', 1, NOW()),(14,9,10,'2025-2026-1', 1, NOW())
-ON DUPLICATE KEY UPDATE status=VALUES(status);
+-- 选课 (每个学生选3-5门课, 用子查询获取实际schedule_id)
+INSERT INTO course_selection (student_id,course_id,schedule_id,semester,status,select_time)
+SELECT u.user_id, 1, (SELECT schedule_id FROM schedule WHERE course_id=1 AND semester='2025-2026-1' LIMIT 1), '2025-2026-1', 1, NOW() FROM user u WHERE u.username LIKE '2023%' LIMIT 12;
+INSERT INTO course_selection (student_id,course_id,schedule_id,semester,status,select_time)
+SELECT u.user_id, 2, (SELECT schedule_id FROM schedule WHERE course_id=2 AND semester='2025-2026-1' LIMIT 1), '2025-2026-1', 1, NOW() FROM user u WHERE u.username LIKE '2023%' LIMIT 10;
+INSERT INTO course_selection (student_id,course_id,schedule_id,semester,status,select_time)
+SELECT u.user_id, 3, (SELECT schedule_id FROM schedule WHERE course_id=3 AND semester='2025-2026-1' LIMIT 1), '2025-2026-1', 1, NOW() FROM user u WHERE u.username LIKE '2023%' LIMIT 8;
+INSERT INTO course_selection (student_id,course_id,schedule_id,semester,status,select_time)
+SELECT u.user_id, 4, (SELECT schedule_id FROM schedule WHERE course_id=4 AND semester='2025-2026-1' LIMIT 1), '2025-2026-1', 1, NOW() FROM user u WHERE u.username LIKE '2023%' LIMIT 10;
+INSERT INTO course_selection (student_id,course_id,schedule_id,semester,status,select_time)
+SELECT u.user_id, 7, (SELECT schedule_id FROM schedule WHERE course_id=7 AND semester='2025-2026-1' LIMIT 1), '2025-2026-1', 1, NOW() FROM user u WHERE u.username LIKE '2023%' LIMIT 12;
+INSERT INTO course_selection (student_id,course_id,schedule_id,semester,status,select_time)
+SELECT u.user_id, 5, (SELECT schedule_id FROM schedule WHERE course_id=5 AND semester='2025-2026-1' LIMIT 1), '2025-2026-1', 1, NOW() FROM user u WHERE u.username LIKE '2024%' LIMIT 10;
+INSERT INTO course_selection (student_id,course_id,schedule_id,semester,status,select_time)
+SELECT u.user_id, 6, (SELECT schedule_id FROM schedule WHERE course_id=6 AND semester='2025-2026-1' LIMIT 1), '2025-2026-1', 1, NOW() FROM user u WHERE u.username LIKE '2024%' LIMIT 8;
+INSERT INTO course_selection (student_id,course_id,schedule_id,semester,status,select_time)
+SELECT u.user_id, 8, (SELECT schedule_id FROM schedule WHERE course_id=8 AND semester='2025-2026-1' LIMIT 1), '2025-2026-1', 1, NOW() FROM user u WHERE u.username LIKE '2024%' LIMIT 10;
+INSERT INTO course_selection (student_id,course_id,schedule_id,semester,status,select_time)
+SELECT u.user_id, 9, (SELECT schedule_id FROM schedule WHERE course_id=9 AND semester='2025-2026-1' LIMIT 1), '2025-2026-1', 1, NOW() FROM user u WHERE u.username LIKE '2024%' LIMIT 10;
+INSERT INTO course_selection (student_id,course_id,schedule_id,semester,status,select_time)
+SELECT u.user_id, 10, (SELECT schedule_id FROM schedule WHERE course_id=10 AND semester='2025-2026-1' LIMIT 1), '2025-2026-1', 1, NOW() FROM user u WHERE u.username LIKE '2024%' LIMIT 8;
 
--- 成绩（含已发布和未发布）
-INSERT INTO score (student_id, course_id, score_score, semester, gpa, status) VALUES
--- 600001 林同学: 全部及格
-(2, 1, 88, '2025-2026-1', 3.3, 1),(2, 2, 76, '2025-2026-1', 2.3, 1),
-(2, 4, 82, '2025-2026-1', 3.3, 1),(2, 7, 90, '2025-2026-1', 4.0, 1),
-(2, 9, 65, '2025-2026-1', 1.5, 1),
--- 600002 张伟: 1门不及格
-(6, 1, 55, '2025-2026-1', 0.0, 0),(6, 3, 72, '2025-2026-1', 2.0, 1),
-(6, 5, 81, '2025-2026-1', 3.0, 1),(6, 8, 78, '2025-2026-1', 3.0, 1),
--- 600003 李娜: 全部高分
-(7, 2, 95, '2025-2026-1', 4.0, 1),(7, 4, 88, '2025-2026-1', 3.3, 1),
-(7, 6, 91, '2025-2026-1', 4.0, 1),(7,10, 85, '2025-2026-1', 3.7, 1),
--- 600004 王强: 2门不及格(预警)
-(8, 1, 48, '2025-2026-1', 0.0, 0),(8, 9, 52, '2025-2026-1', 0.0, 0),
--- 600005 赵敏: 正常
-(9, 3, 74, '2025-2026-1', 2.0, 1),(9, 5, 68, '2025-2026-1', 2.0, 1),
-(9, 7, 83, '2025-2026-1', 3.3, 1),
--- 600006 陈静: 1门不及格
-(10,2, 58, '2025-2026-1', 0.0, 0),(10,4, 77, '2025-2026-1', 2.3, 1),
-(10,6, 79, '2025-2026-1', 2.3, 1),
--- 600007 刘洋: 3门不及格(红色预警,学期14学分)
-(11,1, 45, '2025-2026-1', 0.0, 0),(11,8, 50, '2025-2026-1', 0.0, 0),
--- 600008 周杰: 正常
-(12,5, 86, '2025-2026-1', 3.3, 1),(12,10,71,'2025-2026-1', 2.0, 1),
--- 600009 吴芳: 正常
-(13,3, 80, '2025-2026-1', 3.0, 1),(13,7, 66, '2025-2026-1', 1.5, 1),
--- 600010 孙鹏: 1门不及格
-(14,2, 59, '2025-2026-1', 0.0, 0),(14,9, 73, '2025-2026-1', 2.0, 1)
-ON DUPLICATE KEY UPDATE score_score=VALUES(score_score);
+-- 成绩 (SELECT来自有选课的学生)
+INSERT INTO score (student_id,course_id,score_score,semester,gpa,status)
+SELECT cs.student_id, cs.course_id,
+  60+FLOOR(RAND()*41), '2025-2026-1',
+  ELT(1+FLOOR(RAND()*5),1.0,1.5,2.0,3.0,4.0), 1
+FROM course_selection cs WHERE cs.semester='2025-2026-1' AND cs.student_id % 3 <> 0;
+
+INSERT INTO score (student_id,course_id,score_score,semester,gpa,status)
+SELECT cs.student_id, cs.course_id,
+  30+FLOOR(RAND()*29), '2025-2026-1', 0.0, 0
+FROM course_selection cs WHERE cs.semester='2025-2026-1' AND cs.student_id % 3 = 0;
+
+
 
 
