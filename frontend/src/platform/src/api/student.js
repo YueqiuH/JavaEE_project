@@ -53,3 +53,13 @@ export const submitStatusChange = (id) => request.post(`${STUDENT_API_PREFIX}/st
 export const withdrawStatusChange = (id) => request.delete(`${STUDENT_API_PREFIX}/status-changes/${id}`)
 
 export const reviewStatusChange = (id, data) => request.post(`${STUDENT_API_PREFIX}/status-changes/${id}/reviews`, data)
+
+export const listMyEvaluationTasks = () => request.get(`${STUDENT_API_PREFIX}/evaluation-tasks/mine`)
+
+export const submitEvaluation = (selectionId, data) =>
+  request.post(`${STUDENT_API_PREFIX}/evaluation-tasks/${selectionId}/submissions`, data)
+
+export const getMyEvaluationOverview = () => request.get(`${STUDENT_API_PREFIX}/evaluation-results/mine`)
+
+export const getMyCourseEvaluationDetail = (courseId, semester) =>
+  request.get(`${STUDENT_API_PREFIX}/evaluation-results/mine/courses/${courseId}`, { params: { semester } })
