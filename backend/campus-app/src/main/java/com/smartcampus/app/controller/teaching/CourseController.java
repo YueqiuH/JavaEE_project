@@ -33,8 +33,15 @@ public class CourseController {
     }
 
     @PostMapping("/add")
-    @Operation(summary = "新增课程", description = "新增一门课程，录入名称、代码、种类、学分、每周频次")
+    @Operation(summary = "新增/更新课程", description = "新增课程；若传入courseId则更新已有课程（如恢复停开）")
     public CommonResult addCourse(@RequestBody CourseEntity course) {
+        if (course.getCourseId() != null) {
+            CourseEntity exist = courseMapper.selectById(course.getCourseId());
+            if (exist != null) {
+                courseMapper.updateById(course);
+                return CommonResult.success();
+            }
+        }
         courseMapper.insert(course);
         return CommonResult.success();
     }

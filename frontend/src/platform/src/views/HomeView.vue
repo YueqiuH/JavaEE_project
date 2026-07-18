@@ -87,18 +87,19 @@ const previewUser = import.meta.env.DEV && import.meta.env.VITE_UI_PREVIEW === '
   ? { user: { username: '600001', realName: '林同学' }, roles: ['STUDENT'], permissions: [], menus: [] }
   : null
 const currentUser = ref(getStoredCurrentUser() || previewUser)
+const currentUserType = computed(() => currentUser.value?.user?.userType ?? null)
 const mobileNavOpen = ref(false)
 
 provide('currentUser', currentUser)
 
 const workspaceMode = computed(() => Boolean(route.meta.workspace))
 const currentDomain = computed(() => domainMap[route.meta.domain] || domainMap.teaching)
-const sidebarServices = computed(() => getServicesByDomain(currentDomain.value.key))
+const sidebarServices = computed(() => getServicesByDomain(currentDomain.value.key, currentUserType.value))
 const displayName = computed(() => currentUser.value?.user?.realName || currentUser.value?.user?.username || '校园用户')
 const avatarText = computed(() => displayName.value.slice(0, 1).toUpperCase())
 const roleLabel = computed(() => {
-  const role = [...(currentUser.value?.roles || [])][0]
-  return { STUDENT: '学生', TEACHER: '教师', STAFF: '教职工', ADMIN: '管理员' }[role] || role || '用户'
+  const t = currentUser.value?.user?.userType
+  return { 1: '学生', 2: '辅导员', 3: '教职工', 4: '教务处' }[t] || '用户'
 })
 
 const loadCurrentUser = async () => {

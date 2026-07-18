@@ -22,7 +22,7 @@
           <el-button class="login-button" native-type="submit" type="primary" size="large" :loading="buttonLoading" @click="submitForm(ruleFormRef)">登录</el-button>
         </el-form>
 
-        <div class="demo-account"><span><el-icon><InfoFilled /></el-icon></span><div><strong>本地演示账号</strong><p>学生：600001　密码：123321</p></div><el-button text @click="fillDemoAccount">填入</el-button></div>
+        <div class="demo-account"><span><el-icon><InfoFilled /></el-icon></span><div><strong>本地演示账号</strong><p>学生 600001 | 辅导员 700001 | 教职工 800001 | 教务处 admin　密码：123321</p></div><el-button text @click="fillDemoAccount">填入</el-button></div>
         <button class="back-button" type="button" @click="goHome"><el-icon><ArrowLeft /></el-icon>返回平台介绍</button>
       </div>
       <footer>Copyright © 2024-2026 智慧校园服务平台</footer>

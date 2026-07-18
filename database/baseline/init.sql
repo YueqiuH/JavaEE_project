@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS `user` (
     `user_id`    BIGINT       NOT NULL AUTO_INCREMENT COMMENT '用户主键ID',
     `username`   VARCHAR(64)  NOT NULL                COMMENT '用户名/账号',
     `password`   VARCHAR(100) NOT NULL                COMMENT 'BCrypt密码哈希',
-    `user_type`  TINYINT      NOT NULL DEFAULT 1      COMMENT '人员类别: 1=学生, 2=教师, 3=教职工, 4=管理员',
+    `user_type`  TINYINT      NOT NULL DEFAULT 1      COMMENT '人员类别: 1=学生, 2=辅导员, 3=教职工, 4=教务处管理员',
     `status`     TINYINT      NOT NULL DEFAULT 1      COMMENT '状态: 1=启用, 0=停用',
     `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -602,9 +602,9 @@ CREATE TABLE IF NOT EXISTS `forum_comment` (
 
 INSERT INTO `role` (`role_code`, `role_name`) VALUES
     ('STUDENT', '学生'),
-    ('TEACHER', '教师'),
+    ('COUNSELOR', '辅导员'),
     ('STAFF', '教职工'),
-    ('ADMIN', '系统管理员')
+    ('ADMIN', '教务处管理员')
 ON DUPLICATE KEY UPDATE `role_name` = VALUES(`role_name`);
 
 INSERT INTO `permission` (`permission_code`, `permission_name`) VALUES
@@ -612,29 +612,34 @@ INSERT INTO `permission` (`permission_code`, `permission_name`) VALUES
     ('student:read', '读取学生事务'), ('student:write', '维护学生事务'),
     ('office:read', '读取办公数据'), ('office:write', '维护办公数据'),
     ('base:read', '读取基础数据'), ('base:write', '维护基础数据'),
-    ('admin:manage', '系统管理')
+    ('admin:manage', '系统管理'),
+    ('counselor:read', '辅导员查阅'), ('counselor:write', '辅导员管理')
 ON DUPLICATE KEY UPDATE `permission_name` = VALUES(`permission_name`);
 
 INSERT INTO `user` (`username`, `password`, `user_type`, `status`) VALUES
     ('600001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1),
-    ('700001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 2, 1),
-    ('800001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 3, 1),
-    ('admin', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 4, 1)
+    ('700001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 3, 1),
+    ('800001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 2, 1),
+    ('admin',  '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 4, 1)
 ON DUPLICATE KEY UPDATE `password` = VALUES(`password`), `user_type` = VALUES(`user_type`), `status` = VALUES(`status`);
 
 INSERT IGNORE INTO `user_role` (`user_id`, `role_id`)
 SELECT u.user_id, r.role_id FROM `user` u JOIN `role` r ON
     (u.username = '600001' AND r.role_code = 'STUDENT') OR
-    (u.username = '700001' AND r.role_code = 'TEACHER') OR
+    (u.username = '700001' AND r.role_code = 'COUNSELOR') OR
     (u.username = '800001' AND r.role_code = 'STAFF') OR
-    (u.username = 'admin' AND r.role_code = 'ADMIN');
+    (u.username = 'admin'  AND r.role_code = 'ADMIN');
 
 INSERT IGNORE INTO `role_permission` (`role_id`, `permission_id`)
 SELECT r.role_id, p.permission_id FROM `role` r CROSS JOIN `permission` p WHERE
+    -- 教务处管理员: 所有权限（最高权限）
     r.role_code = 'ADMIN'
-    OR (r.role_code = 'STUDENT' AND p.permission_code IN ('teaching:read', 'student:read', 'student:write', 'base:read'))
-    OR (r.role_code = 'TEACHER' AND p.permission_code IN ('teaching:read', 'teaching:write', 'student:read', 'base:read'))
-    OR (r.role_code = 'STAFF' AND p.permission_code IN ('student:read', 'student:write', 'office:read', 'office:write', 'base:read'));
+    -- 教职工: 教务读写 + 学生查阅 + 办公读写 + 基础数据
+    OR (r.role_code = 'STAFF' AND p.permission_code IN ('teaching:read', 'teaching:write', 'student:read', 'office:read', 'office:write', 'base:read', 'base:write'))
+    -- 辅导员: 学生事务读写 + 基础查阅 + 辅导员专属
+    OR (r.role_code = 'COUNSELOR' AND p.permission_code IN ('teaching:read', 'student:read', 'student:write', 'base:read', 'counselor:read', 'counselor:write'))
+    -- 学生: 教务查阅 + 学生事务读写 + 基础查阅（最低权限）
+    OR (r.role_code = 'STUDENT' AND p.permission_code IN ('teaching:read', 'student:read', 'student:write', 'base:read'));
 
 INSERT INTO `menu` (`title`, `path`, `permission_code`, `sort_order`) VALUES
     ('教务核心', '/home/course-schedule', 'teaching:read', 10),

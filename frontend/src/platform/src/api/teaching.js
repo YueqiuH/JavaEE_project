@@ -126,3 +126,107 @@ export const scoreApi = {
     /** 获取当前教学周 */
     getCurrentWeek() { return request.get('/teaching/score/current-week') },
 }
+
+// ==================== 考试与补考管理 ====================
+export const examApi = {
+    /** 第16周：统一编排考试 */
+    scheduleExams(semester) {
+        return request.post('/teaching/exam/schedule', null, { params: { semester } })
+    },
+
+    /** 一键为所有考试分配考场 */
+    assignAllRooms(semester) {
+        return request.post('/teaching/exam/assign-all-rooms', null, { params: { semester } })
+    },
+
+    /** 一键为所有考试指派监考 */
+    assignAllInvigilators(semester) {
+        return request.post('/teaching/exam/assign-all-invigilators', null, { params: { semester } })
+    },
+
+    /** 为考试分配考场+座位 */
+    assignRooms(examId) { return request.post(`/teaching/exam/assign-rooms/${examId}`) },
+
+    /** 指派监考教师 */
+    assignInvigilators(data) { return request.post('/teaching/exam/assign-invigilators', data) },
+
+    /** 考试列表 */
+    list(semester, examType) {
+        return request.get('/teaching/exam/list', { params: { semester, examType } })
+    },
+
+    /** 考试学生名单 */
+    getStudents(examId) { return request.get(`/teaching/exam/students/${examId}`) },
+
+    /** 教师监考安排 */
+    getInvigilations(teacherId, semester) {
+        return request.get(`/teaching/exam/invigilations/${teacherId}`, { params: { semester } })
+    },
+
+    /** 补考/缓考报名 */
+    applyResit(data) { return request.post('/teaching/exam/resit/apply', data) },
+
+    /** 自动撤销补考 */
+    autoRevoke(studentId, courseId, semester) {
+        return request.post('/teaching/exam/resit/auto-revoke', null,
+            { params: { studentId, courseId, semester } })
+    },
+
+    /** 冻结补考名单 */
+    freezeResit(semester) {
+        return request.post('/teaching/exam/resit/freeze', null, { params: { semester } })
+    },
+
+    /** 查询补考状态 */
+    getResitStatus(studentId, semester) {
+        return request.get(`/teaching/exam/resit/status/${studentId}`, { params: { semester } })
+    },
+
+    /** 学生考试查询 */
+    getStudentExams(studentId, semester) {
+        return request.get(`/teaching/exam/student/${studentId}`, { params: { semester } })
+    },
+
+    /** 创建考试 */
+    create(data) { return request.post('/teaching/exam/create', data) },
+}
+
+// ==================== 自动排课引擎 ====================
+export const autoScheduleApi = {
+    /** 启动一键自动排课 */
+    start(config) { return request.post('/teaching/auto-schedule/start', config) },
+
+    /** 查询排课进度 */
+    getProgress(taskId) { return request.get(`/teaching/auto-schedule/progress/${taskId}`) },
+
+    /** 终止排课 */
+    cancel(taskId) { return request.post(`/teaching/auto-schedule/cancel/${taskId}`) },
+
+    /** 查看诊断报告 */
+    getDiagnostic(taskId) { return request.get(`/teaching/auto-schedule/diagnostic/${taskId}`) },
+
+    /** 获取槽位热力图 */
+    getHeatmap(scheduleId, semester) {
+        return request.get(`/teaching/auto-schedule/heatmap/${scheduleId}`, { params: { semester } })
+    },
+
+    /** AI推荐微调方案 */
+    getRecommendations(scheduleId, semester) {
+        return request.get(`/teaching/auto-schedule/recommend/${scheduleId}`, { params: { semester } })
+    },
+
+    /** 已锁定排课列表 */
+    getLockedSchedules(semester) {
+        return request.get('/teaching/auto-schedule/locked', { params: { semester } })
+    },
+
+    /** 锁定/解锁 */
+    toggleLock(scheduleId, locked) {
+        return request.post(`/teaching/auto-schedule/toggle-lock/${scheduleId}`, null, { params: { locked } })
+    },
+
+    /** 质量评分 */
+    getQualityScore(semester) {
+        return request.get('/teaching/auto-schedule/quality-score', { params: { semester } })
+    },
+}

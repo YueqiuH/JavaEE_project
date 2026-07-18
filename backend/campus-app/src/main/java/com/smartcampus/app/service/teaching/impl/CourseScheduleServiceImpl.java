@@ -425,6 +425,12 @@ public class CourseScheduleServiceImpl implements ICourseScheduleService {
 
     @Override
     public CommonResult getTeacherSchedule(Long teacherId, String semester) {
+        // 0 表示教务处查看全部排课
+        if (teacherId != null && teacherId == 0L) {
+            LambdaQueryWrapper<Schedule> w = new LambdaQueryWrapper<>();
+            w.eq(Schedule::getSemester, semester);
+            return CommonResult.success(scheduleMapper.selectList(w));
+        }
         return CommonResult.success(scheduleMapper.selectByTeacher(teacherId, semester));
     }
 

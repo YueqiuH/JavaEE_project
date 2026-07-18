@@ -1,5 +1,16 @@
 <template>
-  <div class="cs-console">
+  <!-- 无排课：全屏提示 -->
+  <div v-if="(role==='student'||role==='admin') && !hasSchedules && !store.loading" class="cs-console" style="display:flex;align-items:center;justify-content:center;background:#f0f2f5">
+    <div style="text-align:center">
+      <div style="font-size:64px;margin-bottom:16px">📋</div>
+      <h2 style="margin:0;color:#333">当前无法选课</h2>
+      <p style="color:#888;margin:8px 0 24px">本学期课表尚未编排完成，请等待教务处完成排课后再进行选课操作。</p>
+      <el-button type="primary" @click="checkSchedules">重新检查</el-button>
+    </div>
+  </div>
+
+  <!-- 正常界面 -->
+  <div v-else class="cs-console">
     <!-- ========== 1. 顶部状态与统计栏 ========== -->
     <div class="cs-topbar">
       <div class="top-left">
@@ -11,14 +22,29 @@
         <el-tag size="small" effect="plain" type="info">学期: {{ store.semester }}</el-tag>
       </div>
       <div class="top-center">
-        <div class="credit-bar-wrap">
-          <span class="credit-label">已选学分</span>
+        <!-- 课程统计卡片（仅学生可见） -->
+        <div v-if="role==='student'" class="stats-row">
+          <div class="stat-item total">
+            <span class="si-num">{{ store.allCourses.length }}</span>
+            <span class="si-label">可选教学班</span>
+          </div>
+          <div class="stat-item groups">
+            <span class="si-num">{{ store.courseGroups.length }}</span>
+            <span class="si-label">开课门数</span>
+          </div>
+          <div class="stat-item selected-stats">
+            <span class="si-num">{{ store.selectedCourses.length }}</span>
+            <span class="si-label">已选课程</span>
+          </div>
+        </div>
+        <div v-if="role==='student'" class="credit-bar-wrap">
+          <span class="credit-label">学分</span>
           <el-progress
             :percentage="store.creditProgress"
             :status="store.creditBarStatus"
             :stroke-width="10"
             :text-inside="true"
-            style="width:200px"
+            style="width:160px"
           />
           <span class="credit-text" :class="{ 'text-warn': store.creditProgress>=85, 'text-danger': store.creditProgress>=100 }">
             {{ store.currentCredits }} / {{ store.creditLimit }}
@@ -37,8 +63,27 @@
       </div>
     </div>
 
-    <!-- ========== 主体：左二右一三栏布局 ========== -->
-    <div class="cs-body">
+    <!-- ========== 主体：角色路由 ========== -->
+
+    <!-- 教职工视图：查看选课学生名单 -->
+    <div v-if="role==='teacher'" class="cs-body">
+      <div class="teacher-roster-panel" style="flex:1;background:#fff;border-radius:6px;padding:12px;overflow-y:auto">
+        <div class="section-title">📋 我执教课程的学生选课名单</div>
+        <div v-if="teacherClasses.length===0" style="padding:40px;text-align:center;color:#888">暂无执教课程或该学期无选课数据</div>
+        <div v-for="cls in teacherClasses" :key="cls.courseId" style="margin-bottom:12px;border:1px solid #e4e7ed;border-radius:8px;overflow:hidden">
+          <div style="padding:10px 14px;background:#f8f9fb;display:flex;justify-content:space-between;align-items:center;cursor:pointer" @click="viewClassStudents(cls)">
+            <div>
+              <strong>{{ cls.courseName }}</strong>
+              <span style="font-size:12px;color:#888;margin-left:8px">{{ cls.courseCode }}</span>
+            </div>
+            <el-button size="small" type="primary">查看名单 ({{ cls.schedules.length }}个班)</el-button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 学生/教务处视图：选课 -->
+    <div v-if="role==='student'||role==='admin'" class="cs-body">
       <!-- ===== 左侧面板 ===== -->
       <div class="cs-left">
         <!-- 2. 高级检索过滤区 -->
@@ -72,7 +117,7 @@
         <div class="course-list-panel">
           <div class="list-header">
             <span>📋 共 {{ filteredGroups.length }} 门课程，{{ totalClasses }} 个教学班</span>
-            <el-switch v-model="expandAll" size="small" active-text="展开全部" inactive-text="收起全部" />
+            <el-switch v-model="expandAll" size="small" active-text="展开全部" inactive-text="收起全部" inline-prompt />
           </div>
           <div class="list-body" v-loading="store.loading">
             <el-empty v-if="filteredGroups.length===0" description="暂无匹配课程" :image-size="80" />
@@ -244,7 +289,7 @@
         <div class="cart-panel">
           <div class="cp-title">
             <span>🛒 已选课程购物车（{{ store.selectedCourses.length }} 门）</span>
-            <el-switch v-model="viewMode" size="small" active-text="周课表" inactive-text="表格" />
+            <el-switch v-model="viewMode" size="small" active-value="周课表" inactive-value="表格" active-text="周课表" inactive-text="表格" inline-prompt />
           </div>
 
           <!-- 表格模式 -->
@@ -323,7 +368,19 @@
       </div>
     </el-dialog>
 
-    <!-- ========== 退选确认弹框 ========== -->
+    <!-- ========== 教师：查看学生名单弹窗 ========== -->
+    <el-dialog v-model="showTeacherClass" :title="selectedTeacherClass?.courseName + ' - 选课学生名单'" width="700px">
+      <el-table :data="teacherClassStudents" stripe size="small" max-height="400" empty-text="暂无人选课">
+        <el-table-column label="#" width="40"><template #default="{row}">{{ row._idx }}</template></el-table-column>
+        <el-table-column prop="student_no" label="学号" width="100" />
+        <el-table-column prop="student_name" label="姓名" width="100" />
+        <el-table-column prop="grade_name" label="年级" width="80" />
+        <el-table-column prop="selection_status" label="状态" width="70">
+          <template #default="{row}"><el-tag :type="row.selection_status===1?'success':'info'" size="small">{{ row.selection_status===1?'已选':'退选' }}</el-tag></template>
+        </el-table-column>
+        <el-table-column prop="select_time" label="选课时间" width="140" />
+      </el-table>
+    </el-dialog>
     <el-dialog
       v-model="dropDialog.visible"
       title="确认退选"
@@ -383,7 +440,66 @@ const store = useCourseSelectionStore()
 // ==================== 用户类型标签 ====================
 const userTypeLabel = computed(() => {
   const t = store.studentInfo?.userType
-  return { 1: '学生', 2: '教师', 3: '教务', 4: '管理员' }[t] || '用户'
+  return { 1: '学生', 2: '辅导员', 3: '教职工', 4: '教务处' }[t] || '用户'
+})
+const role = computed(() => {
+  const t = store.studentInfo?.userType
+  if (t === 4) return 'admin'
+  if (t === 3) return 'teacher'
+  return 'student'
+})
+
+// ==================== 教师视图：查看选课学生名单 ====================
+const teacherClasses = ref([])
+const teacherClassStudents = ref([])
+const showTeacherClass = ref(false)
+const selectedTeacherClass = ref(null)
+
+async function loadTeacherClasses() {
+  try {
+    const { scheduleApi } = await import('@/api/teaching.js')
+    const res = await scheduleApi.getTeacherSchedule(store.currentUserId, store.semester)
+    // 按 courseId 分组
+    const schedules = res?.data || []
+    const grouped = new Map()
+    for (const s of schedules) {
+      const cid = s.courseId
+      if (!grouped.has(cid)) grouped.set(cid, { courseId: cid, courseName: s.courseName||s.course_name||'-', courseCode: s.courseCode||s.course_code||'-', schedules: [] })
+      grouped.get(cid).schedules.push(s)
+    }
+    teacherClasses.value = [...grouped.values()]
+  } catch { teacherClasses.value = [] }
+}
+
+async function viewClassStudents(cls) {
+  selectedTeacherClass.value = cls
+  try {
+    const { default: request } = await import('@/utils/request.js')
+    const res = await request.get(`/teaching/selection/student-list/${cls.courseId}`, { params: { semester: store.semester } })
+    teacherClassStudents.value = (res?.data || []).map((s,i) => ({ ...s, _idx: i+1 }))
+    showTeacherClass.value = true
+  } catch { teacherClassStudents.value = [] }
+}
+
+// ==================== 选课前置条件：是否有排课 ====================
+const hasSchedules = ref(true)
+
+async function checkSchedules() {
+  try {
+    const { default: request } = await import('@/utils/request.js')
+    const res = await request.get('/teaching/schedule/teacher/0', { params: { semester: store.semester } })
+    hasSchedules.value = (res?.data || []).length > 0
+    if (hasSchedules.value && role.value === 'student') store.loadAll()
+  } catch { hasSchedules.value = true }
+}
+
+// 初始化时根据角色加载数据
+onMounted(() => {
+  if (role.value === 'teacher') loadTeacherClasses()
+  else {
+    checkSchedules()
+    if (role.value === 'student') store.loadAll()
+  }
 })
 
 // ==================== 常量 ====================
@@ -650,10 +766,8 @@ const viewMode = ref('table')
 // ==================== 日志展示 ====================
 const showLog = ref(false)
 
-// ==================== 初始化 ====================
-onMounted(() => {
-  store.loadAll()
-})
+// 初始化由顶部 role-based onMounted 处理
+
 </script>
 
 <style scoped>
@@ -708,6 +822,22 @@ onMounted(() => {
 .credit-text { font-size: 13px; font-weight: 600; color: #059669; }
 .credit-text.text-warn { color: #d97706; }
 .credit-text.text-danger { color: #EF4444; }
+
+/* 课程统计 */
+.stats-row { display: flex; gap: 6px; }
+.stat-item {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 3px 10px; border-radius: 6px; min-width: 60px;
+}
+.stat-item.total { background: #eff6ff; }
+.stat-item.groups { background: #f0fdf4; }
+.stat-item.selected-stats { background: #fefce8; }
+.si-num { font-size: 18px; font-weight: 700; line-height: 1.2; }
+.stat-item.total .si-num { color: #3B82F6; }
+.stat-item.groups .si-num { color: #059669; }
+.stat-item.selected-stats .si-num { color: #d97706; }
+.si-label { font-size: 10px; color: #888; }
+
 .top-right { display: flex; gap: 8px; }
 
 /* ========== 主体三栏 ========== */

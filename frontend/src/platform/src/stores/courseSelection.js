@@ -35,7 +35,7 @@ export const useCourseSelectionStore = defineStore('courseSelection', () => {
       userId: u.userId,                   // 数据库 user_id，选课 API 使用的 studentId
       name: u.username,                   // 学号/工号（如 "600001"），同时也是显示名
       studentNo: u.username,              // 与 name 一致，都是学号
-      userType: u.userType || 1,          // 1=学生, 2=教师, 3=教务, 4=管理员
+      userType: u.userType || 1,          // 1=学生, 2=辅导员, 3=教职工, 4=教务处
     }
   })
 
@@ -222,6 +222,8 @@ export const useCourseSelectionStore = defineStore('courseSelection', () => {
       allCourses.value = (courseRes?.data || []).filter(c => c.courseId)
       selectedCourses.value = (selRes?.data || []).map(s => ({
         ...s,
+        courseId: s.course_id || s.courseId,           // ← 关键修复：统一 courseId
+        selectionId: s.selection_id || s.selectionId,   // ← 退选需要
         courseName: s.course_name || s.courseName,
         courseCode: s.course_code || s.courseCode,
         teacherName: s.teacher_name || s.teacherName,
