@@ -448,11 +448,13 @@ CREATE TABLE IF NOT EXISTS `payment` (
     `payment_id`   BIGINT       NOT NULL AUTO_INCREMENT COMMENT '支付主键ID',
     `student_id`   BIGINT       NOT NULL                COMMENT '学生ID',
     `fee_id`       BIGINT       DEFAULT NULL            COMMENT '账单ID',
+    `work_plan_id` BIGINT       DEFAULT NULL            COMMENT '勤工俭学任务ID',
     `amount`       DECIMAL(10,2) NOT NULL               COMMENT '支付金额',
-    `payment_type` VARCHAR(16)  DEFAULT '学费'          COMMENT '类型：学费/一卡通充值/消费',
+    `payment_type` VARCHAR(16)  DEFAULT '学费'          COMMENT '类型：学费/一卡通充值/勤工俭学工资/消费',
     `description`  VARCHAR(128) DEFAULT NULL            COMMENT '描述',
     `payment_time` DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '支付时间',
-    PRIMARY KEY (`payment_id`)
+    PRIMARY KEY (`payment_id`),
+    UNIQUE KEY `uk_payment_work_plan` (`work_plan_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='支付记录表';
 
 -- 固定资产表
@@ -461,27 +463,40 @@ CREATE TABLE IF NOT EXISTS `asset` (
     `asset_name`   VARCHAR(64)  NOT NULL                COMMENT '资产名称',
     `asset_type`   VARCHAR(16)  NOT NULL                COMMENT '类型：设备/办公用品/其他',
     `quantity`     INT          DEFAULT 1               COMMENT '数量',
-    `dept_id`      BIGINT       DEFAULT NULL            COMMENT '所属部门ID',
-    `user_id`      BIGINT       DEFAULT NULL            COMMENT '领用人ID',
-    `status`       INT          DEFAULT 1               COMMENT '状态：1=在库, 2=已领用, 3=报废',
+    `dept_id`      BIGINT       NOT NULL DEFAULT 1      COMMENT '唯一部门ID（固定为1）',
+    `user_id`      BIGINT       DEFAULT NULL            COMMENT '借用人ID',
+    `status`       INT          DEFAULT 1               COMMENT '状态：1=在库, 2=已借出, 3=报废',
     `apply_user_id` BIGINT      DEFAULT NULL            COMMENT '申请人ID',
+    `application_type` VARCHAR(16) DEFAULT NULL          COMMENT '申请类型：PURCHASE=购买, ADD=添加, BORROW=借用, SCRAP=报废, LEGACY=历史；台账为空',
+    `source_asset_id` BIGINT     DEFAULT NULL            COMMENT '借用或报废申请对应的来源资产ID',
+    `application_reason` VARCHAR(512) DEFAULT NULL       COMMENT '申请人填写的损坏情况和报废原因',
     `approve_status` INT        DEFAULT 0               COMMENT '审批：0=待审批, 1=已通过, 2=已拒绝',
+    `approve_user_id` BIGINT     DEFAULT NULL            COMMENT '管理员审批人ID',
+    `approve_remark` VARCHAR(256) DEFAULT NULL           COMMENT '管理员审批意见',
+    `approve_time`  DATETIME     DEFAULT NULL            COMMENT '管理员审批时间',
     `create_time`  DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    PRIMARY KEY (`asset_id`)
+    PRIMARY KEY (`asset_id`),
+    KEY `idx_asset_application` (`application_type`, `approve_status`, `create_time`),
+    KEY `idx_asset_source` (`source_asset_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='固定资产表';
 
 -- 工作计划表
 CREATE TABLE IF NOT EXISTS `work_plan` (
     `plan_id`     BIGINT       NOT NULL AUTO_INCREMENT COMMENT '计划主键ID',
-    `user_id`     BIGINT       NOT NULL                COMMENT '教职工ID',
-    `plan_type`   VARCHAR(16)  NOT NULL                COMMENT '类型：周计划/月计划',
+    `user_id`     BIGINT       NOT NULL                COMMENT '计划人或勤工俭学学生ID',
+    `plan_type`   VARCHAR(16)  NOT NULL                COMMENT '类型：周计划/月计划/勤工俭学；指派任务为历史兼容值',
     `content`     TEXT         NOT NULL                COMMENT '计划内容',
     `start_date`  DATE         DEFAULT NULL            COMMENT '开始日期',
     `end_date`    DATE         DEFAULT NULL            COMMENT '结束日期',
-    `status`      INT          DEFAULT 1               COMMENT '状态：1=进行中, 2=已完成',
+    `status`      INT          DEFAULT 1               COMMENT '普通计划：1=进行中,2=已完成；勤工俭学：1=进行中,2=待确认,3=已结算',
     `supervisor_comment` TEXT  DEFAULT NULL            COMMENT '上级点评',
+    `assigner_id` BIGINT       DEFAULT NULL            COMMENT '勤工俭学原指派人ID',
+    `wage_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00  COMMENT '任务工资',
+    `wage_paid`   TINYINT      NOT NULL DEFAULT 0      COMMENT '工资是否已发放：0=否,1=是',
+    `wage_paid_time` DATETIME  DEFAULT NULL            COMMENT '工资发放时间',
     `create_time` DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    PRIMARY KEY (`plan_id`)
+    PRIMARY KEY (`plan_id`),
+    KEY `idx_work_plan_assigner` (`assigner_id`, `status`, `wage_paid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工作计划表';
 
 -- 公文表
@@ -674,7 +689,6 @@ INSERT INTO `role` (`role_code`, `role_name`) VALUES
     ('STUDENT', '学生'),
     ('TEACHER', '教师'),
     ('STAFF', '教职工'),
-    ('LEADER', '校领导'),
     ('ADMIN', '系统管理员')
 ON DUPLICATE KEY UPDATE `role_name` = VALUES(`role_name`);
 
@@ -685,7 +699,7 @@ INSERT INTO `permission` (`permission_code`, `permission_name`) VALUES
     ('base:read', '读取基础数据'), ('base:write', '维护基础数据'), ('admin:manage', '系统管理'),
     ('fee:self:read', '查询本人账单与流水'), ('fee:self:pay', '支付本人账单'), ('fee:manage', '管理费用账单'),
     ('fee:overview:read', '查询学生缴费概览'),
-    ('asset:read', '读取资产台账'), ('asset:apply', '提交资产申请'), ('asset:manage', '管理和审批资产'),
+    ('asset:read', '读取资产台账'), ('asset:apply', '提交资产申请'), ('asset:manage', '管理员管理和审批资产'),
     ('work-plan:self', '维护本人工作计划'), ('work-plan:manage', '管理和点评工作计划'),
     ('document:self', '发起并查看本人公文'), ('document:approve', '审批流转至本人的公文'),
     ('document:manage', '管理公文审批资格与流程'),
@@ -697,7 +711,6 @@ INSERT INTO `user` (`username`, `password`, `user_type`, `status`) VALUES
     ('600001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1),
     ('700001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 2, 1),
     ('800001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 3, 1),
-    ('leader', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 3, 1),
     ('admin', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 4, 1)
 ON DUPLICATE KEY UPDATE `password` = VALUES(`password`), `user_type` = VALUES(`user_type`), `status` = VALUES(`status`);
 
@@ -706,27 +719,25 @@ SELECT u.user_id, r.role_id FROM `user` u JOIN `role` r ON
     (u.username = '600001' AND r.role_code = 'STUDENT') OR
     (u.username = '700001' AND r.role_code = 'TEACHER') OR
     (u.username = '800001' AND r.role_code = 'STAFF') OR
-    (u.username = 'leader' AND r.role_code = 'LEADER') OR
     (u.username = 'admin' AND r.role_code = 'ADMIN');
 
 INSERT IGNORE INTO `role_permission` (`role_id`, `permission_id`)
 SELECT r.role_id, p.permission_id FROM `role` r CROSS JOIN `permission` p WHERE
-    r.role_code = 'ADMIN'
+    (r.role_code = 'ADMIN' AND p.permission_code <> 'fee:overview:read')
     OR (r.role_code = 'STUDENT' AND p.permission_code IN (
         'teaching:read', 'student:read', 'student:write', 'base:read',
-        'fee:self:read', 'fee:self:pay', 'notification:self:read'))
+        'fee:self:read', 'fee:self:pay', 'work-plan:self', 'document:self', 'notification:self:read'))
     OR (r.role_code = 'TEACHER' AND p.permission_code IN (
         'teaching:read', 'teaching:write', 'student:read', 'base:read', 'office:read',
-        'asset:read', 'asset:apply', 'work-plan:self', 'document:self', 'document:approve',
+        'fee:overview:read',
+        'asset:read', 'asset:apply', 'work-plan:self', 'work-plan:manage', 'document:self', 'document:approve',
         'meeting:self', 'meeting:manage', 'notification:self:read'))
     OR (r.role_code = 'STAFF' AND p.permission_code IN (
         'student:read', 'student:write', 'office:read', 'office:write', 'base:read',
         'fee:self:read', 'fee:self:pay', 'fee:manage',
-        'asset:read', 'asset:apply', 'asset:manage',
+        'asset:read', 'asset:apply',
         'work-plan:self', 'work-plan:manage', 'document:self', 'document:approve',
-        'meeting:self', 'meeting:manage', 'notification:self:read'))
-    OR (r.role_code = 'LEADER' AND p.permission_code IN (
-        'office:read', 'fee:overview:read'));
+        'meeting:self', 'meeting:manage', 'notification:self:read'));
 
 INSERT INTO `document_approver` (`user_id`, `display_name`, `status`)
 SELECT u.user_id,

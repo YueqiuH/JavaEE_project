@@ -42,6 +42,7 @@ public class DocumentController {
 
     private static final List<String> SUPPORTED_DOCUMENT_TYPES =
             List.of("公文会签", "请示报告", "请假申请");
+    private static final String STUDENT_LEAVE_DOCUMENT_TYPE = "请假申请";
 
     @Autowired private IDocumentService documentService;
     @Autowired private IDocumentApprovalService approvalService;
@@ -268,6 +269,10 @@ public class DocumentController {
         }
         if (!SUPPORTED_DOCUMENT_TYPES.contains(request.getDocType())) {
             throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "公文类型必须为公文会签、请示报告或请假申请");
+        }
+        if (CurrentUserContext.require().roles().contains("STUDENT")
+                && !STUDENT_LEAVE_DOCUMENT_TYPE.equals(request.getDocType())) {
+            throw new BusinessException(OfficeErrorCodeConstants.FORBIDDEN, "学生只能发起请假申请");
         }
     }
 

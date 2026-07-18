@@ -18,8 +18,9 @@ public interface WorkPlanMapper extends BaseMapper<WorkPlan> {
             JOIN role_permission rp ON rp.role_id = r.role_id
             JOIN permission p ON p.permission_id = rp.permission_id AND p.status = 1
             WHERE u.status = 1
-              AND u.user_type IN (2, 3)
+              AND u.user_type = 1
               AND u.user_id <> #{excludeUserId}
+              AND r.role_code = 'STUDENT'
               AND p.permission_code = 'work-plan:self'
             ORDER BY u.username
             """)
@@ -33,8 +34,9 @@ public interface WorkPlanMapper extends BaseMapper<WorkPlan> {
             JOIN role_permission rp ON rp.role_id = r.role_id
             JOIN permission p ON p.permission_id = rp.permission_id AND p.status = 1
             WHERE u.status = 1
-              AND u.user_type IN (2, 3)
+              AND u.user_type = 1
               AND u.user_id = #{userId}
+              AND r.role_code = 'STUDENT'
               AND p.permission_code = 'work-plan:self'
             """)
     int countAssignableUser(@Param("userId") Long userId);

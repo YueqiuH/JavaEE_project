@@ -8,5 +8,8 @@ public class Asset implements Serializable {
     @TableId(type = IdType.AUTO) private Long assetId;
     private String assetName; private String assetType; private Integer quantity;
     private Long deptId; private Long userId; private Integer status;
-    private Long applyUserId; private Integer approveStatus; private Date createTime;
+    private Long applyUserId; private String applicationType; private Long sourceAssetId;
+    private String applicationReason;
+    private Integer approveStatus; private Long approveUserId; private String approveRemark;
+    private Date approveTime; private Date createTime;
 }

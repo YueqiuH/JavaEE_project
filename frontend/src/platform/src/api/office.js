@@ -11,14 +11,16 @@ export const feeAPI = {
   getStudentOverview: (params) => request.get(`${OFFICE_API_PREFIX}/fee/students`, { params }),
 }
 export const assetAPI = {
-  list: (deptId) => request.get(`${OFFICE_API_PREFIX}/asset/list`, { params: deptId ? { deptId } : {} }),
-  inventory: (deptId) => request.get(`${OFFICE_API_PREFIX}/asset/inventory`, { params: deptId ? { deptId } : {} }),
+  list: () => request.get(`${OFFICE_API_PREFIX}/asset/list`),
+  inventory: () => request.get(`${OFFICE_API_PREFIX}/asset/inventory`),
   myApplications: () => request.get(`${OFFICE_API_PREFIX}/asset/applications/mine`),
   applications: () => request.get(`${OFFICE_API_PREFIX}/asset/applications`),
   save: (data) => request.post(`${OFFICE_API_PREFIX}/asset/save`, data),
-  apply: (data) => request.post(`${OFFICE_API_PREFIX}/asset/apply`, data),
-  applyAvailable: (assetId, quantity) => request.post(`${OFFICE_API_PREFIX}/asset/apply/${assetId}`, null, { params: { quantity } }),
-  approve: (assetId, approved) => request.post(`${OFFICE_API_PREFIX}/asset/approve/${assetId}`, null, { params: { approved } }),
+  apply: (data) => request.post(`${OFFICE_API_PREFIX}/asset/applications/purchase`, data),
+  add: (data) => request.post(`${OFFICE_API_PREFIX}/asset/applications/add`, data),
+  applyAvailable: (assetId, quantity) => request.post(`${OFFICE_API_PREFIX}/asset/applications/borrow/${assetId}`, null, { params: { quantity } }),
+  scrap: (assetId, quantity, reason) => request.post(`${OFFICE_API_PREFIX}/asset/applications/scrap/${assetId}`, null, { params: { quantity, reason } }),
+  approve: (assetId, approved, remark) => request.post(`${OFFICE_API_PREFIX}/asset/applications/${assetId}/approve`, null, { params: { approved, remark } }),
   remove: (assetId) => request.delete(`${OFFICE_API_PREFIX}/asset/${assetId}`),
 }
 
@@ -27,6 +29,7 @@ export const workPlanAPI = {
   list: () => request.get(`${OFFICE_API_PREFIX}/work-plan/list`),
   assignees: () => request.get(`${OFFICE_API_PREFIX}/work-plan/assignees`),
   assign: (data) => request.post(`${OFFICE_API_PREFIX}/work-plan/assign`, data),
+  settle: (planId) => request.post(`${OFFICE_API_PREFIX}/work-plan/${planId}/settle`),
   save: (data) => request.post(`${OFFICE_API_PREFIX}/work-plan/save`, data),
   comment: (planId, comment) => request.post(`${OFFICE_API_PREFIX}/work-plan/comment/${planId}`, comment, { headers: { 'Content-Type': 'text/plain' } }),
   remove: (planId) => request.delete(`${OFFICE_API_PREFIX}/work-plan/${planId}`),

@@ -1,14 +1,15 @@
 <template>
   <section class="office-page">
     <header class="office-page__header">
-      <div><h1>学杂费交纳与流水查询</h1><p>学生可查询并支付本人账单，管理员和校领导可查看全校学生缴费情况。</p></div>
+      <div><h1>学杂费交纳与流水查询</h1><p>学生可查询并支付本人账单，教师可查看全校学生缴费情况。</p></div>
       <div class="office-page__actions">
         <el-button :loading="loading" @click="load">刷新</el-button>
         <el-button v-if="canManage" type="primary" @click="dialogVisible=true">导入账单</el-button>
       </div>
     </header>
 
-    <el-result v-if="!canRead && !canOverview" class="office-page__empty" icon="warning" title="无缴费访问权限" sub-title="当前账号没有账单查询或缴费概览权限" />
+    <el-result v-if="!canRead && !canOverview && !canManage" class="office-page__empty" icon="warning" title="无缴费访问权限" sub-title="当前账号没有账单查询、缴费概览或账单管理权限" />
+    <el-alert v-else-if="canManage && !canRead && !canOverview" class="office-page__section" type="info" :closable="false" title="当前账号可导入账单，但无权查看学生缴费情况" />
     <template v-if="canRead && !canOverview">
       <el-card class="office-page__section" shadow="never">
         <template #header><strong>个人费用账单</strong></template>
@@ -27,7 +28,7 @@
         <el-statistic :value="Number(cardBalance)" :precision="2">
           <template #prefix>¥</template>
         </el-statistic>
-        <p>余额按本人一卡通充值减去消费流水实时计算。</p>
+        <p>余额按本人一卡通充值和勤工俭学工资减去消费流水实时计算。</p>
       </el-card>
 
       <el-card class="office-page__section" shadow="never">

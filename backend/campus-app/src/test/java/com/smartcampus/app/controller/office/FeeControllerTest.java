@@ -92,7 +92,7 @@ class FeeControllerTest {
     }
 
     @Test
-    void returnsStudentFeeOverviewForAdmin() {
+    void returnsStudentFeeOverviewForTeacher() {
         StudentFeeOverviewVo row = new StudentFeeOverviewVo();
         row.setStudentId(1L);
         row.setStudentNo("600001");

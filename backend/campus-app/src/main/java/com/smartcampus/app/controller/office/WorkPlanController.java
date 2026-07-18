@@ -1,36 +1,46 @@
 package com.smartcampus.app.controller.office;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.smartcampus.app.enums.OfficeErrorCodeConstants;
 import com.smartcampus.app.security.OfficePermissions;
+import com.smartcampus.app.service.office.IPaymentService;
 import com.smartcampus.app.service.office.IWorkPlanService;
 import com.smartcampus.auth.context.CurrentUserContext;
 import com.smartcampus.auth.model.AuthSession;
 import com.smartcampus.auth.permission.RequirePermission;
 import com.smartcampus.common.exception.BusinessException;
 import com.smartcampus.common.result.CommonResult;
+import com.smartcampus.contract.entity.Payment;
 import com.smartcampus.contract.entity.WorkPlan;
 import com.smartcampus.contract.vo.WorkPlanAssigneeVo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Date;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/office/work-plan")
-@Tag(name = "教职工工作计划与协同")
+@Tag(name = "工作计划与勤工俭学")
 public class WorkPlanController {
-    private static final String ASSIGNED_TASK = "指派任务";
+    private static final String WORK_STUDY_TASK = "勤工俭学";
+    private static final String LEGACY_ASSIGNED_TASK = "指派任务";
+    private static final String WORK_STUDY_WAGE = "勤工俭学工资";
+    private static final BigDecimal MAX_WAGE_AMOUNT = new BigDecimal("10000.00");
     private static final List<String> SELF_PLAN_TYPES = List.of("周计划", "月计划");
 
     @Autowired private IWorkPlanService workPlanService;
+    @Autowired private IPaymentService paymentService;
 
     @GetMapping("/mine")
     @RequirePermission(OfficePermissions.WORK_PLAN_SELF)
-    @Operation(summary = "查询教职工个人工作计划")
+    @Operation(summary = "查询本人工作计划或勤工俭学任务")
     public CommonResult<List<WorkPlan>> myPlans() {
         Long userId = CurrentUserContext.require().userId();
         return CommonResult.success(workPlanService.list(new LambdaQueryWrapper<WorkPlan>()
@@ -46,35 +56,37 @@ public class WorkPlanController {
 
     @GetMapping("/assignees")
     @RequirePermission(OfficePermissions.WORK_PLAN_MANAGE)
-    @Operation(summary = "查询可接收指派任务的教职工")
+    @Operation(summary = "查询可接收勤工俭学任务的学生")
     public CommonResult<List<WorkPlanAssigneeVo>> assignees() {
         return CommonResult.success(workPlanService.listAssignableUsers(CurrentUserContext.require().userId()));
     }
 
     @PostMapping("/assign")
     @RequirePermission(OfficePermissions.WORK_PLAN_MANAGE)
-    @Operation(summary = "负责人直接创建并指派任务")
+    @Operation(summary = "教师或教职工向学生指派勤工俭学任务")
     public CommonResult<WorkPlan> assign(@RequestBody AssignRequest request) {
+        AuthSession assigner = requireWorkStudyAssigner();
         validateContent(request == null ? null : request.getContent());
-        Long assignerId = CurrentUserContext.require().userId();
+        Long assignerId = assigner.userId();
         if (request.getAssigneeId() == null) {
-            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "请选择任务接收人");
-        }
-        if (assignerId.equals(request.getAssigneeId())) {
-            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "如需安排本人工作，请创建个人工作计划");
+            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "请选择勤工俭学学生");
         }
         if (!workPlanService.isAssignableUser(request.getAssigneeId())) {
-            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "所选用户不能接收工作任务");
+            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "所选用户不是可用学生账号");
         }
         validateDateRange(request.getStartDate(), request.getEndDate());
+        BigDecimal wageAmount = validateWageAmount(request.getWageAmount());
 
         WorkPlan task = new WorkPlan();
         task.setUserId(request.getAssigneeId());
-        task.setPlanType(ASSIGNED_TASK);
+        task.setAssignerId(assignerId);
+        task.setPlanType(WORK_STUDY_TASK);
         task.setContent(request.getContent().trim());
         task.setStartDate(request.getStartDate());
         task.setEndDate(request.getEndDate());
         task.setStatus(1);
+        task.setWageAmount(wageAmount);
+        task.setWagePaid(0);
         task.setCreateTime(new Date());
         workPlanService.save(task);
         return CommonResult.success(task);
@@ -89,6 +101,9 @@ public class WorkPlanController {
         }
         Long currentUserId = CurrentUserContext.require().userId();
         if (plan.getPlanId() == null) {
+            if (CurrentUserContext.require().roles().contains("STUDENT")) {
+                throw new BusinessException(OfficeErrorCodeConstants.FORBIDDEN, "学生不能创建教职工周月计划");
+            }
             validateContent(plan.getContent());
             validateSelfPlanType(plan.getPlanType());
             validateDateRange(plan.getStartDate(), plan.getEndDate());
@@ -102,7 +117,15 @@ public class WorkPlanController {
             if (!currentUserId.equals(existing.getUserId())) {
                 throw new BusinessException(OfficeErrorCodeConstants.FORBIDDEN, "不能修改他人的工作计划");
             }
-            if (ASSIGNED_TASK.equals(existing.getPlanType())) {
+            if (WORK_STUDY_TASK.equals(existing.getPlanType())) {
+                if (Integer.valueOf(1).equals(existing.getWagePaid()) || Integer.valueOf(3).equals(existing.getStatus())) {
+                    throw new BusinessException(OfficeErrorCodeConstants.STATE_CONFLICT, "已结算任务不能修改");
+                }
+                existing.setStatus(validateWorkStudyStatus(plan.getStatus()));
+                workPlanService.updateById(existing);
+                return CommonResult.success(existing);
+            }
+            if (LEGACY_ASSIGNED_TASK.equals(existing.getPlanType())) {
                 existing.setStatus(validateStatus(plan.getStatus()));
                 workPlanService.updateById(existing);
                 return CommonResult.success(existing);
@@ -134,6 +157,58 @@ public class WorkPlanController {
         return CommonResult.success(plan);
     }
 
+    @PostMapping("/{planId}/settle")
+    @RequirePermission(OfficePermissions.WORK_PLAN_MANAGE)
+    @Transactional
+    @Operation(summary = "原指派人确认勤工俭学完成并将工资计入学生余额")
+    public CommonResult<WorkPlan> settle(@PathVariable Long planId) {
+        AuthSession assigner = requireWorkStudyAssigner();
+        WorkPlan task = workPlanService.getById(planId);
+        if (task == null) {
+            throw new BusinessException(OfficeErrorCodeConstants.NOT_FOUND, "勤工俭学任务不存在");
+        }
+        if (!WORK_STUDY_TASK.equals(task.getPlanType())) {
+            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "该记录不是勤工俭学任务");
+        }
+        if (!assigner.userId().equals(task.getAssignerId())) {
+            throw new BusinessException(OfficeErrorCodeConstants.FORBIDDEN, "只有原指派人可以确认并发放工资");
+        }
+        if (!Integer.valueOf(2).equals(task.getStatus())) {
+            throw new BusinessException(OfficeErrorCodeConstants.STATE_CONFLICT, "学生尚未提交任务完成");
+        }
+        if (Integer.valueOf(1).equals(task.getWagePaid())) {
+            throw new BusinessException(OfficeErrorCodeConstants.STATE_CONFLICT, "该任务工资已经发放");
+        }
+        BigDecimal wageAmount = validateWageAmount(task.getWageAmount());
+        Date paidTime = new Date();
+        boolean updated = workPlanService.update(new LambdaUpdateWrapper<WorkPlan>()
+                .eq(WorkPlan::getPlanId, planId)
+                .eq(WorkPlan::getAssignerId, assigner.userId())
+                .eq(WorkPlan::getStatus, 2)
+                .eq(WorkPlan::getWagePaid, 0)
+                .set(WorkPlan::getStatus, 3)
+                .set(WorkPlan::getWagePaid, 1)
+                .set(WorkPlan::getWagePaidTime, paidTime));
+        if (!updated) {
+            throw new BusinessException(OfficeErrorCodeConstants.STATE_CONFLICT, "任务状态已变化或工资已发放");
+        }
+
+        Payment wage = new Payment();
+        wage.setStudentId(task.getUserId());
+        wage.setWorkPlanId(task.getPlanId());
+        wage.setAmount(wageAmount);
+        wage.setPaymentType(WORK_STUDY_WAGE);
+        wage.setDescription(wageDescription(task));
+        wage.setPaymentTime(paidTime);
+        if (!paymentService.save(wage)) {
+            throw new BusinessException(OfficeErrorCodeConstants.STATE_CONFLICT, "工资流水写入失败");
+        }
+        task.setStatus(3);
+        task.setWagePaid(1);
+        task.setWagePaidTime(paidTime);
+        return CommonResult.success(task);
+    }
+
     @DeleteMapping("/{planId}")
     @RequirePermission(OfficePermissions.WORK_PLAN_SELF)
     @Operation(summary = "删除工作计划")
@@ -141,6 +216,16 @@ public class WorkPlanController {
         WorkPlan plan = workPlanService.getById(planId);
         if (plan == null) throw new BusinessException(OfficeErrorCodeConstants.NOT_FOUND, "工作计划不存在");
         AuthSession session = CurrentUserContext.require();
+        if (WORK_STUDY_TASK.equals(plan.getPlanType())) {
+            if (Integer.valueOf(1).equals(plan.getWagePaid()) || Integer.valueOf(3).equals(plan.getStatus())) {
+                throw new BusinessException(OfficeErrorCodeConstants.STATE_CONFLICT, "已结算勤工俭学任务必须保留，不能删除");
+            }
+            if (!session.userId().equals(plan.getAssignerId())
+                    || !session.hasPermission(OfficePermissions.WORK_PLAN_MANAGE)) {
+                throw new BusinessException(OfficeErrorCodeConstants.FORBIDDEN, "只有原指派人可以删除未结算任务");
+            }
+            return CommonResult.success(workPlanService.removeById(planId));
+        }
         if (!session.userId().equals(plan.getUserId()) && !session.hasPermission(OfficePermissions.WORK_PLAN_MANAGE)) {
             throw new BusinessException(OfficeErrorCodeConstants.FORBIDDEN, "不能删除他人的工作计划");
         }
@@ -169,6 +254,37 @@ public class WorkPlanController {
         return status;
     }
 
+    private int validateWorkStudyStatus(Integer status) {
+        if (status == null || (status != 1 && status != 2)) {
+            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "勤工俭学状态必须为进行中或待确认");
+        }
+        return status;
+    }
+
+    private BigDecimal validateWageAmount(BigDecimal wageAmount) {
+        if (wageAmount == null || wageAmount.signum() <= 0 || wageAmount.compareTo(MAX_WAGE_AMOUNT) > 0) {
+            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "任务工资必须在 0.01 至 10000.00 元之间");
+        }
+        try {
+            return wageAmount.setScale(2, RoundingMode.UNNECESSARY);
+        } catch (ArithmeticException exception) {
+            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "任务工资最多保留两位小数");
+        }
+    }
+
+    private AuthSession requireWorkStudyAssigner() {
+        AuthSession session = CurrentUserContext.require();
+        if (!session.roles().contains("TEACHER") && !session.roles().contains("STAFF")) {
+            throw new BusinessException(OfficeErrorCodeConstants.FORBIDDEN, "只有教师或教职工可以指派和结算勤工俭学任务");
+        }
+        return session;
+    }
+
+    private String wageDescription(WorkPlan task) {
+        String description = "勤工俭学任务#" + task.getPlanId() + "：" + task.getContent();
+        return description.length() <= 128 ? description : description.substring(0, 128);
+    }
+
     private void validateDateRange(Date startDate, Date endDate) {
         if (startDate != null && endDate != null && startDate.after(endDate)) {
             throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "开始日期不能晚于结束日期");
@@ -180,6 +296,7 @@ public class WorkPlanController {
         private String content;
         private Date startDate;
         private Date endDate;
+        private BigDecimal wageAmount;
 
         public Long getAssigneeId() {
             return assigneeId;
@@ -211,6 +328,14 @@ public class WorkPlanController {
 
         public void setEndDate(Date endDate) {
             this.endDate = endDate;
+        }
+
+        public BigDecimal getWageAmount() {
+            return wageAmount;
+        }
+
+        public void setWageAmount(BigDecimal wageAmount) {
+            this.wageAmount = wageAmount;
         }
     }
 }

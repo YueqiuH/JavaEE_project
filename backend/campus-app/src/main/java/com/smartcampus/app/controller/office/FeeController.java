@@ -95,13 +95,13 @@ public class FeeController {
         Long studentId = CurrentUserContext.require().userId();
         return CommonResult.success(paymentService.list(new LambdaQueryWrapper<Payment>()
                 .eq(Payment::getStudentId, studentId)
-                .in(Payment::getPaymentType, "一卡通充值", "消费")
+                .in(Payment::getPaymentType, "一卡通充值", "勤工俭学工资", "消费")
                 .orderByDesc(Payment::getPaymentTime).last("LIMIT 5")));
     }
 
     @GetMapping("/students")
     @RequirePermission(OfficePermissions.FEE_OVERVIEW_READ)
-    @Operation(summary = "管理员或校领导分页查看学生缴费情况")
+    @Operation(summary = "教师分页查看学生缴费情况")
     public CommonResult<PageResult<StudentFeeOverviewVo>> studentFeeOverview(
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size,

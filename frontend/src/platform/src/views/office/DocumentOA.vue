@@ -3,16 +3,16 @@
     <header class="office-page__header">
       <div>
         <h1>官方公文流转 OA</h1>
-        <p>审批流程由管理员按公文类型固定配置，发起后按照快照逐级流转。</p>
+        <p>审批流程由管理员按公文类型固定配置，学生可发起请假申请并按照快照逐级流转。</p>
       </div>
       <div class="office-page__actions">
         <el-button :loading="loading" @click="load">刷新</el-button>
-        <el-button v-if="canSelf" type="primary" @click="openStart">发起公文</el-button>
+        <el-button v-if="canSelf" type="primary" @click="openStart">{{ isStudent ? '发起请假' : '发起公文' }}</el-button>
       </div>
     </header>
 
     <el-alert v-if="canSelf" class="flow-tip" type="info" :closable="false" show-icon
-      title="发起人不能更换固定审批人；当前步骤审批人可以处理本人发起的公文；退回重提沿用原流程快照。" />
+      :title="isStudent ? '学生只能发起请假申请；审批人由管理员固定配置；退回后可修改并重新提交。' : '发起人不能更换固定审批人；当前步骤审批人可以处理本人发起的公文；退回重提沿用原流程快照。'" />
     <el-result v-if="!canSelf && !canApprove && !canManage" class="office-page__empty" icon="warning" title="无公文访问权限" />
 
     <el-card v-else class="office-page__section" shadow="never" v-loading="loading">
@@ -115,7 +115,7 @@
       </el-tabs>
     </el-card>
 
-    <el-dialog v-model="visible" :title="editingDocId ? '修改并重新提交公文' : '发起公文'" width="min(680px, 92vw)">
+    <el-dialog v-model="visible" :title="editingDocId ? '修改并重新提交公文' : (isStudent ? '发起请假申请' : '发起公文')" width="min(680px, 92vw)">
       <el-form label-position="top">
         <el-form-item label="标题" required><el-input v-model="form.title" maxlength="128" show-word-limit /></el-form-item>
         <el-form-item label="公文类型" required>
@@ -166,10 +166,11 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { documentAPI } from '@/api/office.js'
 import { useOfficeAccess } from '@/composables/useOfficeAccess.js'
 
-const { hasPermission } = useOfficeAccess()
+const { currentUser, hasPermission } = useOfficeAccess()
 const canSelf = computed(() => hasPermission('document:self'))
 const canApprove = computed(() => hasPermission('document:approve'))
 const canManage = computed(() => hasPermission('document:manage'))
+const isStudent = computed(() => currentUser.value?.roles?.includes('STUDENT'))
 const tab = ref(canManage.value ? 'config' : (canSelf.value ? 'mine' : 'pending'))
 const loading = ref(false)
 const mine = ref([])
@@ -182,7 +183,8 @@ const editingDocId = ref(null)
 const progressVisible = ref(false)
 const progressTasks = ref([])
 const history = ref([])
-const documentTypes = ['公文会签', '请示报告', '请假申请']
+const allDocumentTypes = ['公文会签', '请示报告', '请假申请']
+const documentTypes = computed(() => isStudent.value ? ['请假申请'] : allDocumentTypes)
 const form = reactive({ title: '', docType: '请示报告', content: '' })
 const workflowDocType = ref('请示报告')
 const workflowForm = reactive({ workflowName: '', steps: [{ stepName: '审批', approverId: null }] })
@@ -264,7 +266,7 @@ const saveWorkflow = async () => {
 const openStart = () => {
   editingDocId.value = null
   form.title = ''
-  form.docType = '请示报告'
+  form.docType = isStudent.value ? '请假申请' : '请示报告'
   form.content = ''
   visible.value = true
 }

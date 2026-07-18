@@ -12,6 +12,7 @@ import com.smartcampus.app.service.office.IDocumentWorkflowService;
 import com.smartcampus.app.service.office.INotificationService;
 import com.smartcampus.auth.context.CurrentUserContext;
 import com.smartcampus.auth.model.AuthSession;
+import com.smartcampus.common.exception.BusinessException;
 import com.smartcampus.contract.entity.Document;
 import com.smartcampus.contract.entity.DocumentApproval;
 import com.smartcampus.contract.entity.DocumentApprovalTask;
@@ -31,6 +32,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
@@ -100,6 +102,35 @@ class DocumentControllerTest {
         assertEquals(2L, document.getInitiatorId());
         assertEquals(2L, document.getCurrentApproverId());
         assertEquals(0, document.getStatus());
+    }
+
+    @Test
+    void studentCanStartLeaveApplication() {
+        CurrentUserContext.set(session(4L, "STUDENT", 1));
+        when(workflowService.getActive("请假申请")).thenReturn(workflow(12L, 2L));
+        when(approverService.isAvailable(2L)).thenReturn(true);
+        when(documentService.save(any(Document.class))).thenAnswer(invocation -> {
+            Document document = invocation.getArgument(0);
+            document.setDocId(13L);
+            return true;
+        });
+        when(taskService.save(any(DocumentApprovalTask.class))).thenReturn(true);
+
+        Document document = controller.start(request("请假申请")).getData();
+
+        assertEquals(4L, document.getInitiatorId());
+        assertEquals("请假申请", document.getDocType());
+        assertEquals(2L, document.getCurrentApproverId());
+    }
+
+    @Test
+    void studentCannotStartOtherDocumentTypes() {
+        CurrentUserContext.set(session(4L, "STUDENT", 1));
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> controller.start(request("请示报告")));
+
+        assertEquals("学生只能发起请假申请", exception.getMessage());
     }
 
     @Test
