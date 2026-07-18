@@ -493,7 +493,10 @@ CREATE TABLE IF NOT EXISTS `document` (
     `initiator_id` BIGINT      NOT NULL                COMMENT '发起人ID',
     `current_approver_id` BIGINT DEFAULT NULL          COMMENT '当前审批人ID',
     `status`      INT          DEFAULT 0               COMMENT '状态：0=审批中, 1=已通过, 2=已拒绝, 3=已退回',
-    `approval_chain` TEXT      DEFAULT NULL            COMMENT '系统生成的单审批人链JSON',
+    `approval_chain` TEXT      DEFAULT NULL            COMMENT '启动时生成的有序审批人链JSON快照',
+    `workflow_id` BIGINT       DEFAULT NULL            COMMENT '启动时采用的流程版本ID',
+    `current_step` INT         DEFAULT NULL            COMMENT '当前审批步骤',
+    `approval_round` INT       NOT NULL DEFAULT 1      COMMENT '审批轮次',
     `create_time` DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (`doc_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='公文表';
@@ -502,24 +505,79 @@ CREATE TABLE IF NOT EXISTS `document` (
 CREATE TABLE IF NOT EXISTS `document_approval` (
     `approval_id` BIGINT       NOT NULL AUTO_INCREMENT COMMENT '审批记录主键ID',
     `doc_id`      BIGINT       NOT NULL                COMMENT '公文ID',
+    `task_id`     BIGINT       DEFAULT NULL            COMMENT '对应审批任务ID',
     `approver_id` BIGINT       NOT NULL                COMMENT '审批人ID',
+    `round_no`    INT          DEFAULT NULL            COMMENT '审批轮次',
+    `step_order`  INT          DEFAULT NULL            COMMENT '审批步骤',
+    `step_name`   VARCHAR(64)  DEFAULT NULL            COMMENT '步骤名称快照',
     `action`      VARCHAR(8)   NOT NULL                COMMENT '操作：同意/拒绝/退回',
     `opinion`     VARCHAR(256) DEFAULT NULL            COMMENT '审批意见',
     `approval_time` DATETIME   DEFAULT CURRENT_TIMESTAMP COMMENT '审批时间',
     PRIMARY KEY (`approval_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='公文审批记录表';
 
--- 公文指定审批人表（课程简化流程固定两人）
+-- 公文审批资格配置表（由管理员维护，学生不得加入）
 CREATE TABLE IF NOT EXISTS `document_approver` (
     `approver_config_id` BIGINT       NOT NULL AUTO_INCREMENT COMMENT '审批人配置主键ID',
     `user_id`            BIGINT       NOT NULL                COMMENT '审批用户ID',
     `display_name`       VARCHAR(32)  NOT NULL                COMMENT '审批人显示名称',
     `status`             TINYINT      NOT NULL DEFAULT 1      COMMENT '状态：1=启用, 0=停用',
     `create_time`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_by`         BIGINT       DEFAULT NULL            COMMENT '最后操作管理员ID',
+    `updated_time`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`approver_config_id`),
     UNIQUE KEY `uk_document_approver_user` (`user_id`),
     CONSTRAINT `fk_document_approver_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='公文指定审批人表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='公文审批资格配置表';
+
+-- 公文审批流程版本表
+CREATE TABLE IF NOT EXISTS `document_workflow` (
+    `workflow_id`   BIGINT       NOT NULL AUTO_INCREMENT COMMENT '流程版本主键ID',
+    `workflow_name` VARCHAR(64)  NOT NULL                COMMENT '流程名称',
+    `doc_type`      VARCHAR(16)  NOT NULL                COMMENT '公文类型',
+    `version`       INT          NOT NULL                COMMENT '同类型流程版本号',
+    `status`        TINYINT      NOT NULL DEFAULT 1      COMMENT '状态：1=当前启用, 0=历史版本',
+    `created_by`    BIGINT       NOT NULL                COMMENT '配置管理员ID',
+    `create_time`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`workflow_id`),
+    UNIQUE KEY `uk_document_workflow_type_version` (`doc_type`, `version`),
+    KEY `idx_document_workflow_active` (`doc_type`, `status`),
+    CONSTRAINT `fk_document_workflow_creator` FOREIGN KEY (`created_by`) REFERENCES `user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='公文审批流程版本表';
+
+-- 公文审批流程步骤表
+CREATE TABLE IF NOT EXISTS `document_workflow_step` (
+    `step_id`     BIGINT       NOT NULL AUTO_INCREMENT,
+    `workflow_id` BIGINT       NOT NULL,
+    `step_order`  INT          NOT NULL,
+    `step_name`   VARCHAR(64)  NOT NULL,
+    `approver_id` BIGINT       NOT NULL,
+    PRIMARY KEY (`step_id`),
+    UNIQUE KEY `uk_document_workflow_step_order` (`workflow_id`, `step_order`),
+    KEY `idx_document_workflow_step_approver` (`approver_id`),
+    CONSTRAINT `fk_document_workflow_step_workflow` FOREIGN KEY (`workflow_id`) REFERENCES `document_workflow` (`workflow_id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_document_workflow_step_approver` FOREIGN KEY (`approver_id`) REFERENCES `user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='公文审批流程步骤表';
+
+-- 公文逐级审批任务快照表
+CREATE TABLE IF NOT EXISTS `document_approval_task` (
+    `task_id`      BIGINT       NOT NULL AUTO_INCREMENT,
+    `doc_id`       BIGINT       NOT NULL,
+    `workflow_id`  BIGINT       DEFAULT NULL,
+    `round_no`     INT          NOT NULL DEFAULT 1,
+    `step_order`   INT          NOT NULL,
+    `step_name`    VARCHAR(64)  NOT NULL,
+    `approver_id`  BIGINT       NOT NULL,
+    `status`       TINYINT      NOT NULL DEFAULT 0 COMMENT '0=等待,1=待审批,2=同意,3=拒绝,4=退回,5=取消',
+    `handled_time` DATETIME     DEFAULT NULL,
+    `create_time`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`task_id`),
+    UNIQUE KEY `uk_document_task_round_step` (`doc_id`, `round_no`, `step_order`),
+    KEY `idx_document_task_pending` (`approver_id`, `status`),
+    CONSTRAINT `fk_document_task_document` FOREIGN KEY (`doc_id`) REFERENCES `document` (`doc_id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_document_task_workflow` FOREIGN KEY (`workflow_id`) REFERENCES `document_workflow` (`workflow_id`),
+    CONSTRAINT `fk_document_task_approver` FOREIGN KEY (`approver_id`) REFERENCES `user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='公文逐级审批任务快照表';
 
 -- 会议表
 CREATE TABLE IF NOT EXISTS `meeting` (
@@ -628,6 +686,7 @@ INSERT INTO `permission` (`permission_code`, `permission_name`) VALUES
     ('asset:read', '读取资产台账'), ('asset:apply', '提交资产申请'), ('asset:manage', '管理和审批资产'),
     ('work-plan:self', '维护本人工作计划'), ('work-plan:manage', '管理和点评工作计划'),
     ('document:self', '发起并查看本人公文'), ('document:approve', '审批流转至本人的公文'),
+    ('document:manage', '管理公文审批资格与流程'),
     ('meeting:self', '查看并反馈本人会议'), ('meeting:manage', '发布和管理会议'),
     ('notification:self:read', '读取本人通知'), ('ai-approval:use', '使用AI审批助手')
 ON DUPLICATE KEY UPDATE `permission_name` = VALUES(`permission_name`);
@@ -678,3 +737,196 @@ INSERT INTO `menu` (`title`, `path`, `permission_code`, `sort_order`) VALUES
     ('学杂费交纳', '/home/fee-payment', 'fee:self:read', 31),
     ('基础数据', '/home/user-management', 'base:read', 40)
 ON DUPLICATE KEY UPDATE `title` = VALUES(`title`), `permission_code` = VALUES(`permission_code`), `sort_order` = VALUES(`sort_order`);
+
+-- ============================================
+-- C4 公文固定流程演示数据（幂等）
+-- ============================================
+
+-- 为三类公文建立管理员固定流程。已存在同类型流程时不覆盖管理员配置。
+INSERT INTO `document_workflow`
+    (`workflow_name`, `doc_type`, `version`, `status`, `created_by`, `create_time`)
+SELECT '公文会签两级审批', '公文会签', 1, 1, admin_user.user_id, NOW()
+FROM `user` admin_user
+WHERE admin_user.username = 'admin'
+  AND NOT EXISTS (SELECT 1 FROM `document_workflow` WHERE `doc_type` = '公文会签');
+
+INSERT INTO `document_workflow`
+    (`workflow_name`, `doc_type`, `version`, `status`, `created_by`, `create_time`)
+SELECT '请示报告两级审批', '请示报告', 1, 1, admin_user.user_id, NOW()
+FROM `user` admin_user
+WHERE admin_user.username = 'admin'
+  AND NOT EXISTS (SELECT 1 FROM `document_workflow` WHERE `doc_type` = '请示报告');
+
+INSERT INTO `document_workflow`
+    (`workflow_name`, `doc_type`, `version`, `status`, `created_by`, `create_time`)
+SELECT '请假申请单级审批', '请假申请', 1, 1, admin_user.user_id, NOW()
+FROM `user` admin_user
+WHERE admin_user.username = 'admin'
+  AND NOT EXISTS (SELECT 1 FROM `document_workflow` WHERE `doc_type` = '请假申请');
+
+-- 公文会签：教学负责人初审 -> 行政负责人会签。
+INSERT INTO `document_workflow_step` (`workflow_id`, `step_order`, `step_name`, `approver_id`)
+SELECT workflow.workflow_id, 1, '教学负责人初审', teacher_user.user_id
+FROM `document_workflow` workflow
+JOIN `user` teacher_user ON teacher_user.username = '700001'
+WHERE workflow.doc_type = '公文会签' AND workflow.workflow_name = '公文会签两级审批'
+  AND workflow.version = 1 AND workflow.status = 1
+  AND NOT EXISTS (SELECT 1 FROM `document_workflow_step` step
+                  WHERE step.workflow_id = workflow.workflow_id AND step.step_order = 1);
+
+INSERT INTO `document_workflow_step` (`workflow_id`, `step_order`, `step_name`, `approver_id`)
+SELECT workflow.workflow_id, 2, '行政负责人会签', staff_user.user_id
+FROM `document_workflow` workflow
+JOIN `user` staff_user ON staff_user.username = '800001'
+WHERE workflow.doc_type = '公文会签' AND workflow.workflow_name = '公文会签两级审批'
+  AND workflow.version = 1 AND workflow.status = 1
+  AND NOT EXISTS (SELECT 1 FROM `document_workflow_step` step
+                  WHERE step.workflow_id = workflow.workflow_id AND step.step_order = 2);
+
+-- 请示报告：行政负责人初审 -> 教学负责人复核。
+INSERT INTO `document_workflow_step` (`workflow_id`, `step_order`, `step_name`, `approver_id`)
+SELECT workflow.workflow_id, 1, '行政负责人初审', staff_user.user_id
+FROM `document_workflow` workflow
+JOIN `user` staff_user ON staff_user.username = '800001'
+WHERE workflow.doc_type = '请示报告' AND workflow.workflow_name = '请示报告两级审批'
+  AND workflow.version = 1 AND workflow.status = 1
+  AND NOT EXISTS (SELECT 1 FROM `document_workflow_step` step
+                  WHERE step.workflow_id = workflow.workflow_id AND step.step_order = 1);
+
+INSERT INTO `document_workflow_step` (`workflow_id`, `step_order`, `step_name`, `approver_id`)
+SELECT workflow.workflow_id, 2, '教学负责人复核', teacher_user.user_id
+FROM `document_workflow` workflow
+JOIN `user` teacher_user ON teacher_user.username = '700001'
+WHERE workflow.doc_type = '请示报告' AND workflow.workflow_name = '请示报告两级审批'
+  AND workflow.version = 1 AND workflow.status = 1
+  AND NOT EXISTS (SELECT 1 FROM `document_workflow_step` step
+                  WHERE step.workflow_id = workflow.workflow_id AND step.step_order = 2);
+
+-- 请假申请：行政负责人审批。
+INSERT INTO `document_workflow_step` (`workflow_id`, `step_order`, `step_name`, `approver_id`)
+SELECT workflow.workflow_id, 1, '行政负责人审批', staff_user.user_id
+FROM `document_workflow` workflow
+JOIN `user` staff_user ON staff_user.username = '800001'
+WHERE workflow.doc_type = '请假申请' AND workflow.workflow_name = '请假申请单级审批'
+  AND workflow.version = 1 AND workflow.status = 1
+  AND NOT EXISTS (SELECT 1 FROM `document_workflow_step` step
+                  WHERE step.workflow_id = workflow.workflow_id AND step.step_order = 1);
+
+-- 待行政负责人初审的请示报告。
+INSERT INTO `document`
+    (`title`, `doc_type`, `content`, `initiator_id`, `current_approver_id`, `status`,
+     `approval_chain`, `workflow_id`, `current_step`, `approval_round`, `create_time`)
+SELECT '【演示】智慧教室设备采购请示', '请示报告',
+       '申请采购智慧教室终端和配套显示设备，用于新学期课堂教学。',
+       admin_user.user_id, staff_user.user_id, 0,
+       CONCAT('[', staff_user.user_id, ',', teacher_user.user_id, ']'),
+       workflow.workflow_id, 1, 1, NOW() - INTERVAL 4 HOUR
+FROM `user` admin_user
+JOIN `user` staff_user ON staff_user.username = '800001'
+JOIN `user` teacher_user ON teacher_user.username = '700001'
+JOIN `document_workflow` workflow ON workflow.doc_type = '请示报告'
+    AND workflow.workflow_name = '请示报告两级审批' AND workflow.version = 1 AND workflow.status = 1
+WHERE admin_user.username = 'admin'
+  AND NOT EXISTS (SELECT 1 FROM `document` WHERE `title` = '【演示】智慧教室设备采购请示');
+
+-- 已完成第一步、待教学负责人复核的请示报告。
+INSERT INTO `document`
+    (`title`, `doc_type`, `content`, `initiator_id`, `current_approver_id`, `status`,
+     `approval_chain`, `workflow_id`, `current_step`, `approval_round`, `create_time`)
+SELECT '【演示】在线精品课程建设请示', '请示报告',
+       '申请启动在线精品课程建设，并安排课程资源录制和教学团队培训。',
+       admin_user.user_id, teacher_user.user_id, 0,
+       CONCAT('[', staff_user.user_id, ',', teacher_user.user_id, ']'),
+       workflow.workflow_id, 2, 1, NOW() - INTERVAL 1 DAY
+FROM `user` admin_user
+JOIN `user` staff_user ON staff_user.username = '800001'
+JOIN `user` teacher_user ON teacher_user.username = '700001'
+JOIN `document_workflow` workflow ON workflow.doc_type = '请示报告'
+    AND workflow.workflow_name = '请示报告两级审批' AND workflow.version = 1 AND workflow.status = 1
+WHERE admin_user.username = 'admin'
+  AND NOT EXISTS (SELECT 1 FROM `document` WHERE `title` = '【演示】在线精品课程建设请示');
+
+-- 已通过的请假申请。
+INSERT INTO `document`
+    (`title`, `doc_type`, `content`, `initiator_id`, `current_approver_id`, `status`,
+     `approval_chain`, `workflow_id`, `current_step`, `approval_round`, `create_time`)
+SELECT '【演示】外出培训请假申请', '请假申请',
+       '因参加高校数字化建设培训，申请外出两天。',
+       admin_user.user_id, NULL, 1, CONCAT('[', staff_user.user_id, ']'),
+       workflow.workflow_id, 1, 1, NOW() - INTERVAL 2 DAY
+FROM `user` admin_user
+JOIN `user` staff_user ON staff_user.username = '800001'
+JOIN `document_workflow` workflow ON workflow.doc_type = '请假申请'
+    AND workflow.workflow_name = '请假申请单级审批' AND workflow.version = 1 AND workflow.status = 1
+WHERE admin_user.username = 'admin'
+  AND NOT EXISTS (SELECT 1 FROM `document` WHERE `title` = '【演示】外出培训请假申请');
+
+-- 被退回的公文会签，用于测试修改后按原快照重提。
+INSERT INTO `document`
+    (`title`, `doc_type`, `content`, `initiator_id`, `current_approver_id`, `status`,
+     `approval_chain`, `workflow_id`, `current_step`, `approval_round`, `create_time`)
+SELECT '【演示】教学管理制度修订会签', '公文会签',
+       '提交新版教学管理制度草案，请相关负责人会签。',
+       admin_user.user_id, NULL, 3,
+       CONCAT('[', teacher_user.user_id, ',', staff_user.user_id, ']'),
+       workflow.workflow_id, 1, 1, NOW() - INTERVAL 3 DAY
+FROM `user` admin_user
+JOIN `user` teacher_user ON teacher_user.username = '700001'
+JOIN `user` staff_user ON staff_user.username = '800001'
+JOIN `document_workflow` workflow ON workflow.doc_type = '公文会签'
+    AND workflow.workflow_name = '公文会签两级审批' AND workflow.version = 1 AND workflow.status = 1
+WHERE admin_user.username = 'admin'
+  AND NOT EXISTS (SELECT 1 FROM `document` WHERE `title` = '【演示】教学管理制度修订会签');
+
+-- 根据演示公文生成任务快照。状态：0等待、1待审批、2同意、4退回、5取消。
+INSERT INTO `document_approval_task`
+    (`doc_id`, `workflow_id`, `round_no`, `step_order`, `step_name`, `approver_id`, `status`, `handled_time`, `create_time`)
+SELECT document.doc_id, document.workflow_id, 1, step.step_order, step.step_name, step.approver_id,
+       CASE document.title
+           WHEN '【演示】智慧教室设备采购请示' THEN IF(step.step_order = 1, 1, 0)
+           WHEN '【演示】在线精品课程建设请示' THEN IF(step.step_order = 1, 2, 1)
+           WHEN '【演示】外出培训请假申请' THEN 2
+           WHEN '【演示】教学管理制度修订会签' THEN IF(step.step_order = 1, 4, 5)
+       END,
+       CASE
+           WHEN document.title = '【演示】在线精品课程建设请示' AND step.step_order = 1 THEN NOW() - INTERVAL 20 HOUR
+           WHEN document.title = '【演示】外出培训请假申请' THEN NOW() - INTERVAL 40 HOUR
+           WHEN document.title = '【演示】教学管理制度修订会签' AND step.step_order = 1 THEN NOW() - INTERVAL 60 HOUR
+           ELSE NULL
+       END,
+       document.create_time
+FROM `document` document
+JOIN `document_workflow_step` step ON step.workflow_id = document.workflow_id
+WHERE document.title IN (
+        '【演示】智慧教室设备采购请示', '【演示】在线精品课程建设请示',
+        '【演示】外出培训请假申请', '【演示】教学管理制度修订会签')
+  AND NOT EXISTS (SELECT 1 FROM `document_approval_task` task
+                  WHERE task.doc_id = document.doc_id AND task.round_no = 1 AND task.step_order = step.step_order);
+
+-- 为已处理任务生成审批意见历史。
+INSERT INTO `document_approval`
+    (`doc_id`, `task_id`, `approver_id`, `round_no`, `step_order`, `step_name`, `action`, `opinion`, `approval_time`)
+SELECT document.doc_id, task.task_id, task.approver_id, task.round_no, task.step_order, task.step_name,
+       CASE document.title WHEN '【演示】教学管理制度修订会签' THEN '退回' ELSE '同意' END,
+       CASE document.title
+           WHEN '【演示】在线精品课程建设请示' THEN '同意建设，请教学负责人复核课程方案。'
+           WHEN '【演示】外出培训请假申请' THEN '同意外出培训，请按时返校。'
+           WHEN '【演示】教学管理制度修订会签' THEN '请补充制度实施日期和责任部门后重新提交。'
+       END,
+       task.handled_time
+FROM `document` document
+JOIN `document_approval_task` task ON task.doc_id = document.doc_id AND task.round_no = 1 AND task.step_order = 1
+WHERE document.title IN (
+        '【演示】在线精品课程建设请示', '【演示】外出培训请假申请', '【演示】教学管理制度修订会签')
+  AND NOT EXISTS (SELECT 1 FROM `document_approval` approval WHERE approval.task_id = task.task_id);
+
+-- 为两份待审批公文生成通知。
+INSERT INTO `notification` (`user_id`, `title`, `content`, `notify_type`, `is_read`, `create_time`)
+SELECT document.current_approver_id, '演示待审批公文', CONCAT('《', document.title, '》等待您的审批'),
+       '公文通知', 0, document.create_time
+FROM `document` document
+WHERE document.title IN ('【演示】智慧教室设备采购请示', '【演示】在线精品课程建设请示')
+  AND document.status = 0
+  AND NOT EXISTS (SELECT 1 FROM `notification` notification
+                  WHERE notification.user_id = document.current_approver_id
+                    AND notification.content = CONCAT('《', document.title, '》等待您的审批'));

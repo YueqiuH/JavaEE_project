@@ -9,27 +9,22 @@ import lombok.ToString;
 
 import java.io.Serializable;
 import java.util.Date;
+import java.util.List;
 
 @Data
 @ToString
-@TableName("document_approver")
-public class DocumentApprover implements Serializable {
+@TableName("document_workflow")
+public class DocumentWorkflow implements Serializable {
 
     @TableId(type = IdType.AUTO)
-    private Long approverConfigId;
-    private Long userId;
-    private String displayName;
+    private Long workflowId;
+    private String workflowName;
+    private String docType;
+    private Integer version;
     private Integer status;
+    private Long createdBy;
     private Date createTime;
-    private Long updatedBy;
-    private Date updatedTime;
 
     @TableField(exist = false)
-    private String username;
-
-    @TableField(exist = false)
-    private Integer userType;
-
-    @TableField(exist = false)
-    private Boolean qualified;
+    private List<DocumentWorkflowStep> steps;
 }

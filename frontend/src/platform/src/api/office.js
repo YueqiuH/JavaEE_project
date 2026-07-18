@@ -6,6 +6,7 @@ export const feeAPI = {
   importFees: (data) => request.post(`${OFFICE_API_PREFIX}/fee/import`, data),
   getMyFees: () => request.get(`${OFFICE_API_PREFIX}/fee/mine`),
   pay: (feeId) => request.post(`${OFFICE_API_PREFIX}/fee/pay/${feeId}`),
+  getCardBalance: () => request.get(`${OFFICE_API_PREFIX}/fee/card/balance`),
   getRecentPayments: () => request.get(`${OFFICE_API_PREFIX}/fee/payment/recent`),
 }
 
@@ -33,11 +34,16 @@ export const workPlanAPI = {
 
 export const documentAPI = {
   approvers: () => request.get(`${OFFICE_API_PREFIX}/document/approvers`),
+  approverCandidates: () => request.get(`${OFFICE_API_PREFIX}/document/approver-candidates`),
+  updateApprover: (userId, data) => request.put(`${OFFICE_API_PREFIX}/document/approvers/${userId}`, data),
+  workflows: () => request.get(`${OFFICE_API_PREFIX}/document/workflows`),
+  saveWorkflow: (docType, data) => request.put(`${OFFICE_API_PREFIX}/document/workflows/${encodeURIComponent(docType)}`, data),
   start: (data) => request.post(`${OFFICE_API_PREFIX}/document/start`, data),
   resubmit: (docId, data) => request.post(`${OFFICE_API_PREFIX}/document/${docId}/resubmit`, data),
   initiated: () => request.get(`${OFFICE_API_PREFIX}/document/mine`),
   pending: () => request.get(`${OFFICE_API_PREFIX}/document/pending`),
   history: (docId) => request.get(`${OFFICE_API_PREFIX}/document/${docId}/history`),
+  tasks: (docId) => request.get(`${OFFICE_API_PREFIX}/document/${docId}/tasks`),
   approve: (docId, data) => request.post(`${OFFICE_API_PREFIX}/document/${docId}/approve`, data),
   remind: (docId) => request.post(`${OFFICE_API_PREFIX}/document/${docId}/remind`),
 }

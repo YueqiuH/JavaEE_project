@@ -22,7 +22,7 @@
 - 集成分支：`integration/member-c-rbac`，已合入 `origin/main` 的统一响应、Redis 会话认证、RBAC 和新版门户。
 - 成员 C 后端接口前缀已统一为 `/api/v1/office/**`，会经过 Bearer Token 认证过滤器。
 - 个人账单、计划、公文、会议和通知不再接收前端传入的任意用户 ID，而是读取 `CurrentUserContext`。
-- 办公权限已细分为缴费、资产、工作计划、公文、会议、通知和 AI 共 14 个权限码。
+- 办公权限已细分为缴费、资产、工作计划、公文、会议、通知和 AI 共 15 个权限码。
 - 六个办公页面保留真实业务实现，并接入新版门户、权限菜单和 `src/api/office.js`。
 - 默认 Maven 构建不启动 AI；启用 AI 时同时使用 Maven `ai` Profile 和 Spring `ai` Profile，并配置 `DEEPSEEK_API_KEY`。
 - 验证结果：JDK 25 Maven 编译通过，后端 32 项测试通过，Vite 生产构建通过。
@@ -47,14 +47,16 @@
 - 由于数据库结构保持不变，当前记录不单独保存指派人；`work-plan:manage` 也不代表真实部门上下级关系。
 - 相关接口：`GET /api/v1/office/work-plan/assignees`、`POST /api/v1/office/work-plan/assign`。
 
-### 1.4 C4 单步公文审批规则
+### 1.4 C4 管理员配置的固定多步公文审批规则
 
 - 公文类型固定为：`公文会签`、`请示报告`、`请假申请`。
-- 流程固定为单步审批，发起人不再填写审批链 JSON。
-- 两名可选审批人为 `700001`（教学负责人）和 `800001`（行政负责人），来自 `document_approver` 表。
-- 发起人可从两人中选择一人；如果发起人本人就是指定审批人，前后端都会禁止自选和自审。
-- 审批动作为同意、拒绝、退回。退回后 `document.status=3`，只有原发起人可以修改正文、类型和审批人后重新提交。
-- 重新提交会保留原审批历史，并将状态恢复为审批中；`approval_chain` 仅作为后端生成的单审批人快照保留。
+- `admin` 通过 `document:manage` 权限维护审批资格和流程；审批资格只能授予启用的教师、教职工或管理员，后端明确拒绝学生。
+- 管理员按公文类型配置固定的 1-10 步流程，每一步指定唯一审批人；保存时创建新版本，发起人只能查看流程，不能自行更换审批人。
+- 流程模板使用 `document_workflow`、`document_workflow_step`，公文发起时在 `document_approval_task` 生成逐步任务快照；管理员后续修改只影响新公文。
+- 固定流程可以包含发起人本人；轮到该步骤时，发起人可以审批自己发起的公文，但仍只有当前步骤指定审批人可以操作；审批人存在启用流程引用或未结束任务时不能被停用。
+- 中间步骤同意后自动流转并通知下一审批人，末步同意后通过；任一步拒绝即结束，退回后由原发起人修改正文并按原流程快照开启新审批轮次。
+- `document_approval` 保存任务、轮次、步骤和意见，历史不会因重提或流程升级而覆盖；`approval_chain` 继续保存有序审批人 ID 快照以兼容旧数据。
+- 既有审批中的单步公文由迁移脚本生成“原单步审批”任务继续流转；已完成、已拒绝和已退回历史保持不变。
 
 ## 2. 主要代码位置
 
@@ -115,9 +117,9 @@ PowerShell 若因执行策略禁止 `npm.ps1`，使用 `npm.cmd run dev`。
 - 数据库名：`school_spring`
 - 完整初始化脚本：`database/baseline/init.sql`
 - 脚本已包含成员 C 使用的表：`fee`、`payment`、`asset`、`work_plan`、`document`、`document_approval`、`document_approver`、`meeting`、`meeting_attendee`、`notification`。
-- 最新基线共 48 张表；当前数据库有 23 个权限项，其中 14 个为成员 C 细粒度权限。
-- 已有数据库依次执行 `V20260717120000__office_permissions.sql` 和 `V20260717153000__single_step_document_approval.sql`；全新数据库直接使用最新 `database/baseline/init.sql`。
-- 初始化脚本没有测试数据。缴费表格显示 `No Data` 时通常只是没有账单，可使用页面右上角“导入账单”创建数据。
+- 最新基线共 51 张表；当前数据库有 24 个权限项，其中 15 个为成员 C 细粒度权限。
+- 已有数据库依次执行 `V20260717120000__office_permissions.sql`、`V20260717153000__single_step_document_approval.sql` 和 `V20260718110000__configurable_document_workflow.sql`；全新数据库直接使用最新 `database/baseline/init.sql`。
+- 初始化脚本包含 C4 固定流程演示数据：三类流程，以及待第一步审批、待第二步审批、已通过和已退回公文；测试标题统一以 `【演示】` 开头。其他成员 C 表默认不批量灌入测试数据，缴费表格显示 `No Data` 时可使用页面右上角“导入账单”创建数据。
 - 数据库用户名和密码以本机配置为准，不要将真实密码写入本文件或对话。
 
 ## 6. AI 配置与已完成修复
@@ -175,7 +177,7 @@ Started SmartCampusApplication
 
 ## 8. AI 页面测试流程
 
-1. 使用 `admin / 123321` 在公文 OA 页面发起公文，选择 `800001` 行政负责人审批。
+1. 使用 `admin / 123321` 在公文 OA 的“审批配置”中为请示报告设置不包含 admin 本人的固定流程，例如指定 `800001`；再发起公文。
 2. 退出后使用 `800001 / 123321` 登录。
 3. 打开 AI 审批页面，页面会自动加载当前账号的待审批公文。
 4. 选择公文并点击“生成要点摘要”或“生成审批建议”。

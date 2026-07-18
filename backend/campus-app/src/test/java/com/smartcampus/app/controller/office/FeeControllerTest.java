@@ -12,6 +12,7 @@ import com.smartcampus.common.exception.BusinessException;
 import com.smartcampus.common.result.CommonResult;
 import com.smartcampus.contract.entity.Fee;
 import com.smartcampus.contract.entity.Payment;
+import com.smartcampus.contract.vo.CardBalanceVo;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -74,6 +75,17 @@ class FeeControllerTest {
         assertEquals(1L, result.getData().getStudentId());
         assertEquals(new BigDecimal("100.00"), result.getData().getAmount());
         verify(paymentService).save(any(Payment.class));
+    }
+
+    @Test
+    void returnsCurrentUsersCardBalance() {
+        CurrentUserContext.set(session(1L));
+        when(paymentService.getCardBalance(1L)).thenReturn(new BigDecimal("88.50"));
+
+        CommonResult<CardBalanceVo> result = controller.cardBalance();
+
+        assertEquals(new BigDecimal("88.50"), result.getData().getBalance());
+        verify(paymentService).getCardBalance(1L);
     }
 
     private AuthSession session(Long userId) {

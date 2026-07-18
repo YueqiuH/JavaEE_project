@@ -13,7 +13,7 @@ public interface DocumentApproverMapper extends BaseMapper<DocumentApprover> {
             SELECT da.approver_config_id, da.user_id, da.display_name, da.status,
                    da.create_time, u.username
             FROM document_approver da
-            JOIN `user` u ON u.user_id = da.user_id AND u.status = 1
+            JOIN `user` u ON u.user_id = da.user_id AND u.status = 1 AND u.user_type IN (2, 3, 4)
             WHERE da.status = 1
               AND EXISTS (
                   SELECT 1
@@ -28,9 +28,35 @@ public interface DocumentApproverMapper extends BaseMapper<DocumentApprover> {
     List<DocumentApprover> findAvailable();
 
     @Select("""
+            SELECT da.approver_config_id, u.user_id, u.username, u.user_type,
+                   COALESCE(da.display_name, u.username) AS display_name,
+                   COALESCE(da.status, 0) AS status, da.create_time, da.updated_by, da.updated_time,
+                   CASE WHEN da.approver_config_id IS NOT NULL AND da.status = 1 THEN TRUE ELSE FALSE END AS qualified
+            FROM `user` u
+            LEFT JOIN document_approver da ON da.user_id = u.user_id
+            WHERE u.status = 1 AND u.user_type IN (2, 3, 4)
+            ORDER BY u.user_type, u.username
+            """)
+    List<DocumentApprover> findCandidates();
+
+    @Select("""
+            SELECT COUNT(*) FROM `user`
+            WHERE user_id = #{userId} AND status = 1 AND user_type IN (2, 3, 4)
+            """)
+    int countEligibleUser(@Param("userId") Long userId);
+
+    @Select("""
+            SELECT COUNT(*)
+            FROM document_workflow_step s
+            JOIN document_workflow w ON w.workflow_id = s.workflow_id AND w.status = 1
+            WHERE s.approver_id = #{userId}
+            """)
+    int countActiveWorkflowReferences(@Param("userId") Long userId);
+
+    @Select("""
             SELECT COUNT(*)
             FROM document_approver da
-            JOIN `user` u ON u.user_id = da.user_id AND u.status = 1
+            JOIN `user` u ON u.user_id = da.user_id AND u.status = 1 AND u.user_type IN (2, 3, 4)
             WHERE da.user_id = #{userId}
               AND da.status = 1
               AND EXISTS (

@@ -12,6 +12,7 @@ import com.smartcampus.common.exception.BusinessException;
 import com.smartcampus.common.result.CommonResult;
 import com.smartcampus.contract.entity.Fee;
 import com.smartcampus.contract.entity.Payment;
+import com.smartcampus.contract.vo.CardBalanceVo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -92,5 +93,13 @@ public class FeeController {
                 .eq(Payment::getStudentId, studentId)
                 .in(Payment::getPaymentType, "一卡通充值", "消费")
                 .orderByDesc(Payment::getPaymentTime).last("LIMIT 5")));
+    }
+
+    @GetMapping("/card/balance")
+    @RequirePermission(OfficePermissions.FEE_SELF_READ)
+    @Operation(summary = "查询个人一卡通余额")
+    public CommonResult<CardBalanceVo> cardBalance() {
+        Long studentId = CurrentUserContext.require().userId();
+        return CommonResult.success(new CardBalanceVo(paymentService.getCardBalance(studentId)));
     }
 }

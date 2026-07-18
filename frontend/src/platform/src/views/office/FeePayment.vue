@@ -22,6 +22,14 @@
         </el-table>
       </el-card>
 
+      <el-card class="office-page__section card-balance" shadow="never" v-loading="loading">
+        <template #header><strong>一卡通余额</strong></template>
+        <el-statistic :value="Number(cardBalance)" :precision="2">
+          <template #prefix>¥</template>
+        </el-statistic>
+        <p>余额按本人一卡通充值减去消费流水实时计算。</p>
+      </el-card>
+
       <el-card class="office-page__section" shadow="never">
         <template #header><strong>一卡通最近五笔明细</strong></template>
         <el-table :data="payments" stripe empty-text="暂无充值或消费记录">
@@ -58,6 +66,7 @@ const canPay = computed(() => hasPermission('fee:self:pay'))
 const canManage = computed(() => hasPermission('fee:manage'))
 const fees = ref([])
 const payments = ref([])
+const cardBalance = ref('0.00')
 const loading = ref(false)
 const dialogVisible = ref(false)
 const form = reactive({ studentId: 1, feeType: '学费', amount: 0.01, semester: '2025-2026-1', dueDate: '' })
@@ -66,8 +75,13 @@ const load = async () => {
   if (!canRead.value) return
   loading.value = true
   try {
-    const [feeResult, paymentResult] = await Promise.all([feeAPI.getMyFees(), feeAPI.getRecentPayments()])
+    const [feeResult, balanceResult, paymentResult] = await Promise.all([
+      feeAPI.getMyFees(),
+      feeAPI.getCardBalance(),
+      feeAPI.getRecentPayments(),
+    ])
     fees.value = feeResult.data || []
+    cardBalance.value = balanceResult.data?.balance ?? '0.00'
     payments.value = paymentResult.data || []
   } finally { loading.value = false }
 }
@@ -86,4 +100,12 @@ const importFee = async () => {
 onMounted(load)
 </script>
 
-<style scoped>@import '@/assets/office-workspace.css';</style>
+<style scoped>
+@import '@/assets/office-workspace.css';
+
+.card-balance p {
+  margin: 10px 0 0;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+}
+</style>

@@ -9,5 +9,9 @@ public interface IDocumentApproverService extends IService<DocumentApprover> {
 
     List<DocumentApprover> listAvailable();
 
+    List<DocumentApprover> listCandidates();
+
     boolean isAvailable(Long userId);
+
+    DocumentApprover updateQualification(Long userId, String displayName, boolean enabled, Long adminId);
 }

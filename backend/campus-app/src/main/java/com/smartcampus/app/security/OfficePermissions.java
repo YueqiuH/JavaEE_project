@@ -13,6 +13,7 @@ public final class OfficePermissions {
     public static final String WORK_PLAN_MANAGE = "work-plan:manage";
     public static final String DOCUMENT_SELF = "document:self";
     public static final String DOCUMENT_APPROVE = "document:approve";
+    public static final String DOCUMENT_MANAGE = "document:manage";
     public static final String MEETING_SELF = "meeting:self";
     public static final String MEETING_MANAGE = "meeting:manage";
     public static final String NOTIFICATION_SELF_READ = "notification:self:read";
