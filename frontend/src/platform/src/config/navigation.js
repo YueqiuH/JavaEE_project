@@ -18,8 +18,6 @@ export const services = [
   { key: 'teaching-evaluation', routeName: 'teachingEvaluation', title: '评教反馈', description: '课程评教、反馈与质量分析', domain: 'student', icon: 'ChatLineSquare', template: 'transaction', summary: '2 门课程待评教', status: '待完成' },
   { key: 'competition', routeName: 'competition', title: '学科竞赛', description: '竞赛发现、组队报名与成果管理', domain: 'student', icon: 'Trophy', template: 'transaction', summary: '6 项竞赛报名中', status: '报名中' },
   { key: 'lab-booking', routeName: 'labBooking', title: '实验室预约', description: '实验室当日容量预约', domain: 'student', icon: 'OfficeBuilding', template: 'schedule', summary: '按今日容量开放', status: '可预约' },
-  { key: 'ai-psychology', routeName: 'aiPsychology', title: 'AI 心理预警', description: '心理陪伴、问卷分析与分级预警', domain: 'student', icon: 'Sunny', template: 'ai', summary: '隐私保护的智能关怀服务', status: '演示模式', ai: true },
-
   { key: 'fee-payment', routeName: 'feePayment', title: '学杂费交纳', description: '账单查询、在线缴费与流水查看', domain: 'office', icon: 'Wallet', template: 'transaction', summary: '当前无待缴账单', status: '已完成' },
   { key: 'asset-management', routeName: 'assetManagement', title: '固定资产管理', description: '资产台账、申领、盘点与处置', domain: 'office', icon: 'Box', template: 'table', summary: '5 项资产待盘点', status: '待处理' },
   { key: 'work-plan', routeName: 'workPlan', title: '工作计划', description: '计划制定、任务协同与进度跟踪', domain: 'office', icon: 'Checked', template: 'schedule', summary: '今日 3 项任务', status: '进行中' },

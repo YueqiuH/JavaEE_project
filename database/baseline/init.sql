@@ -431,30 +431,6 @@ CREATE TABLE IF NOT EXISTS `lab_booking` (
     PRIMARY KEY (`booking_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='实验室预约表';
 
--- 心理问卷表
-CREATE TABLE IF NOT EXISTS `psychology_questionnaire` (
-    `questionnaire_id` BIGINT       NOT NULL AUTO_INCREMENT COMMENT '问卷主键ID',
-    `student_id`       BIGINT       NOT NULL                COMMENT '学生ID',
-    `answers`          TEXT         DEFAULT NULL            COMMENT '问卷答案JSON',
-    `risk_level`       VARCHAR(8)   DEFAULT NULL            COMMENT '风险等级：红/橙/黄/绿',
-    `ai_analysis`      TEXT         DEFAULT NULL            COMMENT 'AI分析结果',
-    `submit_time`      DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '提交时间',
-    PRIMARY KEY (`questionnaire_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='心理问卷表';
-
--- 心理预警记录表
-CREATE TABLE IF NOT EXISTS `psychology_warning` (
-    `warning_id`       BIGINT      NOT NULL AUTO_INCREMENT COMMENT '预警主键ID',
-    `student_id`       BIGINT      NOT NULL                COMMENT '学生ID',
-    `warning_level`    VARCHAR(8)  NOT NULL                COMMENT '预警等级：红/橙/黄',
-    `reason`           TEXT        DEFAULT NULL            COMMENT '预警原因',
-    `counselor_id`     BIGINT      DEFAULT NULL            COMMENT '接收预警的辅导员ID',
-    `is_read`          INT         DEFAULT 0               COMMENT '是否已读：0=未读, 1=已读',
-    `handle_remark`    TEXT        DEFAULT NULL            COMMENT '处理备注',
-    `create_time`      DATETIME    DEFAULT CURRENT_TIMESTAMP COMMENT '预警时间',
-    PRIMARY KEY (`warning_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='心理预警记录表';
-
 -- ============================================
 -- 成员 C：协同办公表
 -- ============================================
