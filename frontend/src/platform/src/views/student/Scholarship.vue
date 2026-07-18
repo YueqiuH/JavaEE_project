@@ -39,7 +39,7 @@
           </div>
         </div>
 
-        <el-table v-loading="loading" :data="applications" class="desktop-table" row-key="scholarshipId" @row-click="openDetail">
+        <el-table v-if="loading || applications.length" v-loading="loading" :data="applications" class="desktop-table" row-key="scholarshipId" @row-click="openDetail">
           <el-table-column label="申请编号" min-width="190">
             <template #default="{ row }"><span class="application-no">{{ row.applicationNo }}</span></template>
           </el-table-column>
@@ -102,6 +102,7 @@
         </div>
 
         <el-table
+          v-if="loading || applications.length"
           v-loading="loading"
           :data="applications"
           class="desktop-table"

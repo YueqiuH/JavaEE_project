@@ -56,7 +56,7 @@
             <el-tooltip content="刷新列表" placement="top"><el-button :icon="Refresh" circle aria-label="刷新列表" @click="loadApplications" /></el-tooltip>
           </div>
         </div>
-        <ApplicationTable :applications="applications" :loading="loading" :teacher="false" @detail="openDetail" @edit="openEditDialog" @submit="submitApplication" @withdraw="withdrawApplication" />
+        <ApplicationTable v-if="loading || applications.length" :applications="applications" :loading="loading" :teacher="false" @detail="openDetail" @edit="openEditDialog" @submit="submitApplication" @withdraw="withdrawApplication" />
         <MobileRecords :applications="applications" :loading="loading" @detail="openDetail" />
         <el-empty v-if="!loading && applications.length === 0" class="desktop-empty" description="暂无异动申请" :image-size="88" />
         <el-pagination v-if="total > pageSize" v-model:current-page="page" :page-size="pageSize" :total="total" layout="prev, pager, next" @current-change="loadApplications" />
@@ -73,7 +73,7 @@
           <div><h2>{{ reviewStage === 'COUNSELOR' ? '待初审申请' : '待复审申请' }}</h2><span>共 {{ total }} 项</span></div>
           <el-tooltip content="刷新列表" placement="top"><el-button :icon="Refresh" circle aria-label="刷新列表" @click="loadApplications" /></el-tooltip>
         </div>
-        <ApplicationTable :applications="applications" :loading="loading" teacher @detail="openDetail" @review="openReviewDialog" />
+        <ApplicationTable v-if="loading || applications.length" :applications="applications" :loading="loading" teacher @detail="openDetail" @review="openReviewDialog" />
         <MobileRecords :applications="applications" :loading="loading" teacher @detail="openDetail" />
         <el-empty v-if="!loading && applications.length === 0" class="desktop-empty" :description="reviewStage === 'COUNSELOR' ? '暂无待初审申请' : '暂无待复审申请'" :image-size="88" />
         <el-pagination v-if="total > pageSize" v-model:current-page="page" :page-size="pageSize" :total="total" layout="prev, pager, next" @current-change="loadApplications" />
