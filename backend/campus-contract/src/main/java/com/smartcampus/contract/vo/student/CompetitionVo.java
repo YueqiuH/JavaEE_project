@@ -1,32 +1,29 @@
-package com.smartcampus.contract.entity;
+package com.smartcampus.contract.vo.student;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
-import lombok.ToString;
 
-import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
-@ToString
-@TableName(value = "competition")
-public class Competition implements Serializable {
+public class CompetitionVo {
 
-    @TableId(type = IdType.AUTO)
     private Long competitionId;
     private String competitionNo;
     private String title;
     private String description;
     private String requirements;
     private Long publisherId;
+    private String publisherName;
     private LocalDate deadline;
     private Integer minMembers;
     private Integer maxMembers;
     private Integer maxTeamCount;
-    private Integer status;
+    private Integer statusCode;
+    private String status;
+    private Long teamCount;
+    private Long approvedTeamCount;
+    private Long myTeamId;
     private LocalDateTime createTime;
     private LocalDateTime updatedAt;
     private LocalDateTime publishedAt;
