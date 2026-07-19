@@ -20,4 +20,18 @@ public class StudentEntity implements Serializable {
     private Long studentNo;
     private Long gradeId;
     private Integer studentAge;
+    /** 性别: 1=男, 2=女 */
+    private Integer gender;
+    /** 所属院系ID */
+    private Long deptId;
+    /** 所属专业ID */
+    private Long majorId;
+    /** 班级 */
+    private String className;
+    /** 生源地(省份) */
+    private String originPlace;
+    /** 入学年份 */
+    private Integer enrollYear;
+    /** 学籍状态: 1=在读, 2=休学, 3=毕业, 0=退学 */
+    private Integer status;
 }
