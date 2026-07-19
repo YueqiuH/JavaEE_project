@@ -107,8 +107,8 @@ public class CompetitionController {
     }
 
     @GetMapping("/competitions/{id}/teams")
-    @RequirePermission("competition:review:read-self")
-    @Operation(summary = "教师查询本人指定竞赛的全部参赛队伍")
+    @RequirePermission("competition:read")
+    @Operation(summary = "教师查询本人竞赛队伍，辅导员和教务处查询全部竞赛队伍")
     public CommonResult<PageResult<CompetitionTeamVo>> listCompetitionTeams(
             @PathVariable Long id,
             @RequestParam(defaultValue = "1") @Min(1) long page,
@@ -217,8 +217,8 @@ public class CompetitionController {
     }
 
     @GetMapping("/competition-reviews")
-    @RequirePermission("competition:review:read-self")
-    @Operation(summary = "教师查询本人竞赛的队伍审核队列")
+    @RequirePermission("competition:read")
+    @Operation(summary = "教师查询本人审核队列，辅导员和教务处查询全部队伍")
     public CommonResult<PageResult<CompetitionTeamVo>> listReviews(
             @RequestParam(defaultValue = "1") @Min(1) long page,
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) long size,

@@ -90,7 +90,7 @@ class StatusChangeServiceTest {
 
     @Test
     void academicReviewCannotSkipCounselorStage() {
-        CurrentUserContext.set(teacherSession());
+        CurrentUserContext.set(academicSession());
         when(statusChangeMapper.selectById(10L))
                 .thenReturn(application(10L, 1L, StatusChangeStatus.COUNSELOR_REVIEW));
         StatusChangeReviewRequest request = reviewRequest("ACADEMIC", "APPROVE", null);
@@ -105,9 +105,10 @@ class StatusChangeServiceTest {
 
     @Test
     void rejectingAtEitherStageRequiresOpinion() {
-        CurrentUserContext.set(teacherSession());
+        CurrentUserContext.set(counselorSession());
         when(statusChangeMapper.selectById(10L))
                 .thenReturn(application(10L, 1L, StatusChangeStatus.COUNSELOR_REVIEW));
+        when(statusChangeMapper.countCounseledStudent(1L, 2L)).thenReturn(1);
         StatusChangeReviewRequest request = reviewRequest("COUNSELOR", "REJECT", "");
 
         StatusChangeService service = new StatusChangeService(statusChangeMapper);
@@ -120,9 +121,10 @@ class StatusChangeServiceTest {
 
     @Test
     void counselorApprovalMovesApplicationToAcademicReview() {
-        CurrentUserContext.set(teacherSession());
+        CurrentUserContext.set(counselorSession());
         when(statusChangeMapper.selectById(10L))
                 .thenReturn(application(10L, 1L, StatusChangeStatus.COUNSELOR_REVIEW));
+        when(statusChangeMapper.countCounseledStudent(1L, 2L)).thenReturn(1);
         when(statusChangeMapper.update(any(), any())).thenReturn(1);
         StatusChangeApplicationVo view = new StatusChangeApplicationVo();
         view.setChangeId(10L);
@@ -138,15 +140,15 @@ class StatusChangeServiceTest {
     }
 
     @Test
-    void teacherCanListAllSubmittedHistoryWithoutDrafts() {
-        CurrentUserContext.set(teacherSession());
+    void academicOfficeCanListAllSubmittedHistoryWithoutDrafts() {
+        CurrentUserContext.set(academicSession());
         Page<StatusChangeApplicationVo> queryResult = new Page<>(1, 10);
         StatusChangeApplicationVo approved = new StatusChangeApplicationVo();
         approved.setChangeId(10L);
         approved.setStatusCode(StatusChangeStatus.APPROVED.code());
         queryResult.setRecords(List.of(approved));
         queryResult.setTotal(1);
-        when(statusChangeMapper.selectApplicationPage(any(), isNull(), isNull(), eq(true)))
+        when(statusChangeMapper.selectApplicationPage(any(), isNull(), isNull(), isNull(), eq(true)))
                 .thenReturn(queryResult);
 
         var result = new StatusChangeService(statusChangeMapper)
@@ -154,21 +156,21 @@ class StatusChangeServiceTest {
 
         assertThat(result.getTotal()).isEqualTo(1);
         assertThat(result.getRecords().getFirst().getStatus()).isEqualTo("APPROVED");
-        verify(statusChangeMapper).selectApplicationPage(any(), isNull(), isNull(), eq(true));
+        verify(statusChangeMapper).selectApplicationPage(any(), isNull(), isNull(), isNull(), eq(true));
     }
 
     @Test
-    void teacherCanFilterAllRecordsByCompletedStatus() {
-        CurrentUserContext.set(teacherSession());
+    void academicOfficeCanFilterAllRecordsByCompletedStatus() {
+        CurrentUserContext.set(academicSession());
         Page<StatusChangeApplicationVo> queryResult = new Page<>(1, 10);
         queryResult.setRecords(List.of());
-        when(statusChangeMapper.selectApplicationPage(any(), isNull(),
+        when(statusChangeMapper.selectApplicationPage(any(), isNull(), isNull(),
                 eq(StatusChangeStatus.ACADEMIC_REJECTED.code()), eq(true))).thenReturn(queryResult);
 
         new StatusChangeService(statusChangeMapper)
                 .listForReview(1, 10, "ALL", "ACADEMIC_REJECTED");
 
-        verify(statusChangeMapper).selectApplicationPage(any(), isNull(),
+        verify(statusChangeMapper).selectApplicationPage(any(), isNull(), isNull(),
                 eq(StatusChangeStatus.ACADEMIC_REJECTED.code()), eq(true));
     }
 
@@ -182,7 +184,7 @@ class StatusChangeServiceTest {
                 .extracting(error -> ((BusinessException) error).getErrorCode().getCode())
                 .isEqualTo(GlobalErrorCodeConstants.FORBIDDEN.getCode());
 
-        verify(statusChangeMapper, never()).selectApplicationPage(any(), any(), any(), anyBoolean());
+        verify(statusChangeMapper, never()).selectApplicationPage(any(), any(), any(), any(), anyBoolean());
     }
 
     private StatusChangeApplicationRequest validRequest() {
@@ -205,8 +207,12 @@ class StatusChangeServiceTest {
         return new AuthSession(1L, "600001", 1, Set.of("STUDENT"), Set.of(), 0);
     }
 
-    private AuthSession teacherSession() {
-        return new AuthSession(2L, "700001", 2, Set.of("TEACHER"), Set.of("status:review:read"), 0);
+    private AuthSession counselorSession() {
+        return new AuthSession(2L, "700001", 3, Set.of("COUNSELOR"), Set.of("status:review:read"), 0);
+    }
+
+    private AuthSession academicSession() {
+        return new AuthSession(4L, "admin", 4, Set.of("ADMIN"), Set.of("status:review:read"), 0);
     }
 
     private StudentEntity student(Long id) {

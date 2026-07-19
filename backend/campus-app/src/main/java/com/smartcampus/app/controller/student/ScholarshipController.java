@@ -50,12 +50,13 @@ public class ScholarshipController {
 
     @GetMapping("/scholarship-reviews")
     @RequirePermission("scholarship:review:read")
-    @Operation(summary = "查询教师评审队列")
+    @Operation(summary = "按辅导员初审或教务终审阶段查询评审队列")
     public CommonResult<PageResult<ScholarshipApplicationVo>> listForReview(
             @RequestParam(defaultValue = "1") @Min(1) long page,
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) long size,
+            @RequestParam(required = false) String stage,
             @RequestParam(required = false) String status) {
-        return CommonResult.success(scholarshipService.listForReview(page, size, status));
+        return CommonResult.success(scholarshipService.listForReview(page, size, stage, status));
     }
 
     @GetMapping("/scholarships/{id}")
@@ -96,7 +97,7 @@ public class ScholarshipController {
 
     @PostMapping("/scholarships/{id}/reviews")
     @RequirePermission("scholarship:review:submit")
-    @Operation(summary = "提交教师评审结论")
+    @Operation(summary = "提交辅导员初审或教务终审结论")
     public CommonResult<ScholarshipApplicationVo> review(
             @PathVariable Long id,
             @Valid @RequestBody ScholarshipReviewRequest request) {

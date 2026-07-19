@@ -60,10 +60,16 @@ export const listMyEvaluationTasks = () => request.get(`${STUDENT_API_PREFIX}/ev
 export const submitEvaluation = (selectionId, data) =>
   request.post(`${STUDENT_API_PREFIX}/evaluation-tasks/${selectionId}/submissions`, data)
 
+export const submitCounselorEvaluation = (data) =>
+  request.post(`${STUDENT_API_PREFIX}/evaluation-counselor-task/mine/submissions`, data)
+
 export const getMyEvaluationOverview = () => request.get(`${STUDENT_API_PREFIX}/evaluation-results/mine`)
 
-export const getMyCourseEvaluationDetail = (courseId, semester) =>
-  request.get(`${STUDENT_API_PREFIX}/evaluation-results/mine/courses/${courseId}`, { params: { semester } })
+export const getMyCourseEvaluationDetail = (courseId, semester, teacherId) =>
+  request.get(`${STUDENT_API_PREFIX}/evaluation-results/mine/courses/${courseId}`, { params: { semester, teacherId } })
+
+export const getCounselorEvaluationDetail = (counselorId, semester) =>
+  request.get(`${STUDENT_API_PREFIX}/evaluation-results/mine/counselors/${counselorId}`, { params: { semester } })
 
 export const listCompetitions = (params) => request.get(`${STUDENT_API_PREFIX}/competitions`, { params })
 

@@ -21,6 +21,14 @@ public class ScholarshipApplicationVo {
     private Long reviewerId;
     private String reviewerName;
     private String reviewOpinion;
+    private Long counselorId;
+    private String counselorName;
+    private String counselorOpinion;
+    private LocalDateTime counselorReviewedAt;
+    private Long academicReviewerId;
+    private String academicReviewerName;
+    private String academicOpinion;
+    private LocalDateTime academicReviewedAt;
     private LocalDateTime applyTime;
     private LocalDateTime reviewedAt;
     private LocalDateTime selectedAt;

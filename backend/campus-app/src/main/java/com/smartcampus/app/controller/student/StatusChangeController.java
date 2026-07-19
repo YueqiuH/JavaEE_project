@@ -73,7 +73,7 @@ public class StatusChangeController {
 
     @GetMapping("/status-change-reviews")
     @RequirePermission("status:review:read")
-    @Operation(summary = "查询教师可见的学籍异动记录与审核队列")
+    @Operation(summary = "查询辅导员初审或教务终审队列")
     public CommonResult<PageResult<StatusChangeApplicationVo>> listForReview(
             @RequestParam(defaultValue = "ALL") @Pattern(regexp = "COUNSELOR|ACADEMIC|ALL") String stage,
             @RequestParam(required = false) String status,

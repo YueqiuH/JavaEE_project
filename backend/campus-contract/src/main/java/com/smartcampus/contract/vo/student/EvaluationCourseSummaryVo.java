@@ -7,6 +7,9 @@ import java.math.BigDecimal;
 @Data
 public class EvaluationCourseSummaryVo {
 
+    private String targetType;
+    private Long teacherId;
+    private String teacherName;
     private Long courseId;
     private String courseName;
     private String semester;

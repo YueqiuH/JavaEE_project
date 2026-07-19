@@ -66,6 +66,7 @@ public interface StatusChangeMapper extends BaseMapper<StudentStatusChange> {
             LEFT JOIN user au ON au.user_id = c.academic_reviewer_id
             WHERE 1 = 1
             <if test="studentId != null">AND c.student_id = #{studentId}</if>
+            <if test="counselorUserId != null">AND s.counselor_id = #{counselorUserId}</if>
             <if test="status != null">AND c.status = #{status}</if>
             <if test="excludeDraft">AND c.status != 0</if>
             ORDER BY c.updated_at DESC, c.change_id DESC
@@ -74,6 +75,7 @@ public interface StatusChangeMapper extends BaseMapper<StudentStatusChange> {
     IPage<StatusChangeApplicationVo> selectApplicationPage(
             Page<StatusChangeApplicationVo> page,
             @Param("studentId") Long studentId,
+            @Param("counselorUserId") Long counselorUserId,
             @Param("status") Integer status,
             @Param("excludeDraft") boolean excludeDraft
     );
@@ -94,6 +96,9 @@ public interface StatusChangeMapper extends BaseMapper<StudentStatusChange> {
             WHERE c.change_id = #{id}
             """)
     StatusChangeApplicationVo selectApplicationById(@Param("id") Long id);
+
+    @Select("SELECT COUNT(*) FROM student WHERE student_id = #{studentId} AND counselor_id = #{counselorUserId}")
+    int countCounseledStudent(@Param("studentId") Long studentId, @Param("counselorUserId") Long counselorUserId);
 
     @Select("""
             SELECT COUNT(*) FROM student_status_change

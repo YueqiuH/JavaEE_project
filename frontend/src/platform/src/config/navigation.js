@@ -6,7 +6,7 @@ export const domains = [
 ]
 
 export const services = [
-  // userType: 1=学生, 2=辅导员, 3=教职工, 4=教务处
+  // userType: 1=学生, 2=教师, 3=教职工/辅导员, 4=教务处
   { key: 'course-schedule', routeName: 'courseSchedule', title: '排课与课表', description: '查看课程安排、教室与调课信息', domain: 'teaching', icon: 'Calendar', template: 'schedule', summary: '今日 4 节课程', status: '今日', roles: [1,2,3,4] },
   { key: 'course-selection', routeName: 'courseSelection', title: '选课与容量', description: '课程检索、容量控制与选课办理', domain: 'teaching', icon: 'Select', template: 'transaction', summary: '第二轮选课进行中', status: '开放中', roles: [1,3,4] },
   { key: 'score-management', routeName: 'scoreManagement', title: '成绩评定与预警', description: '成绩录入、绩点计算与学业预警', domain: 'teaching', icon: 'TrendCharts', template: 'table', summary: '8 条待关注预警', status: '待处理', roles: [1,2,3,4] },
@@ -14,11 +14,11 @@ export const services = [
   { key: 'graduation-design', routeName: 'graduationDesign', title: '毕业设计管理', description: '课题发布、学生选题与报告管理', domain: 'teaching', icon: 'DocumentChecked', template: 'approval', summary: '毕业设计全流程管理', status: '进行中', roles: [1,3,4] },
   { key: 'ai-learning', routeName: 'aiLearning', title: 'AI 智能学习助理', description: '材料总结、复习题与学习路径建议', domain: 'teaching', icon: 'MagicStick', template: 'ai', summary: '基于课程材料智能辅学', status: '演示模式', ai: true, roles: [1,2,3,4] },
 
-  { key: 'student-status', routeName: 'studentStatus', title: '学籍变动', description: '休复学、转专业等申请与审核', domain: 'student', icon: 'Refresh', template: 'approval', summary: '1 项申请审核中', status: '审核中' },
-  { key: 'scholarship', routeName: 'scholarship', title: '奖助贷评审', description: '资助申请、材料审核与名额评定', domain: 'student', icon: 'Medal', template: 'approval', summary: '本学年申请已开放', status: '开放中' },
-  { key: 'teaching-evaluation', routeName: 'teachingEvaluation', title: '评教反馈', description: '课程评教、反馈与质量分析', domain: 'student', icon: 'ChatLineSquare', template: 'transaction', summary: '2 门课程待评教', status: '待完成' },
-  { key: 'competition', routeName: 'competition', title: '学科竞赛', description: '竞赛发现、组队报名与成果管理', domain: 'student', icon: 'Trophy', template: 'transaction', summary: '6 项竞赛报名中', status: '报名中' },
-  { key: 'lab-booking', routeName: 'labBooking', title: '实验室预约', description: '实验室当日容量预约', domain: 'student', icon: 'OfficeBuilding', template: 'schedule', summary: '按今日容量开放', status: '可预约' },
+  { key: 'student-status', routeName: 'studentStatus', title: '学籍变动', description: '休复学、转专业等申请与审核', domain: 'student', icon: 'Refresh', template: 'approval', summary: '1 项申请审核中', status: '审核中', permissions: ['status:change:read-self', 'status:review:read'] },
+  { key: 'scholarship', routeName: 'scholarship', title: '奖助贷评审', description: '资助申请、材料审核与名额评定', domain: 'student', icon: 'Medal', template: 'approval', summary: '本学年申请已开放', status: '开放中', permissions: ['scholarship:application:read-self', 'scholarship:review:read'] },
+  { key: 'teaching-evaluation', routeName: 'teachingEvaluation', title: '评教反馈', description: '课程评教、反馈与质量分析', domain: 'student', icon: 'ChatLineSquare', template: 'transaction', summary: '2 门课程待评教', status: '待完成', permissions: ['evaluation:task:read-self', 'evaluation:result:read-self', 'evaluation:result:read-counseled', 'evaluation:result:read-all'] },
+  { key: 'competition', routeName: 'competition', title: '学科竞赛', description: '竞赛发现、组队报名与成果管理', domain: 'student', icon: 'Trophy', template: 'transaction', summary: '6 项竞赛报名中', status: '报名中', permission: 'competition:read' },
+  { key: 'lab-booking', routeName: 'labBooking', title: '实验室预约', description: '实验室当日容量预约', domain: 'student', icon: 'OfficeBuilding', template: 'schedule', summary: '按今日容量开放', status: '可预约', permission: 'lab:read' },
 
   { key: 'fee-payment', routeName: 'feePayment', title: '学杂费交纳', description: '账单查询、在线缴费与学生缴费概览', domain: 'office', icon: 'Wallet', template: 'transaction', summary: '支持学生自助、教师欠费查询与财务导入', status: '已完成', permissions: ['fee:self:read', 'fee:overview:read', 'fee:manage'] },
   { key: 'asset-management', routeName: 'assetManagement', title: '固定资产审批', description: '购买、添加、借用、损坏报废申请与管理员审批', domain: 'office', icon: 'Box', template: 'table', summary: '四类固定资产审批', status: '待处理', permissions: ['asset:read'] },

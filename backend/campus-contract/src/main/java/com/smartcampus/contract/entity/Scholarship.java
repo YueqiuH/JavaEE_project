@@ -25,6 +25,12 @@ public class Scholarship implements Serializable {
     private Integer status;
     private Long reviewerId;
     private String reviewOpinion;
+    private Long counselorId;
+    private String counselorOpinion;
+    private LocalDateTime counselorReviewedAt;
+    private Long academicReviewerId;
+    private String academicOpinion;
+    private LocalDateTime academicReviewedAt;
     private LocalDateTime applyTime;
     private LocalDateTime reviewedAt;
     private LocalDateTime selectedAt;

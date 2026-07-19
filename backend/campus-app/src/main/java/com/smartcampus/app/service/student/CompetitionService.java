@@ -41,6 +41,8 @@ public class CompetitionService {
 
     private static final String STUDENT_ROLE = "STUDENT";
     private static final String TEACHER_ROLE = "TEACHER";
+    private static final String COUNSELOR_ROLE = "COUNSELOR";
+    private static final String ADMIN_ROLE = "ADMIN";
     private static final DateTimeFormatter NUMBER_DATE = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     private final CompetitionMapper competitionMapper;
@@ -69,7 +71,7 @@ public class CompetitionService {
             openOnly = true;
         } else if (session.roles().contains(TEACHER_ROLE)) {
             publisherId = session.userId();
-        } else {
+        } else if (!isOversight(session)) {
             throw forbidden();
         }
         Page<CompetitionVo> query = new Page<>(page, size);
@@ -158,17 +160,27 @@ public class CompetitionService {
     }
 
     public PageResult<CompetitionTeamVo> listReviews(long page, long size, String statusName) {
-        AuthSession session = requireTeacher("competition:review:read-self");
+        AuthSession session = requirePermission("competition:read");
+        if (!session.roles().contains(TEACHER_ROLE) && !isOversight(session)) {
+            throw forbidden();
+        }
         Integer status = statusName == null || statusName.isBlank()
-                ? CompetitionTeamStatus.SUBMITTED.code() : parseTeamStatus(statusName);
-        return listTeams(page, size, null, session.userId(), null, status);
+                ? (session.roles().contains(TEACHER_ROLE) ? CompetitionTeamStatus.SUBMITTED.code() : null)
+                : parseTeamStatus(statusName);
+        Long publisherId = session.roles().contains(TEACHER_ROLE) ? session.userId() : null;
+        return listTeams(page, size, null, publisherId, null, status);
     }
 
     public PageResult<CompetitionTeamVo> listCompetitionTeams(
             Long competitionId, long page, long size, String statusName) {
-        requireTeacher("competition:review:read-self");
-        requireOwnedCompetition(competitionId);
-        return listTeams(page, size, null, CurrentUserContext.require().userId(),
+        AuthSession session = requirePermission("competition:read");
+        if (session.roles().contains(TEACHER_ROLE)) {
+            requireOwnedCompetition(competitionId);
+        } else if (!isOversight(session)) {
+            throw forbidden();
+        }
+        Long publisherId = session.roles().contains(TEACHER_ROLE) ? session.userId() : null;
+        return listTeams(page, size, null, publisherId,
                 competitionId, parseTeamStatus(statusName));
     }
 
@@ -201,6 +213,8 @@ public class CompetitionService {
             if (!session.userId().equals(team.getPublisherId())) {
                 throw new BusinessException(CompetitionErrorCodes.TEAM_NOT_VISIBLE);
             }
+        } else if (isOversight(session) && session.hasPermission("competition:oversight:read")) {
+            // Oversight roles may inspect every competition and team, but cannot review them.
         } else {
             throw forbidden();
         }
@@ -605,6 +619,11 @@ public class CompetitionService {
             throw forbidden();
         }
         return session;
+    }
+
+    private boolean isOversight(AuthSession session) {
+        return (session.roles().contains(COUNSELOR_ROLE) || session.roles().contains(ADMIN_ROLE))
+                && session.hasPermission("competition:oversight:read");
     }
 
     private StudentEntity requireStudent(AuthSession session) {
