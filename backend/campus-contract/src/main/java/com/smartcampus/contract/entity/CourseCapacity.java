@@ -15,4 +15,6 @@ public class CourseCapacity implements Serializable {
     private Integer maxCapacity;
     private Integer currentCount;
     private Integer minCapacity;
+    /** 漏洞9: 关联schedule表，每个教学班独立容量 */
+    private Long scheduleId;
 }

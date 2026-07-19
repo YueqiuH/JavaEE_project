@@ -711,9 +711,9 @@ CREATE TABLE IF NOT EXISTS `forum_comment` (
 
 INSERT INTO `role` (`role_code`, `role_name`) VALUES
     ('STUDENT', '学生'),
-    ('TEACHER', '教师'),
+    ('COUNSELOR', '辅导员'),
     ('STAFF', '教职工'),
-    ('ADMIN', '系统管理员')
+    ('ADMIN', '教务处管理员')
 ON DUPLICATE KEY UPDATE `role_name` = VALUES(`role_name`);
 
 INSERT INTO `permission` (`permission_code`, `permission_name`) VALUES
@@ -729,6 +729,7 @@ INSERT INTO `permission` (`permission_code`, `permission_name`) VALUES
     ('document:manage', '管理公文审批资格与流程'),
     ('meeting:self', '查看并反馈本人会议'), ('meeting:manage', '发布和管理会议'),
     ('notification:self:read', '读取本人通知'),
+    ('counselor:read', '辅导员查阅'), ('counselor:write', '辅导员管理'),
     ('scholarship:application:read-self', '查看本人奖助贷申请'),
     ('scholarship:application:create', '创建奖助贷申请'),
     ('scholarship:application:update-self', '修改本人奖助贷申请'),
@@ -750,17 +751,17 @@ ON DUPLICATE KEY UPDATE `permission_name` = VALUES(`permission_name`);
 
 INSERT INTO `user` (`username`, `password`, `user_type`, `status`) VALUES
     ('600001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1),
-    ('700001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 2, 1),
-    ('800001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 3, 1),
-    ('admin', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 4, 1)
+    ('700001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 3, 1),
+    ('800001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 2, 1),
+    ('admin',  '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 4, 1)
 ON DUPLICATE KEY UPDATE `password` = VALUES(`password`), `user_type` = VALUES(`user_type`), `status` = VALUES(`status`);
 
 INSERT IGNORE INTO `user_role` (`user_id`, `role_id`)
 SELECT u.user_id, r.role_id FROM `user` u JOIN `role` r ON
     (u.username = '600001' AND r.role_code = 'STUDENT') OR
-    (u.username = '700001' AND r.role_code = 'TEACHER') OR
+    (u.username = '700001' AND r.role_code = 'COUNSELOR') OR
     (u.username = '800001' AND r.role_code = 'STAFF') OR
-    (u.username = 'admin' AND r.role_code = 'ADMIN');
+    (u.username = 'admin'  AND r.role_code = 'ADMIN');
 
 INSERT IGNORE INTO `role_permission` (`role_id`, `permission_id`)
 SELECT r.role_id, p.permission_id FROM `role` r CROSS JOIN `permission` p WHERE
@@ -781,6 +782,8 @@ SELECT r.role_id, p.permission_id FROM `role` r CROSS JOIN `permission` p WHERE
         'meeting:self', 'meeting:manage', 'notification:self:read',
         'scholarship:review:read', 'scholarship:review:submit', 'scholarship:result:generate',
         'status:review:read', 'status:review:submit'))
+    OR (r.role_code = 'COUNSELOR' AND p.permission_code IN (
+        'teaching:read', 'student:read', 'student:write', 'base:read', 'counselor:read', 'counselor:write'))
     OR (r.role_code = 'STAFF' AND p.permission_code IN (
         'student:read', 'student:write', 'office:read', 'office:write', 'base:read',
         'fee:self:read', 'fee:self:pay', 'fee:manage',
@@ -808,6 +811,12 @@ INSERT INTO `menu` (`title`, `path`, `permission_code`, `sort_order`) VALUES
     ('基础数据', '/home/user-management', 'base:read', 40)
 ON DUPLICATE KEY UPDATE `title` = VALUES(`title`), `permission_code` = VALUES(`permission_code`), `sort_order` = VALUES(`sort_order`);
 
+-- ============================================
+-- 成员 D：基础数据种子
+-- 表结构（user/student 档案字段、department/major/enrollment 唯一键）已并入上方建表语句，
+-- 新建库无需执行 migration/base/V20260717100000__base_profile_columns.sql。
+-- 演示种子数据（院系/专业/师生档案/招生计划/新闻/论坛）请在本脚本之后执行：
+--   database/migration/base/V20260717100500__base_seed_data.sql
 -- ============================================
 -- C4 公文固定流程演示数据（幂等）
 -- ============================================
@@ -1000,11 +1009,3 @@ WHERE document.title IN ('【演示】智慧教室设备采购请示', '【演�
   AND NOT EXISTS (SELECT 1 FROM `notification` notification
                   WHERE notification.user_id = document.current_approver_id
                     AND notification.content = CONCAT('《', document.title, '》等待您的审批'));
-
--- ============================================
--- 成员 D：基础数据种子
--- 表结构（user/student 档案字段、department/major/enrollment 唯一键）已并入上方建表语句，
--- 新建库无需执行 migration/base/V20260717100000__base_profile_columns.sql。
--- 演示种子数据（院系/专业/师生档案/招生计划/新闻/论坛）请在本脚本之后执行：
---   database/migration/base/V20260717100500__base_seed_data.sql
--- ============================================

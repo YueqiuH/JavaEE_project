@@ -13,9 +13,13 @@ spring:
       max-request-size: 21MB
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${DB_URL:jdbc:mysql://localhost:3306/school_spring?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&allowMultiQueries=true}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/school_spring?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&allowMultiQueries=true&createDatabaseIfNotExist=true}
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:}
+    password: ${DB_PASSWORD:111111}
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -53,7 +57,7 @@ mybatis-plus:
 
 app:
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
   auth:
     session-ttl: ${AUTH_SESSION_TTL:2h}
     sliding-expiration: ${AUTH_SLIDING_EXPIRATION:true}

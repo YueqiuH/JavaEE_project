@@ -11,5 +11,7 @@ public class GraduationTopic implements Serializable {
     private String title; private String description;
     private Long teacherId; private String majorRequire;
     private Integer maxStudent; private Integer currentStudent;
-    private String semester; private Integer status;
+    private String semester;
+    /** 1=可选, 0=不可选/已满, 2=待审批 */
+    private Integer status;
 }
