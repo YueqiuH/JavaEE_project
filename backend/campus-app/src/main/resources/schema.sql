@@ -42,8 +42,15 @@ CREATE TABLE IF NOT EXISTS `student` (
 
 -- 课程表
 CREATE TABLE IF NOT EXISTS `course` (
-    `course_id`   BIGINT       NOT NULL AUTO_INCREMENT COMMENT '课程主键ID',
-    `course_name` VARCHAR(64)  NOT NULL                COMMENT '课程名称',
+    `course_id`        BIGINT       NOT NULL AUTO_INCREMENT COMMENT '课程主键ID',
+    `course_name`      VARCHAR(64)  NOT NULL                COMMENT '课程名称',
+    `course_code`      VARCHAR(16)  DEFAULT NULL            COMMENT '课程编号',
+    `classification`   VARCHAR(8)   DEFAULT NULL            COMMENT '必修/选修/限选',
+    `credit`           DECIMAL(3,1) DEFAULT NULL            COMMENT '学分 1-5',
+    `weekly_frequency` INT          DEFAULT NULL            COMMENT '每周上课次数：1或2',
+    `prerequisite_id`  BIGINT       DEFAULT NULL            COMMENT '先修课程ID，自关联',
+    `is_active`        TINYINT      NOT NULL DEFAULT 1      COMMENT '是否开课: 1=正常, 0=停开',
+    `created_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`course_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='课程表';
 
