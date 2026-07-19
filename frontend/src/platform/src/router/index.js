@@ -30,10 +30,10 @@ const router = createRouter({
         { path: '/workbench', name: 'workbench', component: WorkbenchView, meta: { name: '工作台' } },
 
         { path: 'course-schedule', name: 'courseSchedule', component: () => import('@/views/teaching/CourseSchedule.vue'), meta: featureMeta('排课与课表', 'teaching', 'course-schedule') },
+        { path: 'auto-schedule', name: 'autoSchedule', component: () => import('@/views/teaching/AutoSchedule.vue'), meta: featureMeta('自动排课引擎', 'teaching', 'auto-schedule') },
         { path: 'course-selection', name: 'courseSelection', component: () => import('@/views/teaching/CourseSelection.vue'), meta: featureMeta('选课与容量', 'teaching', 'course-selection') },
         { path: 'score-management', name: 'scoreManagement', component: () => import('@/views/teaching/ScoreManagement.vue'), meta: featureMeta('成绩评定与预警', 'teaching', 'score-management') },
         { path: 'exam-arrangement', name: 'examArrangement', component: () => import('@/views/teaching/ExamArrangement.vue'), meta: featureMeta('考试与补考', 'teaching', 'exam-arrangement') },
-        { path: 'graduation-design', name: 'graduationDesign', component: () => import('@/views/teaching/GraduationDesign.vue'), meta: featureMeta('毕业设计管理', 'teaching', 'graduation-design') },
         { path: 'ai-learning', name: 'aiLearning', component: () => import('@/views/teaching/AiLearning.vue'), meta: featureMeta('AI 智能学习助理', 'teaching', 'ai-learning') },
 
         { path: 'student-status', name: 'studentStatus', component: () => import('@/views/student/StudentStatus.vue'), meta: featureMeta('学籍变动', 'student', 'student-status') },

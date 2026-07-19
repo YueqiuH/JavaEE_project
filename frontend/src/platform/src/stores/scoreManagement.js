@@ -23,10 +23,10 @@ export const useScoreStore = defineStore('scoreManagement', () => {
   const role = computed(() => {
     if (!currentUser.value) return 'guest'
     const t = currentUser.value.userType
-    if (t === 4) return 'admin'
-    if (t === 3) return 'counselor'
-    if (t === 2) return 'teacher'
-    return 'student'
+    if (t === 4) return 'admin'        // 教务处
+    if (t === 3) return 'teacher'      // 教职工
+    if (t === 2) return 'counselor'    // 辅导员
+    return 'student'                   // 学生
   })
 
   // ==================== 状态 ====================

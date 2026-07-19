@@ -12,6 +12,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import java.util.Arrays;
 import java.util.List;
 
+import org.springframework.core.Ordered;
+
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
@@ -38,7 +40,7 @@ public class WebConfig implements WebMvcConfigurer {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         FilterRegistrationBean<CorsFilter> bean = new FilterRegistrationBean<>(new CorsFilter(source));
-        bean.setOrder(1);
+        bean.setOrder(Ordered.HIGHEST_PRECEDENCE + 5);
         return bean;
     }
 }

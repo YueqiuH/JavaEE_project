@@ -35,8 +35,7 @@
             cr.classroom_name,
             cap.current_count AS enrolled_count,
             cap.max_capacity,
-            (SELECT COUNT(*) FROM score sc WHERE sc.schedule_id = sch.schedule_id AND sc.publish_status = 2) AS graded_count,
-            (SELECT COUNT(*) FROM score sc WHERE sc.schedule_id = sch.schedule_id AND sc.publish_status = 1) AS draft_count
+            (SELECT COUNT(*) FROM score sc WHERE sc.course_id = sch.course_id) AS graded_count
         FROM schedule sch
         LEFT JOIN course c ON sch.course_id = c.course_id
         LEFT JOIN classroom cr ON sch.classroom_id = cr.classroom_id

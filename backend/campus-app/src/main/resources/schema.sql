@@ -548,3 +548,155 @@ CREATE TABLE IF NOT EXISTS `forum_comment` (
     `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '回复时间',
     PRIMARY KEY (`comment_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='论坛回复表';
+
+-- =====================================
+-- 测试种子数据（含学生/教师/成绩/选课）
+-- =====================================
+DELETE FROM score WHERE 1=1;
+DELETE FROM course_selection WHERE 1=1;
+DELETE FROM schedule WHERE 1=1;
+DELETE FROM course_capacity WHERE 1=1;
+DELETE FROM course WHERE 1=1;
+DELETE FROM classroom WHERE 1=1;
+DELETE FROM student WHERE 1=1;
+DELETE FROM user WHERE username LIKE '60%' AND user_id > 2;
+DELETE FROM user WHERE username = 'teacher01' OR username = 'teacher02';
+
+-- 教师账号（教职工 user_type=3）
+INSERT INTO user (username, password, user_type, status) VALUES
+('teacher01', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 3, 1),
+('teacher02', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 3, 1)
+ON DUPLICATE KEY UPDATE username=VALUES(username);
+
+-- 学生账号（user_type=1，学号 600001-600010）
+INSERT INTO user (username, password, user_type, status) VALUES
+('600001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1),
+('600002', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1),
+('600003', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1),
+('600004', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1),
+('600005', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1),
+('600006', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1),
+('600007', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1),
+('600008', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1),
+('600009', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1),
+('600010', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1)
+ON DUPLICATE KEY UPDATE username=VALUES(username);
+
+-- 学生档案
+INSERT INTO student (student_id, student_name, student_no, grade_id, student_age) VALUES
+(2,  '林同学', 600001, 1, 20),
+(6,  '张伟',   600002, 1, 19),
+(7,  '李娜',   600003, 1, 20),
+(8,  '王强',   600004, 1, 21),
+(9,  '赵敏',   600005, 2, 19),
+(10, '陈静',   600006, 2, 20),
+(11, '刘洋',   600007, 2, 21),
+(12, '周杰',   600008, 3, 19),
+(13, '吴芳',   600009, 3, 20),
+(14, '孙鹏',   600010, 3, 21)
+ON DUPLICATE KEY UPDATE student_name=VALUES(student_name);
+
+-- 学生角色分配
+INSERT IGNORE INTO user_role (user_id, role_id)
+SELECT u.user_id, r.role_id FROM user u JOIN role r ON
+    u.username LIKE '60%' AND r.role_code = 'STUDENT';
+
+-- 教室
+INSERT INTO classroom (classroom_id, classroom_name, building, capacity, type, status) VALUES
+(1, '教学楼A101', 'A栋', 60,  '普通教室', 1),
+(2, '教学楼A102', 'A栋', 45,  '普通教室', 1),
+(3, '教学楼B201', 'B栋', 80,  '多媒体',   1),
+(4, '实验楼C101', 'C栋', 30,  '实验室',   1),
+(5, '实验楼C102', 'C栋', 30,  '实验室',   1),
+(6, '阶梯教室D101','D栋', 120, '阶梯教室', 1)
+ON DUPLICATE KEY UPDATE classroom_name=VALUES(classroom_name);
+
+-- 课程
+INSERT INTO course (course_id, course_name, course_code, classification, credit, weekly_frequency, is_active) VALUES
+(1,  '高等数学(上)',      'MATH101', '必修', 5, 2, 1),
+(2,  '线性代数',          'MATH102', '必修', 3, 2, 1),
+(3,  '大学物理',          'PHYS101', '必修', 4, 2, 1),
+(4,  '大学英语(三)',      'ENGL101', '必修', 3, 2, 1),
+(5,  '数据结构与算法',    'CS201',   '必修', 4, 2, 1),
+(6,  '操作系统',          'CS301',   '必修', 3, 1, 1),
+(7,  '马克思主义原理',    'POLI101', '必修', 2, 1, 1),
+(8,  '大学体育(三)',      'PE101',   '必修', 1, 1, 1),
+(9,  'Python程序设计',    'CS105',   '选修', 2, 1, 1),
+(10, '数据库原理与应用',  'CS202',   '限选', 3, 2, 1)
+ON DUPLICATE KEY UPDATE course_name=VALUES(course_name);
+
+-- 容量
+INSERT INTO course_capacity (course_id, semester, max_capacity, current_count, min_capacity) VALUES
+(1,'2025-2026-1',60,50,15),(2,'2025-2026-1',50,45,15),
+(3,'2025-2026-1',55,48,15),(4,'2025-2026-1',45,42,15),
+(5,'2025-2026-1',40,38,15),(6,'2025-2026-1',35,30,10),
+(7,'2025-2026-1',80,78,20),(8,'2025-2026-1',30,28,10),
+(9,'2025-2026-1',60,55,15),(10,'2025-2026-1',40,35,10)
+ON DUPLICATE KEY UPDATE current_count=VALUES(current_count);
+
+-- 排课（teacherId: 3=700001, 4=800001, 5=admin, 后续=teacher01/02）
+INSERT INTO schedule (course_id, classroom_id, teacher_id, semester, week_day, start_period, end_period, start_week, end_week, schedule_type, week_pattern) VALUES
+(1, 6, 3, '2025-2026-1', 1, 1, 2, 1, 16, '正常', 'every'),
+(1, 6, 3, '2025-2026-1', 3, 3, 5, 1, 16, '正常', 'every'),
+(2, 1, 3, '2025-2026-1', 2, 3, 5, 1, 16, '正常', 'every'),
+(3, 3, 3, '2025-2026-1', 3, 8, 10, 1, 16, '正常', 'every'),
+(4, 2, 4, '2025-2026-1', 4, 3, 5, 1, 16, '正常', 'every'),
+(5, 3, 4, '2025-2026-1', 5, 8, 10, 1, 16, '正常', 'every'),
+(6, 1, 3, '2025-2026-1', 1, 8, 10, 1, 16, '正常', 'every'),
+(7, 6, 4, '2025-2026-1', 2, 1, 2, 1, 16, '正常', 'every'),
+(8, 4, 5, '2025-2026-1', 5, 6, 7, 1, 16, '正常', 'every'),
+(9, 5, 4, '2025-2026-1', 3, 1, 2, 1, 16, '正常', 'every'),
+(10,1, 3, '2025-2026-1', 4, 8, 10, 1, 16, '正常', 'every')
+ON DUPLICATE KEY UPDATE week_day=VALUES(week_day);
+
+-- 选课（学生2=600001, 6-14=600002-600010）
+INSERT INTO course_selection (student_id, course_id, schedule_id, semester, status, select_time) VALUES
+(2, 1, 1, '2025-2026-1', 1, NOW()),(2, 2, 3, '2025-2026-1', 1, NOW()),
+(2, 4, 5, '2025-2026-1', 1, NOW()),(2, 7, 8, '2025-2026-1', 1, NOW()),
+(2, 9, 10,'2025-2026-1', 1, NOW()),
+(6, 1, 1, '2025-2026-1', 1, NOW()),(6, 3, 4, '2025-2026-1', 1, NOW()),
+(6, 5, 6, '2025-2026-1', 1, NOW()),(6, 8, 9, '2025-2026-1', 1, NOW()),
+(7, 2, 3, '2025-2026-1', 1, NOW()),(7, 4, 5, '2025-2026-1', 1, NOW()),
+(7, 6, 7, '2025-2026-1', 1, NOW()),(7,10,11,'2025-2026-1', 1, NOW()),
+(8, 1, 1, '2025-2026-1', 1, NOW()),(8, 9,10,'2025-2026-1', 1, NOW()),
+(9, 3, 4, '2025-2026-1', 1, NOW()),(9, 5, 6, '2025-2026-1', 1, NOW()),
+(9, 7, 8, '2025-2026-1', 1, NOW()),
+(10,2, 3, '2025-2026-1', 1, NOW()),(10,4, 5,'2025-2026-1', 1, NOW()),
+(10,6, 7, '2025-2026-1', 1, NOW()),
+(11,1, 1, '2025-2026-1', 1, NOW()),(11,8, 9,'2025-2026-1', 1, NOW()),
+(12,5, 6, '2025-2026-1', 1, NOW()),(12,10,11,'2025-2026-1', 1, NOW()),
+(13,3, 4, '2025-2026-1', 1, NOW()),(13,7, 8,'2025-2026-1', 1, NOW()),
+(14,2, 3, '2025-2026-1', 1, NOW()),(14,9,10,'2025-2026-1', 1, NOW())
+ON DUPLICATE KEY UPDATE status=VALUES(status);
+
+-- 成绩（含已发布和未发布）
+INSERT INTO score (student_id, course_id, score_score, semester, gpa, status) VALUES
+-- 600001 林同学: 全部及格
+(2, 1, 88, '2025-2026-1', 3.3, 1),(2, 2, 76, '2025-2026-1', 2.3, 1),
+(2, 4, 82, '2025-2026-1', 3.3, 1),(2, 7, 90, '2025-2026-1', 4.0, 1),
+(2, 9, 65, '2025-2026-1', 1.5, 1),
+-- 600002 张伟: 1门不及格
+(6, 1, 55, '2025-2026-1', 0.0, 0),(6, 3, 72, '2025-2026-1', 2.0, 1),
+(6, 5, 81, '2025-2026-1', 3.0, 1),(6, 8, 78, '2025-2026-1', 3.0, 1),
+-- 600003 李娜: 全部高分
+(7, 2, 95, '2025-2026-1', 4.0, 1),(7, 4, 88, '2025-2026-1', 3.3, 1),
+(7, 6, 91, '2025-2026-1', 4.0, 1),(7,10, 85, '2025-2026-1', 3.7, 1),
+-- 600004 王强: 2门不及格(预警)
+(8, 1, 48, '2025-2026-1', 0.0, 0),(8, 9, 52, '2025-2026-1', 0.0, 0),
+-- 600005 赵敏: 正常
+(9, 3, 74, '2025-2026-1', 2.0, 1),(9, 5, 68, '2025-2026-1', 2.0, 1),
+(9, 7, 83, '2025-2026-1', 3.3, 1),
+-- 600006 陈静: 1门不及格
+(10,2, 58, '2025-2026-1', 0.0, 0),(10,4, 77, '2025-2026-1', 2.3, 1),
+(10,6, 79, '2025-2026-1', 2.3, 1),
+-- 600007 刘洋: 3门不及格(红色预警,学期14学分)
+(11,1, 45, '2025-2026-1', 0.0, 0),(11,8, 50, '2025-2026-1', 0.0, 0),
+-- 600008 周杰: 正常
+(12,5, 86, '2025-2026-1', 3.3, 1),(12,10,71,'2025-2026-1', 2.0, 1),
+-- 600009 吴芳: 正常
+(13,3, 80, '2025-2026-1', 3.0, 1),(13,7, 66, '2025-2026-1', 1.5, 1),
+-- 600010 孙鹏: 1门不及格
+(14,2, 59, '2025-2026-1', 0.0, 0),(14,9, 73, '2025-2026-1', 2.0, 1)
+ON DUPLICATE KEY UPDATE score_score=VALUES(score_score);
+
+
