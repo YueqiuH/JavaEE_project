@@ -1,12 +1,6 @@
 -- ============================================
--- 智慧校园服务平台 - 数据库初始化脚本
+-- 智慧校园服务平台 - Flyway 基线初始化脚本
 -- ============================================
-
-CREATE DATABASE IF NOT EXISTS school_spring
-    DEFAULT CHARACTER SET utf8mb4
-    DEFAULT COLLATE utf8mb4_general_ci;
-
-USE school_spring;
 
 -- ============================================
 -- 共享基础表

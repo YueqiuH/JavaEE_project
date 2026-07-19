@@ -19,7 +19,7 @@ AI 功能是加分项，默认构建不会加载 Spring AI、DashScope、DeepSee
 | `600001` | 学生（可申请请假并接收勤工俭学任务） |
 | `700001` | 教师（可查看学生缴费概览并指派勤工俭学） |
 | `800001` | 教职工（可指派勤工俭学） |
-| `admin` | 系统管理员（可管理账单，无学生缴费概览权限） |
+| `admin` | 系统管理员 |
 
 ## 后端配置
 
@@ -33,11 +33,10 @@ $env:DB_PASSWORD = "your-password"
 $env:REDIS_PASSWORD = ""
 ```
 
-初始化数据库：
-
-```powershell
-Get-Content -Raw database/baseline/init.sql | mysql -u root -p
-```
+数据库由 Flyway 在后端启动时自动初始化和升级，不再手工执行
+`database/migration` 下的历史脚本。`DB_URL` 指向的 MySQL 账号需要具备建库、建表和
+`ALTER TABLE` 权限；使用示例连接串时，`school_spring` 不存在也会自动创建。已有数据库
+会先登记基线，再按版本补齐结构，迁移不会在每次启动时清空业务数据。
 
 运行后端测试并启动应用：
 
