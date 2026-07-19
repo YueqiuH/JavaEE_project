@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.smartcampus.app.dao.teaching.CourseCapacityMapper">
+
+    <!-- 漏洞14: 原子增加容量（行级锁安全） -->
+    <update id="incrementCount">
+        UPDATE course_capacity
+        SET current_count = current_count + 1
+        WHERE capacity_id = #{capacityId}
+          AND current_count &lt; max_capacity
+    </update>
+
+    <!-- 漏洞14: 原子减少容量 -->
+    <update id="decrementCount">
+        UPDATE course_capacity
+        SET current_count = current_count - 1
+        WHERE capacity_id = #{capacityId}
+          AND current_count &gt; 0
+    </update>
+
+</mapper>

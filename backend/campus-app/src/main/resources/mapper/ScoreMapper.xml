@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smartcampus.app.dao.teaching.ScoreMapper">
+
+    <select id="selectByStudentId" resultType="map">
+        SELECT s.*, c.course_name, c.course_code, c.classification, c.credit
+        FROM score s
+        LEFT JOIN course c ON s.course_id = c.course_id
+        WHERE s.student_id = #{studentId}
+        ORDER BY s.semester DESC, c.course_code
+    </select>
+
+    <select id="selectByCourseAndSemester" resultType="map">
+        SELECT s.*, st.student_name, st.student_no, u.username
+        FROM score s
+        LEFT JOIN student st ON s.student_id = st.student_id
+        LEFT JOIN user u ON s.student_id = u.user_id
+        WHERE s.course_id = #{courseId}
+        <if test="semester != null">AND s.semester = #{semester}</if>
+        ORDER BY s.score_score DESC
+    </select>
+
+    <select id="selectTeacherClasses" resultType="map">
+        SELECT
+            sch.schedule_id,
+            sch.course_id,
+            sch.semester,
+            sch.week_day,
+            sch.start_period,
+            sch.end_period,
+            c.course_name,
+            c.course_code,
+            c.classification,
+            c.credit,
+            cr.classroom_name,
+            cap.current_count AS enrolled_count,
+            cap.max_capacity,
+            (SELECT COUNT(*) FROM score sc WHERE sc.schedule_id = sch.schedule_id AND sc.publish_status = 2) AS graded_count,
+            (SELECT COUNT(*) FROM score sc WHERE sc.schedule_id = sch.schedule_id AND sc.publish_status = 1) AS draft_count
+        FROM schedule sch
+        LEFT JOIN course c ON sch.course_id = c.course_id
+        LEFT JOIN classroom cr ON sch.classroom_id = cr.classroom_id
+        LEFT JOIN course_capacity cap ON sch.schedule_id = cap.schedule_id AND sch.semester = cap.semester
+        WHERE sch.teacher_id = #{teacherId} AND sch.semester = #{semester}
+        ORDER BY sch.week_day, sch.start_period
+    </select>
+
+    <select id="selectCounselorWarnings" resultType="map">
+        SELECT
+            s.student_id,
+            st.student_name,
+            st.student_no,
+            COUNT(CASE WHEN sc.status = 0 THEN 1 END) AS fail_count,
+            SUM(CASE WHEN sc.status = 0 THEN COALESCE(c.credit, 2) ELSE 0 END) AS fail_credits,
+            SUM(CASE WHEN sc.semester = #{semester} AND sc.status = 0 THEN COALESCE(c.credit, 2) ELSE 0 END) AS current_fail_credits
+        FROM student st
+        JOIN score sc ON st.student_id = sc.student_id
+        LEFT JOIN course c ON sc.course_id = c.course_id
+        JOIN (
+            -- 辅导员所辖班级学生：通过 grade 关联
+            SELECT DISTINCT s2.student_id
+            FROM student s2
+            WHERE s2.grade_id IN (
+                SELECT g.grade_id FROM grade g
+                -- 实际业务中 counselor_id 关联逻辑由应用层处理
+            )
+        ) s ON st.student_id = s.student_id
+        WHERE sc.status = 0
+        GROUP BY s.student_id, st.student_name, st.student_no
+        HAVING fail_credits >= 10
+        ORDER BY fail_credits DESC
+    </select>
+
+</mapper>

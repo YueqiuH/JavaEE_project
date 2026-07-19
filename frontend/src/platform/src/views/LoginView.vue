@@ -47,7 +47,7 @@ const rules={username:[{required:true,message:'请输入账号',trigger:'blur'},
 const goHome=()=>router.push('/?preview=public')
 const fillDemoAccount=()=>{formData.value.username='600001';formData.value.password='123321';ElMessage.success('已填入学生演示账号')}
 const submitForm=(formEl)=>{if(!formEl)return;formEl.validate(valid=>{if(valid)login()})}
-const login=async()=>{buttonLoading.value=true;try{const result=await loginUser(formData.value);setAccessToken(result.data.token);setStoredCurrentUser(result.data.currentUser);if(rememberAccount.value)localStorage.setItem(ACCOUNT_KEY,formData.value.username);else localStorage.removeItem(ACCOUNT_KEY);ElMessage.success('登录成功');const redirect=router.currentRoute.value.query.redirect;await router.push(typeof redirect==='string'?redirect:'/home')}catch{}finally{buttonLoading.value=false}}
+const login=async()=>{buttonLoading.value=true;try{const result=await loginUser(formData.value);const token=result.data.token;const user=result.data.currentUser;if(!token||!user){ElMessage.error('登录返回数据异常，请重试');return};setAccessToken(token);setStoredCurrentUser(user);if(rememberAccount.value)localStorage.setItem(ACCOUNT_KEY,formData.value.username);else localStorage.removeItem(ACCOUNT_KEY);ElMessage.success('登录成功');const redirect=router.currentRoute.value.query.redirect;await router.push(typeof redirect==='string'?redirect:'/home')}catch(e){console.error('登录失败',e);ElMessage.error('登录失败，请检查账号密码')}finally{buttonLoading.value=false}}
 onMounted(()=>{const saved=localStorage.getItem(ACCOUNT_KEY);if(saved)formData.value.username=saved})
 </script>
 

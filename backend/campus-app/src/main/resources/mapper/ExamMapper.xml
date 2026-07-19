@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smartcampus.app.dao.teaching.ExamMapper">
+    <select id="selectByStudent" resultType="com.smartcampus.contract.entity.Exam">
+        SELECT DISTINCT e.* FROM exam e
+        INNER JOIN course_selection cs ON e.course_id = cs.course_id
+            AND cs.student_id = #{studentId} AND cs.semester = #{semester} AND cs.status = 1
+        WHERE e.semester = #{semester}
+        ORDER BY e.exam_date, e.start_time
+    </select>
+</mapper>
