@@ -17,7 +17,14 @@ CREATE TABLE IF NOT EXISTS `user` (
     `user_id`    BIGINT       NOT NULL AUTO_INCREMENT COMMENT '用户主键ID',
     `username`   VARCHAR(64)  NOT NULL                COMMENT '用户名/账号',
     `password`   VARCHAR(100) NOT NULL                COMMENT 'BCrypt密码哈希',
-    `user_type`  TINYINT      NOT NULL DEFAULT 1      COMMENT '人员类别: 1=学生, 2=辅导员, 3=教职工, 4=教务处管理员',
+    `user_type`  TINYINT      NOT NULL DEFAULT 1      COMMENT '人员类别: 1=学生, 2=教师, 3=教职工, 4=管理员',
+    `real_name`  VARCHAR(32)  DEFAULT NULL            COMMENT '姓名',
+    `gender`     TINYINT      DEFAULT NULL            COMMENT '性别: 1=男, 2=女',
+    `phone`      VARCHAR(20)  DEFAULT NULL            COMMENT '联系电话',
+    `email`      VARCHAR(64)  DEFAULT NULL            COMMENT '邮箱',
+    `title`      VARCHAR(32)  DEFAULT NULL            COMMENT '职称',
+    `position`   VARCHAR(32)  DEFAULT NULL            COMMENT '职务',
+    `dept_id`    BIGINT       DEFAULT NULL            COMMENT '所属院系ID',
     `status`     TINYINT      NOT NULL DEFAULT 1      COMMENT '状态: 1=启用, 0=停用',
     `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -81,7 +88,16 @@ CREATE TABLE IF NOT EXISTS `student` (
     `student_no`      BIGINT       NOT NULL                COMMENT '学号',
     `grade_id`        BIGINT       DEFAULT NULL            COMMENT '年级ID',
     `student_age`     INT          DEFAULT NULL            COMMENT '学生年龄',
-    PRIMARY KEY (`student_id`)
+    `gender`          TINYINT      DEFAULT NULL            COMMENT '性别: 1=男, 2=女',
+    `dept_id`         BIGINT       DEFAULT NULL            COMMENT '所属院系ID',
+    `major_id`        BIGINT       DEFAULT NULL            COMMENT '所属专业ID',
+    `class_name`      VARCHAR(32)  DEFAULT NULL            COMMENT '班级',
+    `origin_place`    VARCHAR(32)  DEFAULT NULL            COMMENT '生源地(省份)',
+    `enroll_year`     INT          DEFAULT NULL            COMMENT '入学年份',
+    `status`          TINYINT      NOT NULL DEFAULT 1      COMMENT '学籍状态: 1=在读, 2=休学, 3=毕业, 0=退学',
+    PRIMARY KEY (`student_id`),
+    UNIQUE KEY `uk_student_no` (`student_no`),
+    KEY `idx_student_dept_major` (`dept_id`, `major_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='学生表';
 
 -- 课程表
@@ -111,7 +127,8 @@ CREATE TABLE IF NOT EXISTS `department` (
     `dept_name` VARCHAR(64)  NOT NULL                COMMENT '院系名称',
     `dept_code` VARCHAR(16)  DEFAULT NULL            COMMENT '院系编号',
     `description` TEXT       DEFAULT NULL            COMMENT '院系简介',
-    PRIMARY KEY (`dept_id`)
+    PRIMARY KEY (`dept_id`),
+    UNIQUE KEY `uk_dept_code` (`dept_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='院系表';
 
 -- 专业表
@@ -121,7 +138,8 @@ CREATE TABLE IF NOT EXISTS `major` (
     `major_name` VARCHAR(64)  NOT NULL                COMMENT '专业名称',
     `major_code` VARCHAR(16)  DEFAULT NULL            COMMENT '专业编号',
     `cultivation_plan` TEXT   DEFAULT NULL            COMMENT '培养方案',
-    PRIMARY KEY (`major_id`)
+    PRIMARY KEY (`major_id`),
+    UNIQUE KEY `uk_major_code` (`major_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='专业表';
 
 -- ============================================
@@ -647,7 +665,8 @@ CREATE TABLE IF NOT EXISTS `enrollment` (
     `actual_count`   INT    DEFAULT 0               COMMENT '实际报到人数',
     `year`           INT    NOT NULL                COMMENT '年度',
     `report_rate`    DECIMAL(5,2) DEFAULT NULL      COMMENT '报到率',
-    PRIMARY KEY (`enrollment_id`)
+    PRIMARY KEY (`enrollment_id`),
+    UNIQUE KEY `uk_enrollment_major_year` (`major_id`, `year`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='招生计划表';
 
 -- 新闻公告表
@@ -792,6 +811,12 @@ INSERT INTO `menu` (`title`, `path`, `permission_code`, `sort_order`) VALUES
     ('基础数据', '/home/user-management', 'base:read', 40)
 ON DUPLICATE KEY UPDATE `title` = VALUES(`title`), `permission_code` = VALUES(`permission_code`), `sort_order` = VALUES(`sort_order`);
 
+-- ============================================
+-- 成员 D：基础数据种子
+-- 表结构（user/student 档案字段、department/major/enrollment 唯一键）已并入上方建表语句，
+-- 新建库无需执行 migration/base/V20260717100000__base_profile_columns.sql。
+-- 演示种子数据（院系/专业/师生档案/招生计划/新闻/论坛）请在本脚本之后执行：
+--   database/migration/base/V20260717100500__base_seed_data.sql
 -- ============================================
 -- C4 公文固定流程演示数据（幂等）
 -- ============================================

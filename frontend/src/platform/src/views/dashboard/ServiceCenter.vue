@@ -12,8 +12,8 @@
     <section class="container center-content">
       <div class="filter-row">
         <div class="domain-filter" role="tablist" aria-label="服务分类">
-          <button type="button" :class="{ active: activeDomain === 'all' }" @click="activeDomain = 'all'">全部 <span>24</span></button>
-          <button v-for="domain in domains" :key="domain.key" type="button" :class="{ active: activeDomain === domain.key }" @click="activeDomain = domain.key">{{ domain.label }} <span>6</span></button>
+          <button type="button" :class="{ active: activeDomain === 'all' }" @click="activeDomain = 'all'">全部 <span>{{ visibleTotal }}</span></button>
+          <button v-for="domain in domains" :key="domain.key" type="button" :class="{ active: activeDomain === domain.key }" @click="activeDomain = domain.key">{{ domainLabels[domain.key] }} <span>{{ visibleDomainCounts[domain.key] || 0 }}</span></button>
         </div>
         <el-checkbox v-model="favoritesOnly">只看收藏</el-checkbox>
       </div>
@@ -32,17 +32,33 @@
 </template>
 
 <script setup>
-import { computed, inject, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Search } from '@element-plus/icons-vue'
 import ServiceCard from '@/components/ServiceCard.vue'
-import { canAccessService, domainMap, domains, services } from '@/config/navigation.js'
+import { domainMap, domains, services, getBaseDomainLabel } from '@/config/navigation.js'
 import { useServicePreferences } from '@/utils/servicePreferences.js'
+import { getStoredCurrentUser } from '@/utils/authSession.js'
 
 const route = useRoute()
 const router = useRouter()
-const currentUser = inject('currentUser', ref(null))
 const { favoriteKeys, isFavorite, toggleFavorite, recordRecent } = useServicePreferences()
+const userPermissions = computed(() => getStoredCurrentUser()?.permissions || [])
+const canSeeSvc = (s) => !s.permission || userPermissions.value.includes(s.permission) || (s.broadPermission && userPermissions.value.includes(s.broadPermission))
+const visibleServices = computed(() => services.filter(canSeeSvc))
+const visibleTotal = computed(() => visibleServices.value.length)
+const domainLabels = computed(() => {
+  const labels = {}
+  for (const d of domains) {
+    labels[d.key] = d.key === 'base' ? getBaseDomainLabel(userPermissions.value) : d.label
+  }
+  return labels
+})
+const visibleDomainCounts = computed(() => {
+  const counts = {}
+  for (const d of domains) counts[d.key] = visibleServices.value.filter(s => s.domain === d.key).length
+  return counts
+})
 const keyword = ref('')
 const activeDomain = ref(domainMap[route.query.domain] ? route.query.domain : 'all')
 const favoritesOnly = ref(false)
@@ -53,12 +69,11 @@ watch(() => route.query.domain, (domain) => { if (domainMap[domain]) activeDomai
 const resultTitle = computed(() => activeDomain.value === 'all' ? '全部服务' : domainMap[activeDomain.value].label)
 const filteredServices = computed(() => {
   const normalizedKeyword = keyword.value.trim().toLowerCase()
-  const result = services.filter((service) => {
-    const matchesPermission = canAccessService(service, currentUser.value?.permissions || [])
+  const result = visibleServices.value.filter((service) => {
     const matchesDomain = activeDomain.value === 'all' || service.domain === activeDomain.value
     const matchesFavorite = !favoritesOnly.value || favoriteKeys.value.includes(service.key)
     const matchesKeyword = !normalizedKeyword || `${service.title}${service.description}`.toLowerCase().includes(normalizedKeyword)
-    return matchesPermission && matchesDomain && matchesFavorite && matchesKeyword
+    return matchesDomain && matchesFavorite && matchesKeyword
   })
   return sortMode.value === 'name' ? [...result].sort((a, b) => a.title.localeCompare(b.title, 'zh-CN')) : result
 })
