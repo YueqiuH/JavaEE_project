@@ -27,15 +27,22 @@ export const services = [
   { key: 'meeting-notice', routeName: 'meetingNotice', title: '会议与通知', description: '会议安排、通知发布与反馈', domain: 'office', icon: 'Bell', template: 'schedule', summary: '14:30 教学工作会', status: '今日', roles: [2,3,4] },
   { key: 'ai-approval', routeName: 'aiApproval', title: 'AI 审批助手', description: '公文摘要、要点提取与意见草稿', domain: 'office', icon: 'MagicStick', template: 'ai', summary: '为审批工作提供智能建议', status: '演示模式', ai: true, roles: [2,3,4] },
 
-  { key: 'user-management', routeName: 'userManagement', title: '师生信息库', description: '师生数字档案与组合检索', domain: 'base', icon: 'UserFilled', template: 'table', summary: '数据更新于 10 分钟前', status: '已同步', roles: [3,4] },
-  { key: 'enrollment-stats', routeName: 'enrollmentStats', title: '招生统计', description: '招生计划、报到率与生源分析', domain: 'base', icon: 'Histogram', template: 'analytics', summary: '2026 年招生数据', status: '实时', roles: [4] },
-  { key: 'student-analytics', routeName: 'studentAnalytics', title: '学生多维统计', description: '院系、年级与学生特征分析', domain: 'base', icon: 'PieChart', template: 'analytics', summary: '支持多维筛选与下钻', status: '实时', roles: [3,4] },
-  { key: 'department-major', routeName: 'departmentMajor', title: '院系专业管理', description: '院系、专业与培养资源维护', domain: 'base', icon: 'Management', template: 'table', summary: '18 个院系 · 64 个专业', status: '已同步', roles: [3,4] },
-  { key: 'news-forum', routeName: 'newsForum', title: '新闻与论坛', description: '新闻公告发布与校园交流', domain: 'base', icon: 'ChatDotSquare', template: 'table', summary: '7 条内容待审核', status: '待处理', roles: [3,4] },
-  { key: 'ai-report', routeName: 'aiReport', title: 'AI 智能报表', description: '自然语言查询与图表生成', domain: 'base', icon: 'DataLine', template: 'ai', summary: '用自然语言探索校园数据', status: '演示模式', ai: true, roles: [3,4] },
+  { key: 'user-management', routeName: 'userManagement', title: '师生信息库', description: '师生数字档案与组合检索', domain: 'base', icon: 'UserFilled', template: 'table', summary: '数据更新于 10 分钟前', status: '已同步', permission: 'base:read' },
+  { key: 'enrollment-stats', routeName: 'enrollmentStats', title: '招生统计', description: '招生计划、报到率与生源分析', domain: 'base', icon: 'Histogram', template: 'analytics', summary: '2026 年招生数据', status: '实时', permission: 'base:read' },
+  { key: 'student-analytics', routeName: 'studentAnalytics', title: '学生多维统计', description: '院系、年级与学生特征分析', domain: 'base', icon: 'PieChart', template: 'analytics', summary: '支持多维筛选与下钻', status: '实时', permission: 'base:read' },
+  { key: 'department-major', routeName: 'departmentMajor', title: '院系专业管理', description: '院系、专业与培养资源维护', domain: 'base', icon: 'Management', template: 'table', summary: '18 个院系 · 64 个专业', status: '已同步', permission: 'base:read' },
+  { key: 'news-forum', routeName: 'newsForum', title: '新闻与论坛', description: '新闻公告发布与校园交流', domain: 'base', icon: 'ChatDotSquare', template: 'table', summary: '校园资讯与师生交流', status: '正常', permission: 'forum:read', broadPermission: 'base:read' },
+  { key: 'ai-report', routeName: 'aiReport', title: 'AI 智能报表', description: '自然语言查询与图表生成', domain: 'base', icon: 'DataLine', template: 'ai', summary: '用自然语言探索校园数据', status: '演示模式', ai: true, permission: 'base:read' },
+]
 ]
 
 export const domainMap = Object.fromEntries(domains.map((domain) => [domain.key, domain]))
+
+/** 基础数据域动态标签：学生（无 base:read）显示「校园资讯」 */
+export function getBaseDomainLabel(permissions) {
+  if (!permissions || !permissions.length) return '校园资讯'
+  return permissions.includes('base:read') ? '基础数据' : '校园资讯'
+}
 export const serviceMap = Object.fromEntries(services.map((service) => [service.key, service]))
 
 /** @param {number|null} userType 1=学生,2=辅导员,3=教职工,4=教务处 */
