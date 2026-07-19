@@ -26,7 +26,21 @@
     </template>
 
     <el-dialog v-model="visible" title="发布会议" width="min(620px,92vw)">
-      <el-form label-position="top"><el-form-item label="会议主题"><el-input v-model="form.title" /></el-form-item><el-form-item label="会议内容"><el-input v-model="form.content" type="textarea" :rows="4" /></el-form-item><el-form-item label="会议日期"><el-date-picker v-model="form.meetingDate" value-format="YYYY-MM-DD" /></el-form-item><el-form-item label="起止时间"><el-time-picker v-model="timeRange" is-range value-format="HH:mm:ss" /></el-form-item><el-form-item label="会议地点"><el-input v-model="form.location" /></el-form-item><el-form-item label="参会用户 ID"><el-input v-model="attendeeText" placeholder="多个 ID 用逗号分隔，如：1,2,3" /></el-form-item></el-form>
+      <el-form label-position="top">
+        <el-form-item label="会议主题"><el-input v-model="form.title" /></el-form-item>
+        <el-form-item label="会议内容"><el-input v-model="form.content" type="textarea" :rows="4" /></el-form-item>
+        <el-form-item label="会议日期"><el-date-picker v-model="form.meetingDate" value-format="YYYY-MM-DD" /></el-form-item>
+        <el-form-item label="起止时间"><el-time-picker v-model="timeRange" is-range value-format="HH:mm:ss" /></el-form-item>
+        <el-form-item label="会议地点"><el-input v-model="form.location" /></el-form-item>
+        <el-form-item label="参会范围">
+          <el-checkbox-group v-model="audienceTypes" class="meeting-audience-options">
+            <el-checkbox v-for="option in audienceOptions" :key="option.value" :value="option.value" border>
+              {{ option.label }}
+            </el-checkbox>
+          </el-checkbox-group>
+          <div class="meeting-audience-hint">发布时将按当前启用账号生成参会名单，同一人员只通知一次。</div>
+        </el-form-item>
+      </el-form>
       <template #footer><el-button @click="visible=false">取消</el-button><el-button type="primary" @click="publish">发布</el-button></template>
     </el-dialog>
     <el-dialog v-model="summaryVisible" title="参会反馈汇总" width="420px"><el-descriptions :column="1" border><el-descriptions-item v-for="(count,status) in summaryData" :key="status" :label="status">{{ count }} 人</el-descriptions-item></el-descriptions></el-dialog>
@@ -48,16 +62,60 @@ const notifications = ref([])
 const visible = ref(false)
 const summaryVisible = ref(false)
 const summaryData = ref({})
-const attendeeText = ref('2')
+const audienceOptions = [
+  { value: 'ALL_STUDENTS', label: '全体学生' },
+  { value: 'COUNSELORS', label: '全体辅导员（教师）' },
+  { value: 'STAFF', label: '全体教职工' },
+  { value: 'ACADEMIC_AFFAIRS', label: '全体教务处（领导）' },
+]
+const audienceTypes = ref(['ALL_STUDENTS'])
 const timeRange = ref([])
 const form = reactive({ title: '', content: '', meetingDate: '', location: '' })
 const unread = computed(() => notifications.value.filter(item=>item.isRead===0).length)
 const load = async () => { const tasks=[]; if(canManage.value)tasks.push(meetingAPI.list().then(r=>{meetings.value=r.data||[]})); else if(canMeetingSelf.value)tasks.push(meetingAPI.mine().then(r=>{meetings.value=r.data||[]})); if(canNotify.value)tasks.push(meetingAPI.notifications().then(r=>{notifications.value=r.data||[]})); await Promise.all(tasks) }
-const publish = async () => { const ids=attendeeText.value.split(',').map(v=>Number(v.trim())).filter(Number.isInteger); await meetingAPI.publish({meeting:{...form,startTime:timeRange.value?.[0],endTime:timeRange.value?.[1]},attendeeIds:ids}); ElMessage.success('会议发布成功，通知已推送'); visible.value=false; await load() }
+const publish = async () => {
+  if (!audienceTypes.value.length) {
+    ElMessage.warning('请至少选择一个参会范围')
+    return
+  }
+  await meetingAPI.publish({
+    meeting: { ...form, startTime: timeRange.value?.[0], endTime: timeRange.value?.[1] },
+    audienceTypes: audienceTypes.value,
+  })
+  ElMessage.success('会议发布成功，通知已按参会范围推送')
+  visible.value = false
+  await load()
+}
 const reply = async (row,status) => { await meetingAPI.reply(row.meetingId,status); ElMessage.success(`已反馈：${status}`) }
 const showSummary = async (row) => { summaryData.value=(await meetingAPI.summary(row.meetingId)).data||{}; summaryVisible.value=true }
 const read = async (row) => { await meetingAPI.readNotification(row.notifyId); await load() }
 onMounted(load)
 </script>
 
-<style scoped>@import '@/assets/office-workspace.css';</style>
+<style scoped>
+@import '@/assets/office-workspace.css';
+
+.meeting-audience-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.meeting-audience-options :deep(.el-checkbox) {
+  margin: 0;
+}
+
+.meeting-audience-hint {
+  margin-top: 8px;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+@media (max-width: 560px) {
+  .meeting-audience-options {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
