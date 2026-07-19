@@ -222,8 +222,6 @@ const visibleDomainCounts = computed(() => {
   for (const d of domains) counts[d.key] = services.filter(s => s.domain === d.key && canSee(s)).length
   return counts
 })
-  || userPerms.value.includes(service.permission)
-  || (service.broadPermission && userPerms.value.includes(service.broadPermission))
 
 const quickServices = computed(() => {
   let keys = defaultRecommended
