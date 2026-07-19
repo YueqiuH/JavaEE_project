@@ -51,19 +51,34 @@ public class EvaluationController {
         return CommonResult.success(evaluationService.submit(selectionId, request));
     }
 
+    @PostMapping("/evaluation-counselor-task/mine/submissions")
+    @RequirePermission("evaluation:submit-self")
+    @Operation(summary = "匿名提交对本人辅导员的评教")
+    public CommonResult<EvaluationTaskVo> submitCounselor(
+            @Valid @RequestBody EvaluationSubmissionRequest request) {
+        return CommonResult.success(evaluationService.submitCounselor(request));
+    }
+
     @GetMapping("/evaluation-results/mine")
-    @RequirePermission("evaluation:result:read-self")
-    @Operation(summary = "查询当前教师的个人评教汇总")
+    @Operation(summary = "按当前教师、辅导员或教务处的数据范围查询评教汇总")
     public CommonResult<EvaluationTeacherOverviewVo> getMyOverview() {
         return CommonResult.success(evaluationService.getMyOverview());
     }
 
     @GetMapping("/evaluation-results/mine/courses/{courseId}")
-    @RequirePermission("evaluation:result:read-self")
-    @Operation(summary = "查询当前教师指定课程的匿名评教详情")
+    @Operation(summary = "按当前账号数据范围查询指定课程的匿名评教详情")
     public CommonResult<EvaluationCourseDetailVo> getMyCourseDetail(
             @PathVariable Long courseId,
+            @RequestParam @NotBlank @Size(max = 32) String semester,
+            @RequestParam(required = false) Long teacherId) {
+        return CommonResult.success(evaluationService.getMyCourseDetail(courseId, semester, teacherId));
+    }
+
+    @GetMapping("/evaluation-results/mine/counselors/{counselorId}")
+    @Operation(summary = "查询辅导员匿名评教详情")
+    public CommonResult<EvaluationCourseDetailVo> getCounselorDetail(
+            @PathVariable Long counselorId,
             @RequestParam @NotBlank @Size(max = 32) String semester) {
-        return CommonResult.success(evaluationService.getMyCourseDetail(courseId, semester));
+        return CommonResult.success(evaluationService.getCounselorDetail(counselorId, semester));
     }
 }

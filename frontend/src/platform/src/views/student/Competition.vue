@@ -3,13 +3,13 @@
     <header class="workspace-header">
       <div>
         <p class="eyebrow">学生事务</p>
-        <h1>{{ isTeacher ? '学科竞赛管理' : '学科竞赛与组队' }}</h1>
-        <p>{{ isTeacher ? '发布竞赛、管理报名阶段并审核参赛队伍' : '发现竞赛、邀请队员并提交团队报名材料' }}</p>
+        <h1>{{ isManager ? (isOversight ? '学科竞赛总览' : '学科竞赛管理') : '学科竞赛与组队' }}</h1>
+        <p>{{ isManager ? (isOversight ? '查看全部竞赛及其参赛队伍' : '发布竞赛、管理报名阶段并审核参赛队伍') : '发现竞赛、邀请队员并提交团队报名材料' }}</p>
       </div>
       <el-button v-if="isTeacher && activeTab === 'competitions' && canPublish" type="primary" :icon="Plus" @click="openCompetitionDialog()">发布竞赛</el-button>
     </header>
 
-    <el-result v-if="roleResolved && !isStudent && !isTeacher" icon="warning" title="当前账号无竞赛业务权限" />
+    <el-result v-if="roleResolved && !isStudent && !isManager" icon="warning" title="当前账号无竞赛业务权限" />
 
     <div v-else class="surface-panel data-panel">
       <el-tabs v-model="activeTab" class="workspace-tabs" @tab-change="resetAndLoad">
@@ -18,9 +18,9 @@
           <el-tab-pane name="teams"><template #label><span class="tab-label"><el-icon><User /></el-icon>我的队伍</span></template></el-tab-pane>
           <el-tab-pane name="invitations"><template #label><span class="tab-label"><el-icon><Bell /></el-icon>组队邀请</span></template></el-tab-pane>
         </template>
-        <template v-else-if="isTeacher">
-          <el-tab-pane name="competitions"><template #label><span class="tab-label"><el-icon><Trophy /></el-icon>我的竞赛</span></template></el-tab-pane>
-          <el-tab-pane name="reviews"><template #label><span class="tab-label"><el-icon><List /></el-icon>队伍审核</span></template></el-tab-pane>
+        <template v-else-if="isManager">
+          <el-tab-pane name="competitions"><template #label><span class="tab-label"><el-icon><Trophy /></el-icon>{{ isOversight ? '全部竞赛' : '我的竞赛' }}</span></template></el-tab-pane>
+          <el-tab-pane name="reviews"><template #label><span class="tab-label"><el-icon><List /></el-icon>{{ isOversight ? '全部队伍' : '队伍审核' }}</span></template></el-tab-pane>
         </template>
       </el-tabs>
 
@@ -82,7 +82,7 @@
         <el-table v-if="loading || records.length" v-loading="loading" :data="records" row-key="teamId" class="desktop-table" @row-click="openTeamDetail">
           <el-table-column label="队伍" min-width="210"><template #default="{ row }"><strong>{{ row.teamName }}</strong><small class="cell-subtitle">{{ row.registrationNo }}</small></template></el-table-column>
           <el-table-column label="参赛竞赛" min-width="220"><template #default="{ row }">{{ row.competitionTitle }}</template></el-table-column>
-          <el-table-column v-if="isTeacher" label="队长" min-width="140"><template #default="{ row }">{{ row.leaderName }}<small class="cell-subtitle">{{ row.leaderNo }}</small></template></el-table-column>
+          <el-table-column v-if="isManager" label="队长" min-width="140"><template #default="{ row }">{{ row.leaderName }}<small class="cell-subtitle">{{ row.leaderNo }}</small></template></el-table-column>
           <el-table-column label="成员" width="105"><template #default="{ row }">{{ row.acceptedMemberCount }} / {{ row.maxMembers }} 人</template></el-table-column>
           <el-table-column label="提交时间" min-width="150"><template #default="{ row }">{{ formatDateTime(row.submittedAt) }}</template></el-table-column>
           <el-table-column label="状态" width="105"><template #default="{ row }"><el-tag :type="teamStatusMeta(row.status).type">{{ teamStatusMeta(row.status).label }}</el-tag></template></el-table-column>
@@ -103,7 +103,7 @@
           <button v-for="row in records" :key="row.teamId" type="button" class="mobile-record" @click="openTeamDetail(row)">
             <span class="record-top"><strong>{{ row.teamName }}</strong><el-tag :type="teamStatusMeta(row.status).type" size="small">{{ teamStatusMeta(row.status).label }}</el-tag></span>
             <span>{{ row.competitionTitle }}</span>
-            <small>{{ isTeacher ? `队长 ${row.leaderName} · ` : '' }}{{ row.acceptedMemberCount }} 人已加入</small>
+            <small>{{ isManager ? `队长 ${row.leaderName} · ` : '' }}{{ row.acceptedMemberCount }} 人已加入</small>
           </button>
           <el-empty v-if="!loading && records.length === 0" class="mobile-empty" :description="emptyText" :image-size="72" />
         </div>
@@ -185,7 +185,7 @@
       <div v-if="competitionDetail" class="detail-content">
         <div class="detail-title"><div><small>{{ competitionDetail.competitionNo }}</small><h2>{{ competitionDetail.title }}</h2><span>{{ competitionDetail.publisherName }}</span></div><el-tag :type="competitionStatusMeta(competitionDetail.status).type">{{ competitionStatusMeta(competitionDetail.status).label }}</el-tag></div>
         <dl><dt>报名截止</dt><dd>{{ formatDate(competitionDetail.deadline) }}</dd><dt>组队人数</dt><dd>{{ competitionDetail.minMembers }}-{{ competitionDetail.maxMembers }} 人</dd><dt>入选名额</dt><dd>{{ competitionDetail.approvedTeamCount }} / {{ competitionDetail.maxTeamCount }} 队</dd><dt>竞赛介绍</dt><dd class="pre-wrap">{{ competitionDetail.description }}</dd><dt>参赛要求</dt><dd class="pre-wrap">{{ competitionDetail.requirements }}</dd></dl>
-        <div class="drawer-actions"><el-button v-if="isTeacher" type="primary" :icon="User" @click="openCompetitionTeams(competitionDetail)">查看参赛队伍</el-button><el-button v-if="isStudent && competitionDetail.myTeamId" :icon="User" @click="openTeamDetailById(competitionDetail.myTeamId)">查看我的队伍</el-button><el-button v-else-if="isStudent && canCreateTeam" type="primary" :icon="Plus" @click="openTeamDialog(null, competitionDetail)">发起组队</el-button></div>
+        <div class="drawer-actions"><el-button v-if="isManager" type="primary" :icon="User" @click="openCompetitionTeams(competitionDetail)">查看参赛队伍</el-button><el-button v-if="isStudent && competitionDetail.myTeamId" :icon="User" @click="openTeamDetailById(competitionDetail.myTeamId)">查看我的队伍</el-button><el-button v-else-if="isStudent && canCreateTeam" type="primary" :icon="Plus" @click="openTeamDialog(null, competitionDetail)">发起组队</el-button></div>
       </div>
     </el-drawer>
 
@@ -219,6 +219,8 @@ const permissions = computed(() => new Set(currentUser.value?.permissions || [])
 const roleResolved = computed(() => Boolean(currentUser.value))
 const isStudent = computed(() => roles.value.has('STUDENT') && permissions.value.has('competition:read'))
 const isTeacher = computed(() => roles.value.has('TEACHER') && permissions.value.has('competition:read'))
+const isOversight = computed(() => (roles.value.has('COUNSELOR') || roles.value.has('ADMIN')) && permissions.value.has('competition:oversight:read'))
+const isManager = computed(() => isTeacher.value || isOversight.value)
 const canPublish = computed(() => permissions.value.has('competition:publish'))
 const canManageCompetition = computed(() => permissions.value.has('competition:manage-self'))
 const canCreateTeam = computed(() => permissions.value.has('competition:team:create'))
@@ -256,7 +258,7 @@ const isTeamManageable = (team) => ['FORMING', 'RETURNED'].includes(team.status)
 const disablePastDate = (date) => date.getTime() < new Date().setHours(0, 0, 0, 0)
 
 const loadData = async () => {
-  if (!isStudent.value && !isTeacher.value) return
+  if (!isStudent.value && !isManager.value) return
   loading.value = true
   loadError.value = false
   try {
@@ -336,7 +338,7 @@ const reviewRules = computed(() => ({ decision: [{ required: true, message: '请
 const openReviewDialog = (team) => { reviewingTeam.value = team; Object.assign(reviewForm, { decision: 'APPROVE', opinion: '' }); reviewDialogOpen.value = true }
 const saveReview = async () => { await reviewFormRef.value.validate(); saving.value = true; try { await reviewCompetitionTeam(reviewingTeam.value.teamId, { ...reviewForm, opinion: reviewForm.opinion || null }); ElMessage.success('审核结论已提交'); reviewDialogOpen.value = false; teamDetailOpen.value = false; await loadData() } finally { saving.value = false } }
 
-watch([isStudent, isTeacher], ([student, teacher]) => { if (student) activeTab.value = 'discover'; else if (teacher) activeTab.value = 'competitions'; if (student || teacher) resetAndLoad() }, { immediate: true })
+watch([isStudent, isManager], ([student, manager]) => { if (student) activeTab.value = 'discover'; else if (manager) activeTab.value = 'competitions'; if (student || manager) resetAndLoad() }, { immediate: true })
 </script>
 
 <style scoped>

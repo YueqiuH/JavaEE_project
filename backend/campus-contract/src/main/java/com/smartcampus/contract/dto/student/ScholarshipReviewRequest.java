@@ -8,6 +8,10 @@ import lombok.Data;
 @Data
 public class ScholarshipReviewRequest {
 
+    @NotBlank(message = "请选择审核阶段")
+    @Pattern(regexp = "COUNSELOR|ACADEMIC", message = "审核阶段不正确")
+    private String stage;
+
     @NotBlank(message = "请选择评审结论")
     @Pattern(regexp = "APPROVE|RETURN|REJECT", message = "评审结论不正确")
     private String decision;

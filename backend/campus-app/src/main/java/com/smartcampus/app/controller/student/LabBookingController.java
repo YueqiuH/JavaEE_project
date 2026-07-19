@@ -62,14 +62,14 @@ public class LabBookingController {
 
     @PostMapping("/labs")
     @RequirePermission("lab:manage-self")
-    @Operation(summary = "教师创建本人负责的实验室")
+    @Operation(summary = "教师、辅导员或教务处创建本人负责的实验室")
     public CommonResult<LabVo> createLab(@Valid @RequestBody LabRequest request) {
         return CommonResult.success(labBookingService.createLab(request));
     }
 
     @PutMapping("/labs/{id}")
     @RequirePermission("lab:manage-self")
-    @Operation(summary = "教师修改本人负责的实验室")
+    @Operation(summary = "教师、辅导员或教务处修改本人负责的实验室")
     public CommonResult<LabVo> updateLab(@PathVariable Long id, @Valid @RequestBody LabRequest request) {
         return CommonResult.success(labBookingService.updateLab(id, request));
     }

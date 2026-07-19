@@ -26,6 +26,8 @@ public class StudentEntity implements Serializable {
     private Long deptId;
     /** 所属专业ID */
     private Long majorId;
+    /** 负责该学生的辅导员用户ID */
+    private Long counselorId;
     /** 班级 */
     private String className;
     /** 生源地(省份) */

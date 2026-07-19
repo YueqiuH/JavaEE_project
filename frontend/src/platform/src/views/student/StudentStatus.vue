@@ -3,13 +3,13 @@
     <header class="workspace-header">
       <div>
         <p class="eyebrow">学生事务</p>
-        <h1>{{ isTeacher ? '学籍异动审核' : '学籍信息与异动' }}</h1>
-        <p>{{ isTeacher ? '按审核阶段处理学生学籍异动申请' : '维护个人联系信息并办理学籍异动' }}</p>
+        <h1>{{ isReviewer ? '学籍异动审核' : '学籍信息与异动' }}</h1>
+        <p>{{ isReviewer ? (isCounselor ? '审核本人所带学生的学籍异动申请' : '完成学籍异动的教务终审') : '维护个人联系信息并办理学籍异动' }}</p>
       </div>
       <el-button v-if="isStudent && activeStudentTab === 'applications'" type="primary" :icon="DocumentAdd" @click="openCreateDialog">新建申请</el-button>
     </header>
 
-    <el-result v-if="roleResolved && !isStudent && !isTeacher" icon="warning" title="当前账号无学籍业务权限" />
+    <el-result v-if="roleResolved && !isStudent && !isReviewer" icon="warning" title="当前账号无学籍业务权限" />
 
     <template v-else-if="isStudent">
       <el-tabs v-model="activeStudentTab" class="workspace-tabs" @tab-change="handleStudentTabChange">
@@ -63,12 +63,12 @@
       </div>
     </template>
 
-    <template v-else-if="isTeacher">
+    <template v-else-if="isReviewer">
       <div class="surface-panel data-panel teacher-panel">
         <el-tabs v-model="reviewStage" class="workspace-tabs review-tabs" @tab-change="handleReviewStageChange">
-          <el-tab-pane name="ALL"><template #label><span class="tab-label"><el-icon><Tickets /></el-icon>全部记录</span></template></el-tab-pane>
-          <el-tab-pane name="COUNSELOR"><template #label><span class="tab-label"><el-icon><UserFilled /></el-icon>辅导员初审</span></template></el-tab-pane>
-          <el-tab-pane name="ACADEMIC"><template #label><span class="tab-label"><el-icon><OfficeBuilding /></el-icon>教务复审</span></template></el-tab-pane>
+          <el-tab-pane v-if="isAcademic" name="ALL"><template #label><span class="tab-label"><el-icon><Tickets /></el-icon>全部记录</span></template></el-tab-pane>
+          <el-tab-pane v-if="isCounselor" name="COUNSELOR"><template #label><span class="tab-label"><el-icon><UserFilled /></el-icon>辅导员初审</span></template></el-tab-pane>
+          <el-tab-pane v-if="isAcademic" name="ACADEMIC"><template #label><span class="tab-label"><el-icon><OfficeBuilding /></el-icon>教务终审</span></template></el-tab-pane>
         </el-tabs>
         <div class="panel-toolbar teacher-toolbar">
           <div><h2>{{ reviewTitle }}</h2><span>共 {{ total }} 项</span></div>
@@ -122,7 +122,7 @@
         <div class="detail-title"><div><span>{{ changeTypeLabel(detail.changeType) }}</span><h2>{{ detail.studentName || '我的申请' }}</h2><small>{{ detail.applicationNo }}</small></div><el-tag :type="statusMeta(detail.status).type">{{ statusMeta(detail.status).label }}</el-tag></div>
         <el-steps :active="stepActive(detail.status)" finish-status="success" align-center class="review-steps"><el-step title="提交" /><el-step title="初审" /><el-step title="复审" /><el-step title="办结" /></el-steps>
         <dl>
-          <template v-if="isTeacher"><dt>申请学生</dt><dd>{{ detail.studentName }}（{{ detail.studentNo }}）</dd></template>
+          <template v-if="isReviewer"><dt>申请学生</dt><dd>{{ detail.studentName }}（{{ detail.studentNo }}）</dd></template>
           <dt>异动类型</dt><dd>{{ changeTypeLabel(detail.changeType) }}</dd>
           <template v-if="detail.newMajorName"><dt>目标专业</dt><dd>{{ detail.newMajorName }}</dd></template>
           <dt>生效日期</dt><dd>{{ detail.desiredEffectiveDate }}</dd>
@@ -133,7 +133,7 @@
         <div class="drawer-actions">
           <el-button v-if="isStudent && detail.status === 'DRAFT'" :icon="EditPen" @click="openEditDialog(detail); detailOpen = false">修改申请</el-button>
           <el-button v-if="isStudent && detail.status === 'DRAFT'" type="primary" :icon="Promotion" @click="submitApplication(detail)">提交申请</el-button>
-          <el-button v-if="isTeacher && isCurrentReviewStage(detail)" type="primary" :icon="Stamp" @click="openReviewDialog(detail); detailOpen = false">开始审核</el-button>
+          <el-button v-if="isReviewer && isCurrentReviewStage(detail)" type="primary" :icon="Stamp" @click="openReviewDialog(detail); detailOpen = false">开始审核</el-button>
         </div>
       </div>
     </el-drawer>
@@ -196,9 +196,11 @@ const currentUser = inject('currentUser', ref(null))
 const roles = computed(() => new Set(currentUser.value?.roles || []))
 const roleResolved = computed(() => Boolean(currentUser.value))
 const isStudent = computed(() => roles.value.has('STUDENT'))
-const isTeacher = computed(() => roles.value.has('TEACHER'))
+const isCounselor = computed(() => roles.value.has('COUNSELOR'))
+const isAcademic = computed(() => roles.value.has('ADMIN'))
+const isReviewer = computed(() => isCounselor.value || isAcademic.value)
 const activeStudentTab = ref('profile')
-const reviewStage = ref('ALL')
+const reviewStage = ref('ACADEMIC')
 const applications = ref([]), majors = ref([]), loading = ref(false), profileLoading = ref(false), saving = ref(false)
 const page = ref(1), total = ref(0), studentStatus = ref(''), teacherStatus = ref(''), pageSize = 10
 const teacherStatusOptions = statusFilterOptions.filter((item) => item.value !== 'DRAFT')
@@ -216,7 +218,7 @@ const detailOpen = ref(false), detail = ref(null)
 
 const loadProfile = async () => { profileLoading.value = true; try { const result = await getStudentProfile(); Object.assign(profile, result.data); Object.assign(profileForm, { currentAddress: result.data.currentAddress || '', phone: result.data.phone || '', email: result.data.email || '', emergencyContact: result.data.emergencyContact || '', emergencyPhone: result.data.emergencyPhone || '' }) } finally { profileLoading.value = false } }
 const saveProfile = async () => { await profileFormRef.value.validate(); saving.value = true; try { const result = await updateStudentProfile(profileForm); Object.assign(profile, result.data); ElMessage.success('联系信息已更新') } finally { saving.value = false } }
-const loadApplications = async () => { if (!isStudent.value && !isTeacher.value) return; loading.value = true; try { const result = isStudent.value ? await listMyStatusChanges({ page: page.value, size: pageSize, status: studentStatus.value || undefined }) : await listStatusChangeReviews({ stage: reviewStage.value, status: reviewStage.value === 'ALL' ? teacherStatus.value || undefined : undefined, page: page.value, size: pageSize }); applications.value = result.data.records; total.value = result.data.total } finally { loading.value = false } }
+const loadApplications = async () => { if (!isStudent.value && !isReviewer.value) return; loading.value = true; try { const result = isStudent.value ? await listMyStatusChanges({ page: page.value, size: pageSize, status: studentStatus.value || undefined }) : await listStatusChangeReviews({ stage: reviewStage.value, status: reviewStage.value === 'ALL' ? teacherStatus.value || undefined : undefined, page: page.value, size: pageSize }); applications.value = result.data.records; total.value = result.data.total } finally { loading.value = false } }
 const resetAndLoad = () => { page.value = 1; return loadApplications() }
 const handleReviewStageChange = () => { teacherStatus.value = ''; return resetAndLoad() }
 const handleStudentTabChange = () => activeStudentTab.value === 'profile' ? loadProfile() : resetAndLoad()
@@ -233,7 +235,7 @@ const saveReview = async () => { await reviewFormRef.value.validate(); saving.va
 const isCurrentReviewStage = (row) => (reviewStage.value === 'COUNSELOR' && row.status === 'COUNSELOR_REVIEW') || (reviewStage.value === 'ACADEMIC' && row.status === 'ACADEMIC_REVIEW')
 const stepActive = (status) => ({ DRAFT: 0, COUNSELOR_REVIEW: 1, ACADEMIC_REVIEW: 2, APPROVED: 4, COUNSELOR_REJECTED: 1, ACADEMIC_REJECTED: 2, WITHDRAWN: 0 }[status] ?? 0)
 
-watch(() => currentUser.value, async (value) => { if (!value) return; if (isStudent.value) { await Promise.all([loadProfile(), listStatusChangeMajors().then((result) => { majors.value = result.data })]) } else if (isTeacher.value) await loadApplications() }, { immediate: true })
+watch(() => currentUser.value, async (value) => { if (!value) return; if (isStudent.value) { await Promise.all([loadProfile(), listStatusChangeMajors().then((result) => { majors.value = result.data })]) } else if (isReviewer.value) { reviewStage.value = isCounselor.value ? 'COUNSELOR' : 'ACADEMIC'; await loadApplications() } }, { immediate: true })
 </script>
 
 <style scoped>

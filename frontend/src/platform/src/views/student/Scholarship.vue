@@ -3,22 +3,22 @@
     <header class="workspace-header">
       <div>
         <p class="eyebrow">学生事务</p>
-        <h1>{{ isTeacher ? '奖助贷评审工作台' : '奖助贷申请' }}</h1>
-        <p>{{ isTeacher ? '审核学生申请并形成最终资助名单' : '提交奖学金、困难补助和生源地助学贷款申请' }}</p>
+        <h1>{{ isReviewer ? '奖助贷审核工作台' : '奖助贷申请' }}</h1>
+        <p>{{ isReviewer ? (isCounselor ? '完成所带学生申请的辅导员初审' : '完成教务终审并形成最终资助名单') : '提交奖学金、困难补助和生源地助学贷款申请' }}</p>
       </div>
       <el-button v-if="isStudent" type="primary" :icon="DocumentAdd" @click="openCreateDialog">新建申请</el-button>
-      <el-button v-if="isTeacher && activeTeacherTab === 'approved'" type="primary" :icon="Finished" :disabled="selectedApproved.length === 0" @click="generateResults">
+      <el-button v-if="isAcademic && activeTeacherTab === 'approved'" type="primary" :icon="Finished" :disabled="selectedApproved.length === 0" @click="generateResults">
         生成名单<span v-if="selectedApproved.length">（{{ selectedApproved.length }}）</span>
       </el-button>
     </header>
 
-    <el-result v-if="roleResolved && !isStudent && !isTeacher" icon="warning" title="当前账号无奖助贷业务权限" />
+    <el-result v-if="roleResolved && !isStudent && !isReviewer" icon="warning" title="当前账号无奖助贷业务权限" />
 
     <template v-else-if="isStudent">
       <div class="summary-strip" aria-label="申请流程">
         <div><span>1</span><strong>填写申请</strong><small>保存草稿并完善材料</small></div>
         <i></i>
-        <div><span>2</span><strong>提交评审</strong><small>等待教师审核</small></div>
+        <div><span>2</span><strong>两级审核</strong><small>辅导员初审、教务终审</small></div>
         <i></i>
         <div><span>3</span><strong>结果公示</strong><small>查看最终资助结果</small></div>
       </div>
@@ -77,16 +77,16 @@
       </div>
     </template>
 
-    <template v-else-if="isTeacher">
+    <template v-else-if="isReviewer">
       <div class="surface-panel data-panel teacher-panel">
         <el-tabs v-model="activeTeacherTab" class="review-tabs" @tab-change="handleTeacherTabChange">
           <el-tab-pane name="review">
             <template #label><span class="tab-label"><el-icon><List /></el-icon>待评审</span></template>
           </el-tab-pane>
-          <el-tab-pane name="approved">
+          <el-tab-pane v-if="isAcademic" name="approved">
             <template #label><span class="tab-label"><el-icon><CircleCheck /></el-icon>已通过</span></template>
           </el-tab-pane>
-          <el-tab-pane name="results">
+          <el-tab-pane v-if="isAcademic" name="results">
             <template #label><span class="tab-label"><el-icon><Files /></el-icon>资助名单</span></template>
           </el-tab-pane>
         </el-tabs>
@@ -202,17 +202,17 @@
           <el-tag :type="statusMeta(detail.status).type">{{ statusMeta(detail.status).label }}</el-tag>
         </div>
         <dl>
-          <template v-if="isTeacher"><dt>申请学生</dt><dd>{{ detail.studentName }}（{{ detail.studentNo }}）</dd></template>
+          <template v-if="isReviewer"><dt>申请学生</dt><dd>{{ detail.studentName }}（{{ detail.studentNo }}）</dd></template>
           <dt>提交时间</dt><dd>{{ formatDate(detail.applyTime) }}</dd>
           <dt>申请理由</dt><dd class="reason-text">{{ detail.reason }}</dd>
           <dt>证明材料</dt><dd><a v-if="detail.attachmentUrl" :href="detail.attachmentUrl" target="_blank" rel="noopener">打开材料链接</a><span v-else>未上传</span></dd>
-          <template v-if="detail.reviewOpinion"><dt>评审意见</dt><dd class="review-opinion">{{ detail.reviewOpinion }}</dd></template>
-          <template v-if="detail.reviewerName"><dt>评审人</dt><dd>{{ detail.reviewerName }} · {{ formatDate(detail.reviewedAt) }}</dd></template>
+          <template v-if="detail.counselorReviewedAt"><dt>辅导员初审</dt><dd class="review-opinion">{{ detail.counselorOpinion || '通过' }} · {{ detail.counselorName }} · {{ formatDate(detail.counselorReviewedAt) }}</dd></template>
+          <template v-if="detail.academicReviewedAt"><dt>教务终审</dt><dd class="review-opinion">{{ detail.academicOpinion || '通过' }} · {{ detail.academicReviewerName }} · {{ formatDate(detail.academicReviewedAt) }}</dd></template>
         </dl>
         <div class="drawer-actions">
           <el-button v-if="isStudent && canEdit(detail)" :icon="EditPen" @click="openEditDialog(detail); detailOpen = false">修改申请</el-button>
           <el-button v-if="isStudent && canSubmit(detail)" type="primary" :icon="Promotion" @click="submitApplication(detail)">提交申请</el-button>
-          <el-button v-if="isTeacher && detail.status === 'SUBMITTED'" type="primary" :icon="EditPen" @click="openReviewDialog(detail); detailOpen = false">开始评审</el-button>
+          <el-button v-if="isReviewer && isPendingReview(detail)" type="primary" :icon="EditPen" @click="openReviewDialog(detail); detailOpen = false">开始审核</el-button>
         </div>
       </div>
     </el-drawer>
@@ -240,7 +240,9 @@ const currentUser = inject('currentUser', ref(null))
 const roles = computed(() => new Set(currentUser.value?.roles || []))
 const roleResolved = computed(() => Boolean(currentUser.value))
 const isStudent = computed(() => roles.value.has('STUDENT'))
-const isTeacher = computed(() => roles.value.has('TEACHER'))
+const isCounselor = computed(() => roles.value.has('COUNSELOR'))
+const isAcademic = computed(() => roles.value.has('ADMIN'))
+const isReviewer = computed(() => isCounselor.value || isAcademic.value)
 
 const scholarshipTypes = [
   { value: 'SCHOLARSHIP', label: '奖学金' },
@@ -249,7 +251,8 @@ const scholarshipTypes = [
 ]
 const statusMap = {
   DRAFT: { label: '草稿', type: 'info' },
-  SUBMITTED: { label: '待评审', type: 'warning' },
+  SUBMITTED: { label: '待辅导员初审', type: 'warning' },
+  ACADEMIC_REVIEW: { label: '待教务终审', type: 'warning' },
   RETURNED: { label: '已退回', type: 'danger' },
   APPROVED: { label: '已通过', type: 'success' },
   REJECTED: { label: '未通过', type: 'danger' },
@@ -299,9 +302,10 @@ const formatDate = (value) => value ? new Intl.DateTimeFormat('zh-CN', { dateSty
 const canEdit = (row) => ['DRAFT', 'RETURNED'].includes(row.status)
 const canSubmit = (row) => ['DRAFT', 'RETURNED'].includes(row.status)
 const canWithdraw = (row) => ['DRAFT', 'SUBMITTED', 'RETURNED'].includes(row.status)
+const isPendingReview = (row) => isCounselor.value ? row.status === 'SUBMITTED' : row.status === 'ACADEMIC_REVIEW'
 
 const loadApplications = async () => {
-  if (!isStudent.value && !isTeacher.value) return
+  if (!isStudent.value && !isReviewer.value) return
   loading.value = true
   try {
     let result
@@ -310,8 +314,9 @@ const loadApplications = async () => {
     } else if (activeTeacherTab.value === 'results') {
       result = await listScholarshipResults({ page: page.value, size: pageSize })
     } else {
-      const status = activeTeacherTab.value === 'review' ? 'SUBMITTED' : 'APPROVED'
-      result = await listScholarshipReviews({ page: page.value, size: pageSize, status })
+      const stage = activeTeacherTab.value === 'review' ? (isCounselor.value ? 'COUNSELOR' : 'ACADEMIC') : 'ALL'
+      const status = activeTeacherTab.value === 'approved' ? 'APPROVED' : undefined
+      result = await listScholarshipReviews({ page: page.value, size: pageSize, stage, status })
     }
     applications.value = result.data.records
     total.value = result.data.total
@@ -361,7 +366,7 @@ const saveApplication = async () => {
 }
 
 const submitApplication = async (row) => {
-  await ElMessageBox.confirm('提交后将进入教师评审，确认提交该申请？', '提交申请', { confirmButtonText: '确认提交', cancelButtonText: '取消', type: 'warning' })
+  await ElMessageBox.confirm('提交后将先进入辅导员初审，确认提交该申请？', '提交申请', { confirmButtonText: '确认提交', cancelButtonText: '取消', type: 'warning' })
   await submitScholarshipApplication(row.scholarshipId)
   ElMessage.success('申请已提交')
   detailOpen.value = false
@@ -391,8 +396,8 @@ const saveReview = async () => {
   await reviewFormRef.value.validate()
   saving.value = true
   try {
-    await submitScholarshipReview(reviewingApplication.value.scholarshipId, { ...reviewForm, opinion: reviewForm.opinion || null })
-    ElMessage.success('评审结论已提交')
+    await submitScholarshipReview(reviewingApplication.value.scholarshipId, { stage: isCounselor.value ? 'COUNSELOR' : 'ACADEMIC', ...reviewForm, opinion: reviewForm.opinion || null })
+    ElMessage.success(isCounselor.value && reviewForm.decision === 'APPROVE' ? '初审通过，已转入教务终审' : '审核结论已提交')
     reviewDialogOpen.value = false
     await loadApplications()
   } finally {

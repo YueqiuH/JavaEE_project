@@ -44,6 +44,8 @@ public class LabBookingService {
 
     private static final String STUDENT_ROLE = "STUDENT";
     private static final String TEACHER_ROLE = "TEACHER";
+    private static final String COUNSELOR_ROLE = "COUNSELOR";
+    private static final String ADMIN_ROLE = "ADMIN";
     private static final DateTimeFormatter NUMBER_DATE = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     private final LabMapper labMapper;
@@ -90,7 +92,7 @@ public class LabBookingService {
 
     @Transactional
     public LabVo createLab(LabRequest request) {
-        AuthSession session = requireTeacher("lab:manage-self");
+        AuthSession session = requireManager("lab:manage-self");
         LocalDateTime now = LocalDateTime.now();
         Lab lab = new Lab();
         lab.setLabNo(createNumber("LAB"));
@@ -104,7 +106,7 @@ public class LabBookingService {
 
     @Transactional
     public LabVo updateLab(Long id, LabRequest request) {
-        requireTeacher("lab:manage-self");
+        requireManager("lab:manage-self");
         requireOwnedLab(id);
         Lab update = new Lab();
         update.setLabId(id);
@@ -126,7 +128,7 @@ public class LabBookingService {
 
     @Transactional
     public LabResourceVo createResource(Long labId, LabResourceRequest request) {
-        requireTeacher("lab:resource:manage-self");
+        requireManager("lab:resource:manage-self");
         requireOwnedLab(labId);
         LocalDateTime now = LocalDateTime.now();
         LabResource resource = new LabResource();
@@ -144,7 +146,7 @@ public class LabBookingService {
 
     @Transactional
     public LabResourceVo updateResource(Long id, LabResourceRequest request) {
-        requireTeacher("lab:resource:manage-self");
+        requireManager("lab:resource:manage-self");
         LabResource current = requireResource(id);
         requireOwnedLab(current.getLabId());
         LabResource update = new LabResource();
@@ -171,7 +173,7 @@ public class LabBookingService {
 
     @Transactional
     public LabOpenSlotVo createSlot(Long labId, LabOpenSlotRequest request) {
-        AuthSession session = requireTeacher("lab:slot:manage-self");
+        AuthSession session = requireManager("lab:slot:manage-self");
         requireOwnedLab(labId);
         validateSlot(request, labId, null);
         LocalDateTime now = LocalDateTime.now();
@@ -189,7 +191,7 @@ public class LabBookingService {
 
     @Transactional
     public LabOpenSlotVo updateSlot(Long id, LabOpenSlotRequest request) {
-        requireTeacher("lab:slot:manage-self");
+        requireManager("lab:slot:manage-self");
         LabOpenSlot current = requireSlot(id);
         requireOwnedLab(current.getLabId());
         requireSlotWithoutBookings(current);
@@ -206,7 +208,7 @@ public class LabBookingService {
 
     @Transactional
     public void deleteSlot(Long id) {
-        requireTeacher("lab:slot:manage-self");
+        requireManager("lab:slot:manage-self");
         LabOpenSlot slot = requireSlot(id);
         requireOwnedLab(slot.getLabId());
         requireSlotWithoutBookings(slot);
@@ -220,7 +222,7 @@ public class LabBookingService {
     }
 
     public PageResult<LabBookingVo> listManagedBookings(long page, long size, String statusName) {
-        AuthSession session = requireTeacher("lab:booking:read-managed");
+        AuthSession session = requireManager("lab:booking:read-managed");
         expireStaleBookings();
         return listBookings(page, size, null, session.userId(), parseBookingStatus(statusName));
     }
@@ -235,7 +237,7 @@ public class LabBookingService {
                 throw new BusinessException(LabBookingErrorCodes.BOOKING_NOT_OWNED);
             }
         } else {
-            requireTeacher("lab:booking:read-managed");
+            requireManager("lab:booking:read-managed");
             Lab lab = requireLab(booking.getLabId());
             if (!session.userId().equals(lab.getManagerId())) {
                 throw new BusinessException(LabBookingErrorCodes.LAB_NOT_OWNED);
@@ -345,7 +347,7 @@ public class LabBookingService {
 
     @Transactional
     public LabBookingVo completeBooking(Long id) {
-        AuthSession session = requireTeacher("lab:booking:complete-managed");
+        AuthSession session = requireManager("lab:booking:complete-managed");
         LabBooking booking = requireBooking(id);
         Lab lab = requireLab(booking.getLabId());
         if (!session.userId().equals(lab.getManagerId())) {
@@ -527,19 +529,25 @@ public class LabBookingService {
 
     private AuthSession requireAnyRole(String permission) {
         AuthSession session = CurrentUserContext.require();
-        if ((!session.roles().contains(STUDENT_ROLE) && !session.roles().contains(TEACHER_ROLE))
+        if ((!session.roles().contains(STUDENT_ROLE) && !isManagerRole(session))
                 || !session.hasPermission(permission)) {
             throw new BusinessException(GlobalErrorCodeConstants.FORBIDDEN);
         }
         return session;
     }
 
-    private AuthSession requireTeacher(String permission) {
+    private AuthSession requireManager(String permission) {
         AuthSession session = CurrentUserContext.require();
-        if (!session.roles().contains(TEACHER_ROLE) || !session.hasPermission(permission)) {
+        if (!isManagerRole(session) || !session.hasPermission(permission)) {
             throw new BusinessException(GlobalErrorCodeConstants.FORBIDDEN);
         }
         return session;
+    }
+
+    private boolean isManagerRole(AuthSession session) {
+        return session.roles().contains(TEACHER_ROLE)
+                || session.roles().contains(COUNSELOR_ROLE)
+                || session.roles().contains(ADMIN_ROLE);
     }
 
     private StudentEntity requireStudent(String permission) {

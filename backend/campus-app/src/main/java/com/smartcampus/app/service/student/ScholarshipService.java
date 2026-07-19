@@ -30,6 +30,8 @@ import java.util.UUID;
 public class ScholarshipService {
 
     private static final String STUDENT_ROLE = "STUDENT";
+    private static final String COUNSELOR_ROLE = "COUNSELOR";
+    private static final String ADMIN_ROLE = "ADMIN";
     private static final String REVIEW_PERMISSION = "scholarship:review:read";
     private static final DateTimeFormatter APPLICATION_DATE = DateTimeFormatter.ofPattern("yyyyMMdd");
 
@@ -41,11 +43,25 @@ public class ScholarshipService {
 
     public PageResult<ScholarshipApplicationVo> listMine(long page, long size, String statusName) {
         Long studentId = requireStudent().getStudentId();
-        return listApplications(page, size, studentId, parseStatus(statusName));
+        return listApplications(page, size, studentId, null, parseStatus(statusName));
     }
 
-    public PageResult<ScholarshipApplicationVo> listForReview(long page, long size, String statusName) {
-        return listApplications(page, size, null, parseStatus(statusName));
+    public PageResult<ScholarshipApplicationVo> listForReview(long page, long size, String stage, String statusName) {
+        AuthSession session = requireReviewer();
+        String reviewStage = stage == null || stage.isBlank()
+                ? (session.roles().contains(COUNSELOR_ROLE) ? "COUNSELOR" : "ACADEMIC")
+                : stage.toUpperCase();
+        if (session.roles().contains(COUNSELOR_ROLE) && !"COUNSELOR".equals(reviewStage)) {
+            throw new BusinessException(GlobalErrorCodeConstants.FORBIDDEN);
+        }
+        if (session.roles().contains(ADMIN_ROLE) && "COUNSELOR".equals(reviewStage)) {
+            throw new BusinessException(GlobalErrorCodeConstants.FORBIDDEN);
+        }
+        Integer status = "COUNSELOR".equals(reviewStage)
+                ? ScholarshipStatus.SUBMITTED.code()
+                : "ACADEMIC".equals(reviewStage) ? ScholarshipStatus.ACADEMIC_REVIEW.code() : parseStatus(statusName);
+        Long counselorUserId = session.roles().contains(COUNSELOR_ROLE) ? session.userId() : null;
+        return listApplications(page, size, null, counselorUserId, status);
     }
 
     public PageResult<ScholarshipApplicationVo> listResults(long page, long size) {
@@ -54,7 +70,8 @@ public class ScholarshipService {
         if (studentId == null && !session.hasPermission(REVIEW_PERMISSION)) {
             throw new BusinessException(GlobalErrorCodeConstants.FORBIDDEN);
         }
-        return listApplications(page, size, studentId, ScholarshipStatus.SELECTED.code());
+        Long counselorUserId = session.roles().contains(COUNSELOR_ROLE) ? session.userId() : null;
+        return listApplications(page, size, studentId, counselorUserId, ScholarshipStatus.SELECTED.code());
     }
 
     public ScholarshipApplicationVo getApplication(Long id) {
@@ -62,8 +79,10 @@ public class ScholarshipService {
         AuthSession session = CurrentUserContext.require();
         if (session.roles().contains(STUDENT_ROLE)) {
             requireOwned(application.getStudentId());
-        } else if (!session.hasPermission(REVIEW_PERMISSION)) {
+        } else if (!isReviewer(session) || !session.hasPermission(REVIEW_PERMISSION)) {
             throw new BusinessException(GlobalErrorCodeConstants.FORBIDDEN);
+        } else if (session.roles().contains(COUNSELOR_ROLE)) {
+            requireCounseledStudent(application.getStudentId(), session.userId());
         }
         return application;
     }
@@ -113,6 +132,12 @@ public class ScholarshipService {
                 .set("reviewer_id", null)
                 .set("review_opinion", null)
                 .set("reviewed_at", null)
+                .set("counselor_id", null)
+                .set("counselor_opinion", null)
+                .set("counselor_reviewed_at", null)
+                .set("academic_reviewer_id", null)
+                .set("academic_opinion", null)
+                .set("academic_reviewed_at", null)
                 .set("updated_at", now);
         updateStatus(update);
         return requireApplicationView(id);
@@ -121,7 +146,8 @@ public class ScholarshipService {
     @Transactional
     public ScholarshipApplicationVo withdraw(Long id) {
         Scholarship current = requireOwnedApplication(id);
-        requireStatus(current, ScholarshipStatus.DRAFT, ScholarshipStatus.SUBMITTED, ScholarshipStatus.RETURNED);
+        requireStatus(current, ScholarshipStatus.DRAFT, ScholarshipStatus.SUBMITTED,
+                ScholarshipStatus.ACADEMIC_REVIEW, ScholarshipStatus.RETURNED);
         UpdateWrapper<Scholarship> update = new UpdateWrapper<Scholarship>()
                 .eq("scholarship_id", id)
                 .eq("status", current.getStatus())
@@ -133,14 +159,29 @@ public class ScholarshipService {
 
     @Transactional
     public ScholarshipApplicationVo review(Long id, ScholarshipReviewRequest request) {
+        AuthSession reviewer = requireReviewer();
         Scholarship current = requireApplication(id);
-        requireStatus(current, ScholarshipStatus.SUBMITTED);
-        ScholarshipStatus target = switch (request.getDecision()) {
-            case "APPROVE" -> ScholarshipStatus.APPROVED;
-            case "RETURN" -> ScholarshipStatus.RETURNED;
-            case "REJECT" -> ScholarshipStatus.REJECTED;
-            default -> throw new BusinessException(GlobalErrorCodeConstants.BAD_REQUEST);
-        };
+        boolean counselorStage = "COUNSELOR".equals(request.getStage());
+        if (counselorStage) {
+            if (!reviewer.roles().contains(COUNSELOR_ROLE)) {
+                throw new BusinessException(GlobalErrorCodeConstants.FORBIDDEN);
+            }
+            requireCounseledStudent(current.getStudentId(), reviewer.userId());
+            requireStatus(current, ScholarshipStatus.SUBMITTED);
+        } else {
+            if (!reviewer.roles().contains(ADMIN_ROLE)) {
+                throw new BusinessException(GlobalErrorCodeConstants.FORBIDDEN);
+            }
+            requireStatus(current, ScholarshipStatus.ACADEMIC_REVIEW);
+        }
+        ScholarshipStatus target = "APPROVE".equals(request.getDecision())
+                ? (counselorStage ? ScholarshipStatus.ACADEMIC_REVIEW : ScholarshipStatus.APPROVED)
+                : "RETURN".equals(request.getDecision()) ? ScholarshipStatus.RETURNED
+                : "REJECT".equals(request.getDecision()) ? ScholarshipStatus.REJECTED
+                : null;
+        if (target == null) {
+            throw new BusinessException(GlobalErrorCodeConstants.BAD_REQUEST);
+        }
         if ((target == ScholarshipStatus.RETURNED || target == ScholarshipStatus.REJECTED)
                 && (request.getOpinion() == null || request.getOpinion().isBlank())) {
             throw new BusinessException(ScholarshipErrorCodes.REVIEW_OPINION_REQUIRED);
@@ -149,12 +190,21 @@ public class ScholarshipService {
         LocalDateTime now = LocalDateTime.now();
         UpdateWrapper<Scholarship> update = new UpdateWrapper<Scholarship>()
                 .eq("scholarship_id", id)
-                .eq("status", ScholarshipStatus.SUBMITTED.code())
+                .eq("status", current.getStatus())
                 .set("status", target.code())
-                .set("reviewer_id", CurrentUserContext.require().userId())
-                .set("review_opinion", normalize(request.getOpinion()))
-                .set("reviewed_at", now)
                 .set("updated_at", now);
+        if (counselorStage) {
+            update.set("counselor_id", reviewer.userId())
+                    .set("counselor_opinion", normalize(request.getOpinion()))
+                    .set("counselor_reviewed_at", now);
+        } else {
+            update.set("academic_reviewer_id", reviewer.userId())
+                    .set("academic_opinion", normalize(request.getOpinion()))
+                    .set("academic_reviewed_at", now)
+                    .set("reviewer_id", reviewer.userId())
+                    .set("review_opinion", normalize(request.getOpinion()))
+                    .set("reviewed_at", now);
+        }
         updateStatus(update);
         return requireApplicationView(id);
     }
@@ -179,9 +229,11 @@ public class ScholarshipService {
         return ids.stream().map(this::requireApplicationView).toList();
     }
 
-    private PageResult<ScholarshipApplicationVo> listApplications(long page, long size, Long studentId, Integer status) {
+    private PageResult<ScholarshipApplicationVo> listApplications(
+            long page, long size, Long studentId, Long counselorUserId, Integer status) {
         Page<ScholarshipApplicationVo> queryPage = new Page<>(page, size);
-        IPage<ScholarshipApplicationVo> result = scholarshipMapper.selectApplicationPage(queryPage, studentId, status);
+        IPage<ScholarshipApplicationVo> result = scholarshipMapper.selectApplicationPage(
+                queryPage, studentId, counselorUserId, status);
         result.getRecords().forEach(this::translateStatus);
         return PageResult.from(result);
     }
@@ -195,6 +247,24 @@ public class ScholarshipService {
     private void requireOwned(Long studentId) {
         if (!requireStudent().getStudentId().equals(studentId)) {
             throw new BusinessException(ScholarshipErrorCodes.APPLICATION_NOT_OWNED);
+        }
+    }
+
+    private AuthSession requireReviewer() {
+        AuthSession session = CurrentUserContext.require();
+        if (!isReviewer(session) || !session.hasPermission(REVIEW_PERMISSION)) {
+            throw new BusinessException(GlobalErrorCodeConstants.FORBIDDEN);
+        }
+        return session;
+    }
+
+    private boolean isReviewer(AuthSession session) {
+        return session.roles().contains(COUNSELOR_ROLE) || session.roles().contains(ADMIN_ROLE);
+    }
+
+    private void requireCounseledStudent(Long studentId, Long counselorUserId) {
+        if (scholarshipMapper.countCounseledStudent(studentId, counselorUserId) == 0) {
+            throw new BusinessException(GlobalErrorCodeConstants.FORBIDDEN);
         }
     }
 

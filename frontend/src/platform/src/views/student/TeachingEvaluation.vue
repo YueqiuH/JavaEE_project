@@ -3,22 +3,22 @@
     <header class="workspace-header">
       <div>
         <p class="eyebrow">教学质量</p>
-        <h1>{{ isTeacher ? '个人评教结果' : '课程评教' }}</h1>
-        <p>{{ isTeacher ? '查看本人授课课程的评价得分与匿名反馈' : '对本学期授课教师进行在线评分与匿名反馈' }}</p>
+        <h1>{{ isResultViewer ? resultTitle : '课程评教' }}</h1>
+        <p>{{ isResultViewer ? resultDescription : '对本学期授课教师和本人辅导员进行在线评分与匿名反馈' }}</p>
       </div>
       <div v-if="isStudent" class="privacy-badge"><el-icon><Lock /></el-icon><span>匿名反馈</span></div>
-      <el-tooltip v-if="isTeacher" content="刷新评教结果" placement="top">
+      <el-tooltip v-if="isResultViewer" content="刷新评教结果" placement="top">
         <el-button :icon="Refresh" circle aria-label="刷新评教结果" @click="loadTeacherOverview" />
       </el-tooltip>
     </header>
 
-    <el-result v-if="roleResolved && !isStudent && !isTeacher" icon="warning" title="当前账号无评教业务权限" />
+    <el-result v-if="roleResolved && !isStudent && !isResultViewer" icon="warning" title="当前账号无评教业务权限" />
 
     <template v-else-if="isStudent">
       <div class="student-summary" aria-label="评教任务概况">
         <div><span>待完成</span><strong>{{ pendingCount }}</strong><small>项评教任务</small></div>
         <div><span>已提交</span><strong>{{ submittedCount }}</strong><small>项匿名评价</small></div>
-        <p><el-icon><InfoFilled /></el-icon>评价提交后不可修改，教师端不会显示评价学生身份。</p>
+        <p><el-icon><InfoFilled /></el-icon>评价提交后不可修改，被评人员不会看到评价学生身份。</p>
       </div>
 
       <div class="surface-panel data-panel">
@@ -39,12 +39,12 @@
         </div>
 
         <template v-else>
-          <el-table v-if="loading || filteredTasks.length > 0" v-loading="loading" :data="filteredTasks" row-key="selectionId" class="desktop-table" @row-click="openTask">
-            <el-table-column label="课程" min-width="210">
+          <el-table v-if="loading || filteredTasks.length > 0" v-loading="loading" :data="filteredTasks" :row-key="taskRowKey" class="desktop-table" @row-click="openTask">
+            <el-table-column label="评教项目" min-width="210">
               <template #default="{ row }"><strong>{{ row.courseName }}</strong><small class="cell-subtitle">{{ row.semester }}</small></template>
             </el-table-column>
-            <el-table-column label="授课教师" min-width="150">
-              <template #default="{ row }">{{ row.teacherName }}</template>
+            <el-table-column label="评教对象" min-width="150">
+              <template #default="{ row }">{{ row.teacherName }}<small class="cell-subtitle">{{ row.targetType === 'COUNSELOR' ? '辅导员' : '授课教师' }}</small></template>
             </el-table-column>
             <el-table-column label="综合评分" min-width="180">
               <template #default="{ row }">
@@ -64,7 +64,7 @@
           </el-table>
 
           <div v-loading="loading" class="mobile-records">
-            <button v-for="row in filteredTasks" :key="row.selectionId" type="button" class="mobile-record" @click="openTask(row)">
+            <button v-for="row in filteredTasks" :key="taskRowKey(row)" type="button" class="mobile-record" @click="openTask(row)">
               <span class="record-top"><strong>{{ row.courseName }}</strong><el-tag :type="row.status === 'SUBMITTED' ? 'success' : 'warning'" size="small">{{ row.status === 'SUBMITTED' ? '已提交' : '待完成' }}</el-tag></span>
               <span>{{ row.teacherName }} · {{ row.semester }}</span>
               <small>{{ row.status === 'SUBMITTED' ? `综合评分 ${formatScore(row.overallScore)}` : (canSubmitEvaluation ? '点击开始匿名评教' : '当前账号仅可查看任务') }}</small>
@@ -76,7 +76,7 @@
       </div>
     </template>
 
-    <template v-else-if="isTeacher">
+    <template v-else-if="isResultViewer">
       <div v-if="teacherError" class="surface-panel state-block">
         <el-result icon="error" title="评教结果加载失败" sub-title="请检查网络连接后重试">
           <template #extra><el-button type="primary" @click="loadTeacherOverview">重新加载</el-button></template>
@@ -86,19 +86,20 @@
       <template v-else>
         <div v-loading="loading" class="metric-strip">
           <div class="primary-metric"><span>综合评分</span><strong>{{ formatScore(overview.overallAverage) }}</strong><small>满分 5.00</small></div>
-          <div><span>教学态度</span><strong>{{ formatScore(overview.teachingAverage) }}</strong><el-progress :percentage="scorePercentage(overview.teachingAverage)" :show-text="false" /></div>
-          <div><span>教学内容</span><strong>{{ formatScore(overview.contentAverage) }}</strong><el-progress :percentage="scorePercentage(overview.contentAverage)" :show-text="false" color="#2f7d63" /></div>
-          <div><span>教学方法</span><strong>{{ formatScore(overview.methodAverage) }}</strong><el-progress :percentage="scorePercentage(overview.methodAverage)" :show-text="false" color="#c38223" /></div>
+          <div><span>{{ overviewScoreLabels.teaching }}</span><strong>{{ formatScore(overview.teachingAverage) }}</strong><el-progress :percentage="scorePercentage(overview.teachingAverage)" :show-text="false" /></div>
+          <div><span>{{ overviewScoreLabels.content }}</span><strong>{{ formatScore(overview.contentAverage) }}</strong><el-progress :percentage="scorePercentage(overview.contentAverage)" :show-text="false" color="#2f7d63" /></div>
+          <div><span>{{ overviewScoreLabels.method }}</span><strong>{{ formatScore(overview.methodAverage) }}</strong><el-progress :percentage="scorePercentage(overview.methodAverage)" :show-text="false" color="#c38223" /></div>
           <div class="response-metric"><span>有效评价</span><strong>{{ overview.responseCount || 0 }}</strong><small>份匿名反馈</small></div>
         </div>
 
         <div class="surface-panel data-panel">
           <div class="panel-toolbar">
-            <div><h2>课程评教表现</h2><span>按课程与学期汇总</span></div>
+            <div><h2>评教表现</h2><span>按被评人员、项目与学期汇总</span></div>
           </div>
 
-          <el-table v-if="loading || overview.courses.length > 0" v-loading="loading" :data="overview.courses" row-key="courseId" class="desktop-table" @row-click="openCourseDetail">
-            <el-table-column label="课程" min-width="210">
+          <el-table v-if="loading || overview.courses.length > 0" v-loading="loading" :data="overview.courses" :row-key="summaryRowKey" class="desktop-table" @row-click="openCourseDetail">
+            <el-table-column v-if="!isTeacher" label="被评人员" min-width="140"><template #default="{ row }">{{ row.teacherName }}<small class="cell-subtitle">{{ row.targetType === 'COUNSELOR' ? '辅导员' : '教师' }}</small></template></el-table-column>
+            <el-table-column label="评教项目" min-width="210">
               <template #default="{ row }"><strong>{{ row.courseName }}</strong><small class="cell-subtitle">{{ row.semester }}</small></template>
             </el-table-column>
             <el-table-column label="综合得分" min-width="210">
@@ -116,7 +117,7 @@
           </el-table>
 
           <div v-loading="loading" class="mobile-records">
-            <button v-for="row in overview.courses" :key="`${row.courseId}-${row.semester}`" type="button" class="mobile-record" @click="openCourseDetail(row)">
+            <button v-for="row in overview.courses" :key="summaryRowKey(row)" type="button" class="mobile-record" @click="openCourseDetail(row)">
               <span class="record-top"><strong>{{ row.courseName }}</strong><b class="mobile-score">{{ formatScore(row.overallAverage) }}</b></span>
               <span>{{ row.semester }} · {{ row.responseCount }} 份评价</span>
               <small>态度 {{ formatScore(row.teachingAverage) }} · 内容 {{ formatScore(row.contentAverage) }} · 方法 {{ formatScore(row.methodAverage) }}</small>
@@ -134,9 +135,9 @@
         <el-tag type="info" effect="plain"><el-icon><Lock /></el-icon>匿名</el-tag>
       </div>
       <el-form ref="evaluationFormRef" :model="evaluationForm" :rules="evaluationRules" label-position="top" class="evaluation-form">
-        <el-form-item label="教学态度" prop="scoreTeaching"><el-rate v-model="evaluationForm.scoreTeaching" show-score score-template="{value} 分" /></el-form-item>
-        <el-form-item label="教学内容" prop="scoreContent"><el-rate v-model="evaluationForm.scoreContent" show-score score-template="{value} 分" /></el-form-item>
-        <el-form-item label="教学方法" prop="scoreMethod"><el-rate v-model="evaluationForm.scoreMethod" show-score score-template="{value} 分" /></el-form-item>
+        <el-form-item :label="scoreLabels.teaching" prop="scoreTeaching"><el-rate v-model="evaluationForm.scoreTeaching" show-score score-template="{value} 分" /></el-form-item>
+        <el-form-item :label="scoreLabels.content" prop="scoreContent"><el-rate v-model="evaluationForm.scoreContent" show-score score-template="{value} 分" /></el-form-item>
+        <el-form-item :label="scoreLabels.method" prop="scoreMethod"><el-rate v-model="evaluationForm.scoreMethod" show-score score-template="{value} 分" /></el-form-item>
         <el-form-item label="意见与建议" prop="comment">
           <el-input v-model="evaluationForm.comment" type="textarea" :rows="5" maxlength="1000" show-word-limit placeholder="可选，请客观描述课程体验与改进建议" />
         </el-form-item>
@@ -151,9 +152,9 @@
       <div v-if="activeTask" class="detail-content">
         <div class="detail-heading"><div><small>{{ activeTask.semester }}</small><h2>{{ activeTask.courseName }}</h2><span>{{ activeTask.teacherName }}</span></div><strong>{{ formatScore(activeTask.overallScore) }}</strong></div>
         <dl class="score-details">
-          <div><dt>教学态度</dt><dd>{{ activeTask.scoreTeaching }}.00</dd></div>
-          <div><dt>教学内容</dt><dd>{{ activeTask.scoreContent }}.00</dd></div>
-          <div><dt>教学方法</dt><dd>{{ activeTask.scoreMethod }}.00</dd></div>
+          <div><dt>{{ scoreLabels.teaching }}</dt><dd>{{ activeTask.scoreTeaching }}.00</dd></div>
+          <div><dt>{{ scoreLabels.content }}</dt><dd>{{ activeTask.scoreContent }}.00</dd></div>
+          <div><dt>{{ scoreLabels.method }}</dt><dd>{{ activeTask.scoreMethod }}.00</dd></div>
         </dl>
         <div class="comment-block"><h3>我的匿名反馈</h3><p>{{ activeTask.comment || '未填写文字反馈' }}</p></div>
         <p class="submitted-time">提交于 {{ formatDate(activeTask.submittedAt) }}</p>
@@ -165,9 +166,9 @@
         <template v-if="courseDetail">
           <div class="detail-heading"><div><small>{{ courseDetail.semester }}</small><h2>{{ courseDetail.courseName }}</h2><span>{{ courseDetail.responseCount }} 份有效评价</span></div><strong>{{ formatScore(courseDetail.overallAverage) }}</strong></div>
           <dl class="score-details">
-            <div><dt>教学态度</dt><dd>{{ formatScore(courseDetail.teachingAverage) }}</dd></div>
-            <div><dt>教学内容</dt><dd>{{ formatScore(courseDetail.contentAverage) }}</dd></div>
-            <div><dt>教学方法</dt><dd>{{ formatScore(courseDetail.methodAverage) }}</dd></div>
+            <div><dt>{{ detailScoreLabels.teaching }}</dt><dd>{{ formatScore(courseDetail.teachingAverage) }}</dd></div>
+            <div><dt>{{ detailScoreLabels.content }}</dt><dd>{{ formatScore(courseDetail.contentAverage) }}</dd></div>
+            <div><dt>{{ detailScoreLabels.method }}</dt><dd>{{ formatScore(courseDetail.methodAverage) }}</dd></div>
           </dl>
           <div class="comments-section">
             <h3>匿名文字反馈 <span>{{ courseDetail.anonymousComments.length }}</span></h3>
@@ -184,7 +185,7 @@
 import { computed, inject, reactive, ref, watch } from 'vue'
 import { EditPen, InfoFilled, Lock, Refresh, View } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getMyCourseEvaluationDetail, getMyEvaluationOverview, listMyEvaluationTasks, submitEvaluation } from '@/api/student.js'
+import { getCounselorEvaluationDetail, getMyCourseEvaluationDetail, getMyEvaluationOverview, listMyEvaluationTasks, submitCounselorEvaluation, submitEvaluation } from '@/api/student.js'
 
 const currentUser = inject('currentUser', ref(null))
 const roles = computed(() => new Set(currentUser.value?.roles || []))
@@ -192,6 +193,11 @@ const permissions = computed(() => new Set(currentUser.value?.permissions || [])
 const roleResolved = computed(() => Boolean(currentUser.value))
 const isStudent = computed(() => roles.value.has('STUDENT') && permissions.value.has('evaluation:task:read-self'))
 const isTeacher = computed(() => roles.value.has('TEACHER') && permissions.value.has('evaluation:result:read-self'))
+const isCounselor = computed(() => roles.value.has('COUNSELOR') && permissions.value.has('evaluation:result:read-counseled'))
+const isAcademic = computed(() => roles.value.has('ADMIN') && permissions.value.has('evaluation:result:read-all'))
+const isResultViewer = computed(() => isTeacher.value || isCounselor.value || isAcademic.value)
+const resultTitle = computed(() => isTeacher.value ? '个人评教结果' : isCounselor.value ? '我的辅导员评教结果' : '全校评教结果')
+const resultDescription = computed(() => isTeacher.value ? '查看本人授课课程的评价得分与匿名反馈' : isCounselor.value ? '查看所带学生对本人的匿名评价' : '查看全校辅导员和教师的评教汇总与匿名反馈')
 const canSubmitEvaluation = computed(() => permissions.value.has('evaluation:submit-self'))
 
 const tasks = ref([])
@@ -217,6 +223,18 @@ const taskDetailOpen = ref(false)
 const courseDetailOpen = ref(false)
 const detailLoading = ref(false)
 const courseDetail = ref(null)
+const taskRowKey = (row) => row.targetType === 'COUNSELOR' ? `counselor-${row.teacherId}-${row.semester}` : `course-${row.selectionId}`
+const summaryRowKey = (row) => `${row.targetType}-${row.teacherId}-${row.courseId || 0}-${row.semester}`
+const scoreLabels = computed(() => activeTask.value?.targetType === 'COUNSELOR'
+  ? { teaching: '工作态度', content: '指导内容', method: '沟通方式' }
+  : { teaching: '教学态度', content: '教学内容', method: '教学方法' })
+const overviewScoreLabels = computed(() => isCounselor.value
+  ? { teaching: '工作态度', content: '指导内容', method: '沟通方式' }
+  : isAcademic.value ? { teaching: '态度评分', content: '内容评分', method: '方式评分' }
+    : { teaching: '教学态度', content: '教学内容', method: '教学方法' })
+const detailScoreLabels = computed(() => courseDetail.value?.targetType === 'COUNSELOR'
+  ? { teaching: '工作态度', content: '指导内容', method: '沟通方式' }
+  : { teaching: '教学态度', content: '教学内容', method: '教学方法' })
 
 const formatScore = (value) => value === null || value === undefined ? '--' : Number(value).toFixed(2)
 const scorePercentage = (value) => value ? Math.round(Number(value) * 20) : 0
@@ -269,7 +287,9 @@ const saveEvaluation = async () => {
   await ElMessageBox.confirm('提交后不能修改或撤回，确认提交这份匿名评价？', '确认提交', { confirmButtonText: '提交评价', cancelButtonText: '继续填写', type: 'warning' })
   saving.value = true
   try {
-    await submitEvaluation(activeTask.value.selectionId, { ...evaluationForm, comment: evaluationForm.comment.trim() || null })
+    const payload = { ...evaluationForm, comment: evaluationForm.comment.trim() || null }
+    if (activeTask.value.targetType === 'COUNSELOR') await submitCounselorEvaluation(payload)
+    else await submitEvaluation(activeTask.value.selectionId, payload)
     ElMessage.success('匿名评教已提交')
     evaluationOpen.value = false
     await loadStudentTasks()
@@ -283,8 +303,10 @@ const openCourseDetail = async (course) => {
   courseDetail.value = null
   detailLoading.value = true
   try {
-    const result = await getMyCourseEvaluationDetail(course.courseId, course.semester)
-    courseDetail.value = { ...result.data, anonymousComments: result.data?.anonymousComments || [] }
+    const result = course.targetType === 'COUNSELOR'
+      ? await getCounselorEvaluationDetail(course.teacherId, course.semester)
+      : await getMyCourseEvaluationDetail(course.courseId, course.semester, course.teacherId)
+    courseDetail.value = { ...result.data, targetType: course.targetType, anonymousComments: result.data?.anonymousComments || [] }
   } catch {
     courseDetailOpen.value = false
   } finally {
@@ -292,9 +314,9 @@ const openCourseDetail = async (course) => {
   }
 }
 
-watch([isStudent, isTeacher], ([student, teacher]) => {
+watch([isStudent, isResultViewer], ([student, viewer]) => {
   if (student) loadStudentTasks()
-  else if (teacher) loadTeacherOverview()
+  else if (viewer) loadTeacherOverview()
 }, { immediate: true })
 </script>
 

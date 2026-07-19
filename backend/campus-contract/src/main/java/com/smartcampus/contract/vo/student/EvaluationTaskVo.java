@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 @Data
 public class EvaluationTaskVo {
 
+    private String targetType;
     private Long selectionId;
     private Long scheduleId;
     private Long evaluationId;

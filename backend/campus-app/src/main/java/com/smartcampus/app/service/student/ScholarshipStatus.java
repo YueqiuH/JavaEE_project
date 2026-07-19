@@ -9,7 +9,8 @@ public enum ScholarshipStatus {
     APPROVED(3),
     REJECTED(4),
     WITHDRAWN(5),
-    SELECTED(6);
+    SELECTED(6),
+    ACADEMIC_REVIEW(7);
 
     private final int code;
 

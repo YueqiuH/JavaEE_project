@@ -30,7 +30,8 @@ import java.util.UUID;
 public class StatusChangeService {
 
     private static final String STUDENT_ROLE = "STUDENT";
-    private static final String TEACHER_ROLE = "TEACHER";
+    private static final String COUNSELOR_ROLE = "COUNSELOR";
+    private static final String ADMIN_ROLE = "ADMIN";
     private static final String REVIEW_PERMISSION = "status:review:read";
     private static final DateTimeFormatter APPLICATION_DATE = DateTimeFormatter.ofPattern("yyyyMMdd");
 
@@ -60,23 +61,29 @@ public class StatusChangeService {
 
     public List<MajorOptionVo> listMajors() {
         AuthSession session = CurrentUserContext.require();
-        if (!session.roles().contains(STUDENT_ROLE) && !session.roles().contains(TEACHER_ROLE)) {
+        if (!session.roles().contains(STUDENT_ROLE)) {
             throw new BusinessException(GlobalErrorCodeConstants.FORBIDDEN);
         }
         return statusChangeMapper.selectMajorOptions();
     }
 
     public PageResult<StatusChangeApplicationVo> listMine(long page, long size, String statusName) {
-        return listApplications(page, size, requireStudent().getStudentId(), parseStatus(statusName), false);
+        return listApplications(page, size, requireStudent().getStudentId(), null, parseStatus(statusName), false);
     }
 
     public PageResult<StatusChangeApplicationVo> listForReview(
             long page, long size, String stage, String statusName) {
         AuthSession session = CurrentUserContext.require();
-        if (!session.roles().contains(TEACHER_ROLE) || !session.hasPermission(REVIEW_PERMISSION)) {
+        if (!isReviewer(session) || !session.hasPermission(REVIEW_PERMISSION)) {
             throw new BusinessException(GlobalErrorCodeConstants.FORBIDDEN);
         }
         String reviewStage = stage == null ? "ALL" : stage.toUpperCase();
+        if (session.roles().contains(COUNSELOR_ROLE) && !"COUNSELOR".equals(reviewStage)) {
+            throw new BusinessException(GlobalErrorCodeConstants.FORBIDDEN);
+        }
+        if (session.roles().contains(ADMIN_ROLE) && "COUNSELOR".equals(reviewStage)) {
+            throw new BusinessException(GlobalErrorCodeConstants.FORBIDDEN);
+        }
         Integer status = switch (reviewStage) {
             case "COUNSELOR" -> StatusChangeStatus.COUNSELOR_REVIEW.code();
             case "ACADEMIC" -> StatusChangeStatus.ACADEMIC_REVIEW.code();
@@ -86,7 +93,8 @@ public class StatusChangeService {
         if ("ALL".equals(reviewStage) && Integer.valueOf(StatusChangeStatus.DRAFT.code()).equals(status)) {
             throw new BusinessException(GlobalErrorCodeConstants.BAD_REQUEST);
         }
-        return listApplications(page, size, null, status, true);
+        Long counselorUserId = session.roles().contains(COUNSELOR_ROLE) ? session.userId() : null;
+        return listApplications(page, size, null, counselorUserId, status, true);
     }
 
     public StatusChangeApplicationVo getApplication(Long id) {
@@ -94,8 +102,10 @@ public class StatusChangeService {
         AuthSession session = CurrentUserContext.require();
         if (session.roles().contains(STUDENT_ROLE)) {
             requireOwned(application.getStudentId());
-        } else if (!session.hasPermission(REVIEW_PERMISSION)) {
+        } else if (!isReviewer(session) || !session.hasPermission(REVIEW_PERMISSION)) {
             throw new BusinessException(GlobalErrorCodeConstants.FORBIDDEN);
+        } else if (session.roles().contains(COUNSELOR_ROLE)) {
+            requireCounseledStudent(application.getStudentId(), session.userId());
         }
         return application;
     }
@@ -165,8 +175,17 @@ public class StatusChangeService {
 
     @Transactional
     public StatusChangeApplicationVo review(Long id, StatusChangeReviewRequest request) {
+        AuthSession reviewer = CurrentUserContext.require();
         StudentStatusChange current = requireApplication(id);
         boolean counselorStage = "COUNSELOR".equals(request.getStage());
+        if (counselorStage) {
+            if (!reviewer.roles().contains(COUNSELOR_ROLE)) {
+                throw new BusinessException(GlobalErrorCodeConstants.FORBIDDEN);
+            }
+            requireCounseledStudent(current.getStudentId(), reviewer.userId());
+        } else if (!reviewer.roles().contains(ADMIN_ROLE)) {
+            throw new BusinessException(GlobalErrorCodeConstants.FORBIDDEN);
+        }
         StatusChangeStatus expected = counselorStage
                 ? StatusChangeStatus.COUNSELOR_REVIEW : StatusChangeStatus.ACADEMIC_REVIEW;
         requireStatus(current, expected);
@@ -190,11 +209,11 @@ public class StatusChangeService {
                 .set("status", target.code())
                 .set("updated_at", now);
         if (counselorStage) {
-            update.set("counselor_id", CurrentUserContext.require().userId())
+            update.set("counselor_id", reviewer.userId())
                     .set("counselor_opinion", normalize(request.getOpinion()))
                     .set("counselor_reviewed_at", now);
         } else {
-            update.set("academic_reviewer_id", CurrentUserContext.require().userId())
+            update.set("academic_reviewer_id", reviewer.userId())
                     .set("academic_opinion", normalize(request.getOpinion()))
                     .set("academic_reviewed_at", now);
         }
@@ -203,10 +222,10 @@ public class StatusChangeService {
     }
 
     private PageResult<StatusChangeApplicationVo> listApplications(
-            long page, long size, Long studentId, Integer status, boolean excludeDraft) {
+            long page, long size, Long studentId, Long counselorUserId, Integer status, boolean excludeDraft) {
         Page<StatusChangeApplicationVo> queryPage = new Page<>(page, size);
         IPage<StatusChangeApplicationVo> result = statusChangeMapper.selectApplicationPage(
-                queryPage, studentId, status, excludeDraft);
+                queryPage, studentId, counselorUserId, status, excludeDraft);
         result.getRecords().forEach(this::translateStatus);
         return PageResult.from(result);
     }
@@ -221,6 +240,16 @@ public class StatusChangeService {
         if (!requireStudent().getStudentId().equals(studentId)) {
             throw new BusinessException(StatusChangeErrorCodes.APPLICATION_NOT_OWNED);
         }
+    }
+
+    private void requireCounseledStudent(Long studentId, Long counselorUserId) {
+        if (statusChangeMapper.countCounseledStudent(studentId, counselorUserId) == 0) {
+            throw new BusinessException(GlobalErrorCodeConstants.FORBIDDEN);
+        }
+    }
+
+    private boolean isReviewer(AuthSession session) {
+        return session.roles().contains(COUNSELOR_ROLE) || session.roles().contains(ADMIN_ROLE);
     }
 
     private StudentStatusChange requireApplication(Long id) {

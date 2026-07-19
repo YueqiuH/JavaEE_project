@@ -53,12 +53,14 @@ class ScholarshipServiceTest {
     }
 
     @Test
-    void teacherMustProvideOpinionWhenReturningApplication() {
-        CurrentUserContext.set(teacherSession());
+    void counselorMustProvideOpinionWhenReturningApplication() {
+        CurrentUserContext.set(counselorSession());
         Scholarship application = application(10L, 1L, ScholarshipStatus.SUBMITTED);
         when(scholarshipMapper.selectById(10L)).thenReturn(application);
         ScholarshipReviewRequest request = new ScholarshipReviewRequest();
+        request.setStage("COUNSELOR");
         request.setDecision("RETURN");
+        when(scholarshipMapper.countCounseledStudent(1L, 2L)).thenReturn(1);
 
         ScholarshipService service = new ScholarshipService(scholarshipMapper);
 
@@ -70,12 +72,14 @@ class ScholarshipServiceTest {
     }
 
     @Test
-    void teacherCannotReviewDraftApplication() {
-        CurrentUserContext.set(teacherSession());
+    void counselorCannotReviewDraftApplication() {
+        CurrentUserContext.set(counselorSession());
         Scholarship application = application(10L, 1L, ScholarshipStatus.DRAFT);
         when(scholarshipMapper.selectById(10L)).thenReturn(application);
         ScholarshipReviewRequest request = new ScholarshipReviewRequest();
+        request.setStage("COUNSELOR");
         request.setDecision("APPROVE");
+        when(scholarshipMapper.countCounseledStudent(1L, 2L)).thenReturn(1);
 
         ScholarshipService service = new ScholarshipService(scholarshipMapper);
 
@@ -87,7 +91,7 @@ class ScholarshipServiceTest {
 
     @Test
     void generateResultsOnlyAcceptsApprovedApplications() {
-        CurrentUserContext.set(teacherSession());
+        CurrentUserContext.set(academicSession());
         when(scholarshipMapper.selectById(10L))
                 .thenReturn(application(10L, 1L, ScholarshipStatus.REJECTED));
         ScholarshipResultRequest request = new ScholarshipResultRequest();
@@ -104,7 +108,7 @@ class ScholarshipServiceTest {
 
     @Test
     void generateResultsMarksEveryApprovedApplicationAsSelected() {
-        CurrentUserContext.set(teacherSession());
+        CurrentUserContext.set(academicSession());
         when(scholarshipMapper.selectById(10L))
                 .thenReturn(application(10L, 1L, ScholarshipStatus.APPROVED));
         when(scholarshipMapper.update(any(), any())).thenReturn(1);
@@ -126,9 +130,14 @@ class ScholarshipServiceTest {
         return new AuthSession(1L, "600001", 1, Set.of("STUDENT"), Set.of(), 0);
     }
 
-    private AuthSession teacherSession() {
-        return new AuthSession(2L, "700001", 2, Set.of("TEACHER"),
+    private AuthSession counselorSession() {
+        return new AuthSession(2L, "700001", 3, Set.of("COUNSELOR"),
                 Set.of("scholarship:review:read"), 0);
+    }
+
+    private AuthSession academicSession() {
+        return new AuthSession(4L, "admin", 4, Set.of("ADMIN"),
+                Set.of("scholarship:review:read", "scholarship:result:generate"), 0);
     }
 
     private StudentEntity student(Long id) {
