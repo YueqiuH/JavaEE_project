@@ -64,9 +64,9 @@
           <div class="section-heading">
             <div>
               <h2>全部服务</h2>
-              <p>四个业务域覆盖平台全部 24 项功能</p>
+              <p>四个业务域覆盖平台全部 {{ visibleTotal }} 项功能</p>
             </div>
-            <span class="service-total">24 项服务</span>
+            <span class="service-total">{{ visibleTotal }} 项服务</span>
           </div>
 
           <div class="domain-tabs" role="tablist" aria-label="业务域">
@@ -78,8 +78,8 @@
               :style="{ '--domain-color': domain.color }"
               @click="activeDomain = domain.key"
             >
-              <span>{{ domain.label }}</span>
-              <small>{{ getServicesByDomain(domain.key).length }}</small>
+              <span>{{ domainLabels[domain.key] }}</span>
+              <small>{{ visibleDomainCounts[domain.key] || 0 }}</small>
             </button>
           </div>
 
@@ -105,15 +105,15 @@
         <div class="section-heading">
           <div>
             <h2>AI 智能服务</h2>
-            <p>在演示模式下预览四类校园智能助手</p>
+            <p>在演示模式下预览 {{ aiServices.length }} 类校园智能助手</p>
           </div>
           <el-tag effect="plain" type="warning">可选能力</el-tag>
         </div>
-        <div class="ai-strip">
-          <button v-for="service in aiServices" :key="service.key" type="button" @click="openService(service)">
+        <div class="ai-strip" :style="{ gridTemplateColumns: `repeat(${aiServices.length}, minmax(0, 1fr))` }">
+          <button v-for="(service, idx) in aiServices" :key="service.key" type="button" @click="openService(service)">
             <span class="ai-strip-icon"><el-icon><component :is="service.icon" /></el-icon></span>
             <span><strong>{{ service.title }}</strong><small>{{ service.description }}</small></span>
-            <el-icon class="ai-arrow"><Right /></el-icon>
+            <el-icon v-if="idx !== aiServices.length - 1" class="ai-arrow"><Right /></el-icon>
           </button>
         </div>
       </section>
@@ -134,7 +134,7 @@
               :style="{ '--domain-color': domain.color, '--domain-soft': domain.softColor }"
               @click="goDomain(domain.key)"
             >
-              <span><small>业务域</small><strong>{{ domain.label }}</strong><em>{{ getServicesByDomain(domain.key).length }} 项服务</em></span>
+              <span><small>业务域</small><strong>{{ domainLabels[domain.key] }}</strong><em>{{ visibleDomainCounts[domain.key] || 0 }} 项服务</em></span>
               <el-icon><component :is="domain.icon" /></el-icon>
             </button>
           </div>
@@ -175,8 +175,9 @@ import { ChatDotRound, Checked, Grid, Right, Star, Top } from '@element-plus/ico
 import { ElMessage } from 'element-plus'
 import campusHero from '@/assets/images/campus-hero.jpg'
 import ServiceCard from '@/components/ServiceCard.vue'
-import { domains, getServicesByDomain, services } from '@/config/navigation.js'
+import { domains, getServicesByDomain, services, getBaseDomainLabel } from '@/config/navigation.js'
 import { useServicePreferences } from '@/utils/servicePreferences.js'
+import { getStoredCurrentUser } from '@/utils/authSession.js'
 
 const router = useRouter()
 const currentUser = inject('currentUser', ref(null))
@@ -204,15 +205,35 @@ const greeting = computed(() => {
   return '晚上好'
 })
 const formattedDate = new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' }).format(new Date())
+const userPerms = computed(() => getStoredCurrentUser()?.permissions || [])
+const domainLabels = computed(() => {
+  const labels = {}
+  for (const d of domains) {
+    labels[d.key] = d.key === 'base' ? getBaseDomainLabel(userPerms.value) : d.label
+  }
+  return labels
+})
+const canSee = (service) => !service.permission
+  || userPerms.value.includes(service.permission)
+  || (service.broadPermission && userPerms.value.includes(service.broadPermission))
+const visibleTotal = computed(() => services.filter(canSee).length)
+const visibleDomainCounts = computed(() => {
+  const counts = {}
+  for (const d of domains) counts[d.key] = services.filter(s => s.domain === d.key && canSee(s)).length
+  return counts
+})
+  || userPerms.value.includes(service.permission)
+  || (service.broadPermission && userPerms.value.includes(service.broadPermission))
+
 const quickServices = computed(() => {
   let keys = defaultRecommended
   if (quickTab.value === 'recent') keys = recentKeys.value
   if (quickTab.value === 'favorites') keys = favoriteKeys.value
-  return keys.map((key) => services.find((service) => service.key === key)).filter(Boolean)
+  return keys.map((key) => services.find((service) => service.key === key)).filter(Boolean).filter(canSee)
 })
-const domainServices = computed(() => getServicesByDomain(activeDomain.value))
+const domainServices = computed(() => getServicesByDomain(activeDomain.value).filter(canSee))
 const activeDomainInfo = computed(() => domains.find((domain) => domain.key === activeDomain.value))
-const aiServices = computed(() => services.filter((service) => service.ai))
+const aiServices = computed(() => services.filter((service) => service.ai && canSee(service)))
 
 const openService = (service) => {
   recordRecent(service.key)
@@ -280,7 +301,8 @@ const submitFeedback = () => {
 .domain-description span { width: 6px; height: 6px; flex: 0 0 6px; border-radius: 50%; }
 .ai-section { padding-top: 42px; padding-bottom: 46px; }
 .ai-strip { display: grid; overflow: hidden; grid-template-columns: repeat(4, minmax(0, 1fr)); background: #fff; border: 1px solid var(--color-border); border-radius: 8px; }
-.ai-strip button { display: grid; min-height: 116px; grid-template-columns: 42px minmax(0, 1fr) 18px; align-items: center; gap: 12px; padding: 18px; color: inherit; text-align: left; background: #fff; border: 0; border-right: 1px solid var(--color-border); cursor: pointer; }
+.ai-strip button { display: grid; min-height: 116px; grid-template-columns: 42px minmax(0, 1fr); align-items: center; gap: 12px; padding: 18px; color: inherit; text-align: left; background: #fff; border: 0; border-right: 1px solid var(--color-border); cursor: pointer; }
+.ai-strip button:has(.ai-arrow) { grid-template-columns: 42px minmax(0, 1fr) 18px; }
 .ai-strip button:last-child { border-right: 0; }
 .ai-strip button:hover { background: #fffaf0; }
 .ai-strip-icon { display: inline-flex; width: 42px; height: 42px; align-items: center; justify-content: center; color: #9a6900; background: #fff2c9; border-radius: 8px; }
