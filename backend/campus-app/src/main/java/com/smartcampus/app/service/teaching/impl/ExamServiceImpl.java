@@ -193,7 +193,7 @@ public class ExamServiceImpl implements IExamService {
                 com.smartcampus.contract.entity.ExamRoom seat = new com.smartcampus.contract.entity.ExamRoom();
                 seat.setExamId(examId);
                 seat.setClassroomId(room.getClassroomId());
-                seat.setSeatNo(i + 1); // 座位号 1-based
+                seat.setSeatNo(String.valueOf(i + 1)); // 座位号 1-based
                 seat.setStudentId((Long) stu.get("student_id"));
                 examMapper.insertExamRoom(seat);
             }

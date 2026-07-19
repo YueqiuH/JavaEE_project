@@ -16,6 +16,9 @@
         <result column="start_week" property="startWeek"/>
         <result column="end_week" property="endWeek"/>
         <result column="schedule_type" property="scheduleType"/>
+        <result column="parent_id" property="parentId"/>
+        <result column="week_pattern" property="weekPattern"/>
+        <result column="target_grade_id" property="targetGradeId"/>
     </resultMap>
 
     <!-- 学生课表查询（关联选课表） -->

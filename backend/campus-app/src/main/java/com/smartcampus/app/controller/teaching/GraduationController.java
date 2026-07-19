@@ -17,7 +17,7 @@ import java.util.Date;
 import java.util.List;
 
 @RestController
-@RequestMapping("/teaching/graduation")
+@RequestMapping("/api/v1/teaching/graduation")
 @Tag(name = "毕业设计", description = "课题发布、选题、报告提交")
 public class GraduationController {
 

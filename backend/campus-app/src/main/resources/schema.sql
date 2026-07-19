@@ -14,12 +14,63 @@ USE school_spring;
 
 -- 用户表
 CREATE TABLE IF NOT EXISTS `user` (
-    `user_id`   BIGINT       NOT NULL AUTO_INCREMENT COMMENT '用户主键ID',
-    `username`  VARCHAR(32)  NOT NULL                COMMENT '用户名/账号',
-    `password`  VARCHAR(32)  NOT NULL                COMMENT '密码',
-    `user_type` INT          NOT NULL DEFAULT 1      COMMENT '用户类型: 1=学生, 2=老师, 3=教务, 4=管理员',
-    PRIMARY KEY (`user_id`)
+    `user_id`    BIGINT       NOT NULL AUTO_INCREMENT COMMENT '用户主键ID',
+    `username`   VARCHAR(64)  NOT NULL                COMMENT '用户名/账号',
+    `password`   VARCHAR(100) NOT NULL                COMMENT 'BCrypt密码哈希',
+    `user_type`  TINYINT      NOT NULL DEFAULT 1      COMMENT '人员类别: 1=学生, 2=教师, 3=教职工, 4=管理员',
+    `real_name`  VARCHAR(32)  DEFAULT NULL            COMMENT '姓名',
+    `gender`     TINYINT      DEFAULT NULL            COMMENT '性别: 1=男, 2=女',
+    `phone`      VARCHAR(20)  DEFAULT NULL            COMMENT '联系电话',
+    `email`      VARCHAR(64)  DEFAULT NULL            COMMENT '邮箱',
+    `title`      VARCHAR(32)  DEFAULT NULL            COMMENT '职称',
+    `position`   VARCHAR(32)  DEFAULT NULL            COMMENT '职务',
+    `dept_id`    BIGINT       DEFAULT NULL            COMMENT '所属院系ID',
+    `status`     TINYINT      NOT NULL DEFAULT 1      COMMENT '状态: 1=启用, 0=停用',
+    `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`user_id`),
+    UNIQUE KEY `uk_user_username` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
+
+-- 角色表
+CREATE TABLE IF NOT EXISTS `role` (
+    `role_id`   BIGINT      NOT NULL AUTO_INCREMENT,
+    `role_code` VARCHAR(32) NOT NULL COMMENT '稳定角色编码',
+    `role_name` VARCHAR(64) NOT NULL COMMENT '角色名称',
+    `status`    TINYINT     NOT NULL DEFAULT 1,
+    PRIMARY KEY (`role_id`),
+    UNIQUE KEY `uk_role_code` (`role_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色表';
+
+-- 权限表
+CREATE TABLE IF NOT EXISTS `permission` (
+    `permission_id`   BIGINT      NOT NULL AUTO_INCREMENT,
+    `permission_code` VARCHAR(64) NOT NULL COMMENT 'domain:action权限码',
+    `permission_name` VARCHAR(64) NOT NULL,
+    `status`          TINYINT     NOT NULL DEFAULT 1,
+    PRIMARY KEY (`permission_id`),
+    UNIQUE KEY `uk_permission_code` (`permission_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='权限表';
+
+-- 用户角色关联表
+CREATE TABLE IF NOT EXISTS `user_role` (
+    `user_id` BIGINT NOT NULL,
+    `role_id` BIGINT NOT NULL,
+    PRIMARY KEY (`user_id`, `role_id`),
+    KEY `idx_user_role_role_id` (`role_id`),
+    CONSTRAINT `fk_user_role_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`user_id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_user_role_role` FOREIGN KEY (`role_id`) REFERENCES `role` (`role_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户角色关联表';
+
+-- 角色权限关联表
+CREATE TABLE IF NOT EXISTS `role_permission` (
+    `role_id`       BIGINT NOT NULL,
+    `permission_id` BIGINT NOT NULL,
+    PRIMARY KEY (`role_id`, `permission_id`),
+    KEY `idx_role_permission_permission_id` (`permission_id`),
+    CONSTRAINT `fk_role_permission_role` FOREIGN KEY (`role_id`) REFERENCES `role` (`role_id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_role_permission_permission` FOREIGN KEY (`permission_id`) REFERENCES `permission` (`permission_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色权限关联表';
 
 -- 年级表
 CREATE TABLE IF NOT EXISTS `grade` (
@@ -56,13 +107,16 @@ CREATE TABLE IF NOT EXISTS `course` (
 
 -- 菜单表
 CREATE TABLE IF NOT EXISTS `menu` (
-    `menu_id`   BIGINT       NOT NULL AUTO_INCREMENT COMMENT '菜单主键ID',
-    `title`     VARCHAR(32)  NOT NULL                COMMENT '菜单标题',
-    `path`      VARCHAR(64)  DEFAULT NULL            COMMENT '路由路径',
-    `icon`      VARCHAR(32)  DEFAULT NULL            COMMENT '图标名称',
-    `parent_id` BIGINT       DEFAULT NULL            COMMENT '父菜单ID',
-    `user_type` VARCHAR(16)  NOT NULL                COMMENT '可见用户类型',
-    PRIMARY KEY (`menu_id`)
+    `menu_id`         BIGINT       NOT NULL AUTO_INCREMENT COMMENT '菜单主键ID',
+    `title`           VARCHAR(32)  NOT NULL                COMMENT '菜单标题',
+    `path`            VARCHAR(64)  DEFAULT NULL            COMMENT '路由路径',
+    `icon`            VARCHAR(32)  DEFAULT NULL            COMMENT '图标名称',
+    `parent_id`       BIGINT       DEFAULT NULL            COMMENT '父菜单ID',
+    `permission_code` VARCHAR(64)  DEFAULT NULL            COMMENT '可见权限码',
+    `sort_order`      INT          NOT NULL DEFAULT 0,
+    `status`          TINYINT      NOT NULL DEFAULT 1,
+    PRIMARY KEY (`menu_id`),
+    UNIQUE KEY `uk_menu_path` (`path`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='菜单表';
 
 -- 院系表
@@ -112,7 +166,12 @@ CREATE TABLE IF NOT EXISTS `schedule` (
     `start_week`     INT          DEFAULT 1               COMMENT '起始周',
     `end_week`       INT          DEFAULT 16              COMMENT '结束周',
     `schedule_type`  VARCHAR(16)  DEFAULT '正常'          COMMENT '类型：正常/调课/补课',
-    PRIMARY KEY (`schedule_id`)
+    `parent_id`      BIGINT       DEFAULT NULL            COMMENT '跨时段分拆时指向首段排课ID',
+    `week_pattern`   VARCHAR(16)  NOT NULL DEFAULT 'every' COMMENT '周模式: every/odd/even',
+    `target_grade_id` BIGINT      DEFAULT NULL            COMMENT '选修课面向年级ID',
+    PRIMARY KEY (`schedule_id`),
+    KEY `idx_schedule_parent` (`parent_id`),
+    KEY `idx_schedule_target_grade` (`target_grade_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='排课课表表';
 
 -- 调课申请表
@@ -153,7 +212,9 @@ CREATE TABLE IF NOT EXISTS `course_capacity` (
     `max_capacity`   INT          NOT NULL DEFAULT 60     COMMENT '最大选课人数',
     `current_count`  INT          NOT NULL DEFAULT 0      COMMENT '当前已选人数',
     `min_capacity`   INT          DEFAULT 10              COMMENT '开课最低人数',
-    PRIMARY KEY (`capacity_id`)
+    `schedule_id`    BIGINT       DEFAULT NULL            COMMENT '对应教学班排课ID',
+    PRIMARY KEY (`capacity_id`),
+    KEY `idx_course_capacity_schedule` (`schedule_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='课程容量配置表';
 
 -- 成绩表
@@ -165,7 +226,8 @@ CREATE TABLE IF NOT EXISTS `score` (
     `semester`    VARCHAR(32) DEFAULT NULL       COMMENT '学期',
     `gpa`         DECIMAL(3,1) DEFAULT NULL      COMMENT '绩点',
     `status`      INT    DEFAULT 1               COMMENT '状态：1=正常, 0=不及格',
-    PRIMARY KEY (`score_id`)
+    PRIMARY KEY (`score_id`),
+    UNIQUE KEY `uk_score_student_course_sem` (`student_id`, `course_id`, `semester`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='成绩表';
 
 -- 考试安排表
@@ -292,6 +354,7 @@ CREATE TABLE IF NOT EXISTS `scholarship` (
 CREATE TABLE IF NOT EXISTS `evaluation` (
     `evaluation_id` BIGINT   NOT NULL AUTO_INCREMENT COMMENT '评教主键ID',
     `student_id`    BIGINT   NOT NULL                COMMENT '学生ID',
+    `schedule_id`   BIGINT   DEFAULT NULL            COMMENT '关联排课班次ID',
     `teacher_id`    BIGINT   NOT NULL                COMMENT '被评教师ID',
     `course_id`     BIGINT   NOT NULL                COMMENT '课程ID',
     `semester`      VARCHAR(32) NOT NULL             COMMENT '学期',
@@ -300,7 +363,10 @@ CREATE TABLE IF NOT EXISTS `evaluation` (
     `score_method`  INT      DEFAULT NULL            COMMENT '教学方法评分 1-5',
     `comment`       TEXT     DEFAULT NULL            COMMENT '匿名评价',
     `create_time`   DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '评价时间',
-    PRIMARY KEY (`evaluation_id`)
+    PRIMARY KEY (`evaluation_id`),
+    UNIQUE KEY `uk_evaluation_student_schedule` (`student_id`, `schedule_id`),
+    KEY `idx_evaluation_teacher_semester` (`teacher_id`, `semester`),
+    KEY `idx_evaluation_teacher_course` (`teacher_id`, `course_id`, `semester`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='评教表';
 
 -- 竞赛信息表
@@ -408,11 +474,13 @@ CREATE TABLE IF NOT EXISTS `payment` (
     `payment_id`   BIGINT       NOT NULL AUTO_INCREMENT COMMENT '支付主键ID',
     `student_id`   BIGINT       NOT NULL                COMMENT '学生ID',
     `fee_id`       BIGINT       DEFAULT NULL            COMMENT '账单ID',
+    `work_plan_id` BIGINT       DEFAULT NULL            COMMENT '勤工俭学任务ID',
     `amount`       DECIMAL(10,2) NOT NULL               COMMENT '支付金额',
-    `payment_type` VARCHAR(16)  DEFAULT '学费'          COMMENT '类型：学费/一卡通充值/消费',
+    `payment_type` VARCHAR(16)  DEFAULT '学费'          COMMENT '类型：学费/一卡通充值/勤工俭学工资/消费',
     `description`  VARCHAR(128) DEFAULT NULL            COMMENT '描述',
     `payment_time` DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '支付时间',
-    PRIMARY KEY (`payment_id`)
+    PRIMARY KEY (`payment_id`),
+    UNIQUE KEY `uk_payment_work_plan` (`work_plan_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='支付记录表';
 
 -- 固定资产表
@@ -421,39 +489,55 @@ CREATE TABLE IF NOT EXISTS `asset` (
     `asset_name`   VARCHAR(64)  NOT NULL                COMMENT '资产名称',
     `asset_type`   VARCHAR(16)  NOT NULL                COMMENT '类型：设备/办公用品/其他',
     `quantity`     INT          DEFAULT 1               COMMENT '数量',
-    `dept_id`      BIGINT       DEFAULT NULL            COMMENT '所属部门ID',
-    `user_id`      BIGINT       DEFAULT NULL            COMMENT '领用人ID',
-    `status`       INT          DEFAULT 1               COMMENT '状态：1=在库, 2=已领用, 3=报废',
+    `dept_id`      BIGINT       NOT NULL DEFAULT 1      COMMENT '唯一部门ID（固定为1）',
+    `user_id`      BIGINT       DEFAULT NULL            COMMENT '借用人ID',
+    `status`       INT          DEFAULT 1               COMMENT '状态：1=在库, 2=已借出, 3=报废',
     `apply_user_id` BIGINT      DEFAULT NULL            COMMENT '申请人ID',
+    `application_type` VARCHAR(16) DEFAULT NULL          COMMENT '申请类型：PURCHASE/ADD/BORROW/SCRAP/LEGACY；台账为空',
+    `source_asset_id` BIGINT     DEFAULT NULL            COMMENT '借用或报废申请对应的来源资产ID',
+    `application_reason` VARCHAR(512) DEFAULT NULL       COMMENT '申请原因或损坏情况',
     `approve_status` INT        DEFAULT 0               COMMENT '审批：0=待审批, 1=已通过, 2=已拒绝',
+    `approve_user_id` BIGINT     DEFAULT NULL            COMMENT '管理员审批人ID',
+    `approve_remark` VARCHAR(256) DEFAULT NULL           COMMENT '管理员审批意见',
+    `approve_time`  DATETIME     DEFAULT NULL            COMMENT '管理员审批时间',
     `create_time`  DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    PRIMARY KEY (`asset_id`)
+    PRIMARY KEY (`asset_id`),
+    KEY `idx_asset_application` (`application_type`, `approve_status`, `create_time`),
+    KEY `idx_asset_source` (`source_asset_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='固定资产表';
 
 -- 工作计划表
 CREATE TABLE IF NOT EXISTS `work_plan` (
     `plan_id`     BIGINT       NOT NULL AUTO_INCREMENT COMMENT '计划主键ID',
-    `user_id`     BIGINT       NOT NULL                COMMENT '教职工ID',
-    `plan_type`   VARCHAR(16)  NOT NULL                COMMENT '类型：周计划/月计划',
+    `user_id`     BIGINT       NOT NULL                COMMENT '计划人或勤工俭学学生ID',
+    `plan_type`   VARCHAR(16)  NOT NULL                COMMENT '类型：周计划/月计划/勤工俭学；指派任务为历史兼容值',
     `content`     TEXT         NOT NULL                COMMENT '计划内容',
     `start_date`  DATE         DEFAULT NULL            COMMENT '开始日期',
     `end_date`    DATE         DEFAULT NULL            COMMENT '结束日期',
-    `status`      INT          DEFAULT 1               COMMENT '状态：1=进行中, 2=已完成',
+    `status`      INT          DEFAULT 1               COMMENT '普通计划：1=进行中,2=已完成；勤工俭学：1=进行中,2=待确认,3=已结算',
     `supervisor_comment` TEXT  DEFAULT NULL            COMMENT '上级点评',
+    `assigner_id` BIGINT       DEFAULT NULL            COMMENT '勤工俭学原指派人ID',
+    `wage_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00  COMMENT '任务工资',
+    `wage_paid`   TINYINT      NOT NULL DEFAULT 0      COMMENT '工资是否已发放：0=否,1=是',
+    `wage_paid_time` DATETIME  DEFAULT NULL            COMMENT '工资发放时间',
     `create_time` DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    PRIMARY KEY (`plan_id`)
+    PRIMARY KEY (`plan_id`),
+    KEY `idx_work_plan_assigner` (`assigner_id`, `status`, `wage_paid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工作计划表';
 
 -- 公文表
 CREATE TABLE IF NOT EXISTS `document` (
     `doc_id`      BIGINT       NOT NULL AUTO_INCREMENT COMMENT '公文主键ID',
     `title`       VARCHAR(128) NOT NULL                COMMENT '公文标题',
-    `doc_type`    VARCHAR(16)  NOT NULL                COMMENT '类型：会签/请示/请假/报告',
+    `doc_type`    VARCHAR(16)  NOT NULL                COMMENT '类型：公文会签/请示报告/请假申请',
     `content`     TEXT         NOT NULL                COMMENT '公文内容',
     `initiator_id` BIGINT      NOT NULL                COMMENT '发起人ID',
     `current_approver_id` BIGINT DEFAULT NULL          COMMENT '当前审批人ID',
     `status`      INT          DEFAULT 0               COMMENT '状态：0=审批中, 1=已通过, 2=已拒绝, 3=已退回',
-    `approval_chain` TEXT      DEFAULT NULL            COMMENT '审批链JSON',
+    `approval_chain` TEXT      DEFAULT NULL            COMMENT '启动时生成的有序审批人链JSON快照',
+    `workflow_id` BIGINT       DEFAULT NULL            COMMENT '启动时采用的流程版本ID',
+    `current_step` INT         DEFAULT NULL            COMMENT '当前审批步骤',
+    `approval_round` INT       NOT NULL DEFAULT 1      COMMENT '审批轮次',
     `create_time` DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (`doc_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='公文表';
@@ -462,12 +546,79 @@ CREATE TABLE IF NOT EXISTS `document` (
 CREATE TABLE IF NOT EXISTS `document_approval` (
     `approval_id` BIGINT       NOT NULL AUTO_INCREMENT COMMENT '审批记录主键ID',
     `doc_id`      BIGINT       NOT NULL                COMMENT '公文ID',
+    `task_id`     BIGINT       DEFAULT NULL            COMMENT '对应审批任务ID',
     `approver_id` BIGINT       NOT NULL                COMMENT '审批人ID',
+    `round_no`    INT          DEFAULT NULL            COMMENT '审批轮次',
+    `step_order`  INT          DEFAULT NULL            COMMENT '审批步骤',
+    `step_name`   VARCHAR(64)  DEFAULT NULL            COMMENT '步骤名称快照',
     `action`      VARCHAR(8)   NOT NULL                COMMENT '操作：同意/拒绝/退回',
     `opinion`     VARCHAR(256) DEFAULT NULL            COMMENT '审批意见',
     `approval_time` DATETIME   DEFAULT CURRENT_TIMESTAMP COMMENT '审批时间',
     PRIMARY KEY (`approval_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='公文审批记录表';
+
+-- 公文审批资格配置表
+CREATE TABLE IF NOT EXISTS `document_approver` (
+    `approver_config_id` BIGINT       NOT NULL AUTO_INCREMENT,
+    `user_id`            BIGINT       NOT NULL,
+    `display_name`       VARCHAR(32)  NOT NULL,
+    `status`             TINYINT      NOT NULL DEFAULT 1,
+    `create_time`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_by`         BIGINT       DEFAULT NULL,
+    `updated_time`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`approver_config_id`),
+    UNIQUE KEY `uk_document_approver_user` (`user_id`),
+    CONSTRAINT `fk_document_approver_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='公文审批资格配置表';
+
+-- 公文审批流程版本表
+CREATE TABLE IF NOT EXISTS `document_workflow` (
+    `workflow_id`   BIGINT       NOT NULL AUTO_INCREMENT,
+    `workflow_name` VARCHAR(64)  NOT NULL,
+    `doc_type`      VARCHAR(16)  NOT NULL,
+    `version`       INT          NOT NULL,
+    `status`        TINYINT      NOT NULL DEFAULT 1,
+    `created_by`    BIGINT       NOT NULL,
+    `create_time`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`workflow_id`),
+    UNIQUE KEY `uk_document_workflow_type_version` (`doc_type`, `version`),
+    KEY `idx_document_workflow_active` (`doc_type`, `status`),
+    CONSTRAINT `fk_document_workflow_creator` FOREIGN KEY (`created_by`) REFERENCES `user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='公文审批流程版本表';
+
+-- 公文审批流程步骤表
+CREATE TABLE IF NOT EXISTS `document_workflow_step` (
+    `step_id`     BIGINT       NOT NULL AUTO_INCREMENT,
+    `workflow_id` BIGINT       NOT NULL,
+    `step_order`  INT          NOT NULL,
+    `step_name`   VARCHAR(64)  NOT NULL,
+    `approver_id` BIGINT       NOT NULL,
+    PRIMARY KEY (`step_id`),
+    UNIQUE KEY `uk_document_workflow_step_order` (`workflow_id`, `step_order`),
+    KEY `idx_document_workflow_step_approver` (`approver_id`),
+    CONSTRAINT `fk_document_workflow_step_workflow` FOREIGN KEY (`workflow_id`) REFERENCES `document_workflow` (`workflow_id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_document_workflow_step_approver` FOREIGN KEY (`approver_id`) REFERENCES `user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='公文审批流程步骤表';
+
+-- 公文逐级审批任务快照表
+CREATE TABLE IF NOT EXISTS `document_approval_task` (
+    `task_id`      BIGINT       NOT NULL AUTO_INCREMENT,
+    `doc_id`       BIGINT       NOT NULL,
+    `workflow_id`  BIGINT       DEFAULT NULL,
+    `round_no`     INT          NOT NULL DEFAULT 1,
+    `step_order`   INT          NOT NULL,
+    `step_name`    VARCHAR(64)  NOT NULL,
+    `approver_id`  BIGINT       NOT NULL,
+    `status`       TINYINT      NOT NULL DEFAULT 0 COMMENT '0=等待,1=待审批,2=同意,3=拒绝,4=退回,5=取消',
+    `handled_time` DATETIME     DEFAULT NULL,
+    `create_time`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`task_id`),
+    UNIQUE KEY `uk_document_task_round_step` (`doc_id`, `round_no`, `step_order`),
+    KEY `idx_document_task_pending` (`approver_id`, `status`),
+    CONSTRAINT `fk_document_task_document` FOREIGN KEY (`doc_id`) REFERENCES `document` (`doc_id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_document_task_workflow` FOREIGN KEY (`workflow_id`) REFERENCES `document_workflow` (`workflow_id`),
+    CONSTRAINT `fk_document_task_approver` FOREIGN KEY (`approver_id`) REFERENCES `user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='公文逐级审批任务快照表';
 
 -- 会议表
 CREATE TABLE IF NOT EXISTS `meeting` (
@@ -557,6 +708,246 @@ CREATE TABLE IF NOT EXISTS `forum_comment` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='论坛回复表';
 
 -- =====================================
+-- Existing database alignment
+-- =====================================
+
+-- Spring SQL initialization runs on every startup. These guarded statements
+-- upgrade tables created by older revisions without failing on aligned tables.
+SET @teaching_ddl = IF(
+    (SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'course'
+       AND COLUMN_NAME = 'course_code') = 0,
+    'ALTER TABLE `course`
+       ADD COLUMN `course_code` VARCHAR(16) DEFAULT NULL AFTER `course_name`,
+       ADD COLUMN `classification` VARCHAR(8) DEFAULT NULL AFTER `course_code`,
+       ADD COLUMN `credit` DECIMAL(3,1) DEFAULT NULL AFTER `classification`,
+       ADD COLUMN `weekly_frequency` INT DEFAULT NULL AFTER `credit`,
+       ADD COLUMN `prerequisite_id` BIGINT DEFAULT NULL AFTER `weekly_frequency`,
+       ADD COLUMN `is_active` TINYINT NOT NULL DEFAULT 1 AFTER `prerequisite_id`,
+       ADD COLUMN `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER `is_active`',
+    'SELECT 1');
+PREPARE teaching_stmt FROM @teaching_ddl;
+EXECUTE teaching_stmt;
+DEALLOCATE PREPARE teaching_stmt;
+
+SET @teaching_ddl = IF(
+    (SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'schedule'
+       AND COLUMN_NAME = 'week_pattern') = 0,
+    'ALTER TABLE `schedule`
+       ADD COLUMN `parent_id` BIGINT DEFAULT NULL AFTER `schedule_type`,
+       ADD COLUMN `week_pattern` VARCHAR(16) NOT NULL DEFAULT ''every'' AFTER `parent_id`,
+       ADD COLUMN `target_grade_id` BIGINT DEFAULT NULL AFTER `week_pattern`,
+       ADD KEY `idx_schedule_parent` (`parent_id`),
+       ADD KEY `idx_schedule_target_grade` (`target_grade_id`)',
+    'SELECT 1');
+PREPARE teaching_stmt FROM @teaching_ddl;
+EXECUTE teaching_stmt;
+DEALLOCATE PREPARE teaching_stmt;
+
+SET @teaching_ddl = IF(
+    (SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'course_capacity'
+       AND COLUMN_NAME = 'schedule_id') = 0,
+    'ALTER TABLE `course_capacity`
+       ADD COLUMN `schedule_id` BIGINT DEFAULT NULL AFTER `min_capacity`,
+       ADD KEY `idx_course_capacity_schedule` (`schedule_id`)',
+    'SELECT 1');
+PREPARE teaching_stmt FROM @teaching_ddl;
+EXECUTE teaching_stmt;
+DEALLOCATE PREPARE teaching_stmt;
+
+SET @teaching_ddl = IF(
+    (SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'evaluation'
+       AND COLUMN_NAME = 'schedule_id') = 0,
+    'ALTER TABLE `evaluation`
+       ADD COLUMN `schedule_id` BIGINT DEFAULT NULL AFTER `student_id`,
+       ADD UNIQUE KEY `uk_evaluation_student_schedule` (`student_id`, `schedule_id`),
+       ADD KEY `idx_evaluation_teacher_semester` (`teacher_id`, `semester`),
+       ADD KEY `idx_evaluation_teacher_course` (`teacher_id`, `course_id`, `semester`)',
+    'SELECT 1');
+PREPARE teaching_stmt FROM @teaching_ddl;
+EXECUTE teaching_stmt;
+DEALLOCATE PREPARE teaching_stmt;
+
+SET @teaching_ddl = IF(
+    (SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'menu'
+       AND COLUMN_NAME = 'permission_code') = 0,
+    'ALTER TABLE `menu`
+       DROP COLUMN `user_type`,
+       ADD COLUMN `permission_code` VARCHAR(64) DEFAULT NULL AFTER `parent_id`,
+       ADD COLUMN `sort_order` INT NOT NULL DEFAULT 0 AFTER `permission_code`,
+       ADD COLUMN `status` TINYINT NOT NULL DEFAULT 1 AFTER `sort_order`,
+       ADD UNIQUE KEY `uk_menu_path` (`path`)',
+    'SELECT 1');
+PREPARE teaching_stmt FROM @teaching_ddl;
+EXECUTE teaching_stmt;
+DEALLOCATE PREPARE teaching_stmt;
+
+ALTER TABLE `exam_room`
+    MODIFY COLUMN `seat_no` VARCHAR(16) DEFAULT NULL COMMENT 'Seat number';
+
+DELETE duplicate_score
+FROM `score` duplicate_score
+JOIN `score` retained_score
+  ON retained_score.student_id = duplicate_score.student_id
+ AND retained_score.course_id = duplicate_score.course_id
+ AND retained_score.semester <=> duplicate_score.semester
+ AND retained_score.score_id < duplicate_score.score_id;
+
+SET @teaching_ddl = IF(
+    (SELECT COUNT(*) FROM information_schema.STATISTICS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'score'
+       AND INDEX_NAME = 'uk_score_student_course_sem') = 0,
+    'ALTER TABLE `score`
+       ADD UNIQUE KEY `uk_score_student_course_sem`
+       (`student_id`, `course_id`, `semester`)',
+    'SELECT 1');
+PREPARE teaching_stmt FROM @teaching_ddl;
+EXECUTE teaching_stmt;
+DEALLOCATE PREPARE teaching_stmt;
+
+-- Align databases created before the office workflow extensions.
+SET @office_ddl = IF(
+    (SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'payment'
+       AND COLUMN_NAME = 'work_plan_id') = 0,
+    'ALTER TABLE `payment`
+       ADD COLUMN `work_plan_id` BIGINT DEFAULT NULL AFTER `fee_id`,
+       MODIFY COLUMN `payment_type` VARCHAR(16) DEFAULT ''学费'',
+       ADD UNIQUE KEY `uk_payment_work_plan` (`work_plan_id`)',
+    'SELECT 1');
+PREPARE office_stmt FROM @office_ddl;
+EXECUTE office_stmt;
+DEALLOCATE PREPARE office_stmt;
+
+SET @office_ddl = IF(
+    (SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'asset'
+       AND COLUMN_NAME = 'application_type') = 0,
+    'ALTER TABLE `asset`
+       ADD COLUMN `application_type` VARCHAR(16) DEFAULT NULL AFTER `apply_user_id`,
+       ADD COLUMN `source_asset_id` BIGINT DEFAULT NULL AFTER `application_type`,
+       ADD COLUMN `application_reason` VARCHAR(512) DEFAULT NULL AFTER `source_asset_id`,
+       ADD COLUMN `approve_user_id` BIGINT DEFAULT NULL AFTER `approve_status`,
+       ADD COLUMN `approve_remark` VARCHAR(256) DEFAULT NULL AFTER `approve_user_id`,
+       ADD COLUMN `approve_time` DATETIME DEFAULT NULL AFTER `approve_remark`,
+       ADD KEY `idx_asset_application` (`application_type`, `approve_status`, `create_time`),
+       ADD KEY `idx_asset_source` (`source_asset_id`)',
+    'SELECT 1');
+PREPARE office_stmt FROM @office_ddl;
+EXECUTE office_stmt;
+DEALLOCATE PREPARE office_stmt;
+
+SET @office_ddl = IF(
+    (SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'work_plan'
+       AND COLUMN_NAME = 'assigner_id') = 0,
+    'ALTER TABLE `work_plan`
+       ADD COLUMN `assigner_id` BIGINT DEFAULT NULL AFTER `supervisor_comment`,
+       ADD COLUMN `wage_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER `assigner_id`,
+       ADD COLUMN `wage_paid` TINYINT NOT NULL DEFAULT 0 AFTER `wage_amount`,
+       ADD COLUMN `wage_paid_time` DATETIME DEFAULT NULL AFTER `wage_paid`,
+       ADD KEY `idx_work_plan_assigner` (`assigner_id`, `status`, `wage_paid`)',
+    'SELECT 1');
+PREPARE office_stmt FROM @office_ddl;
+EXECUTE office_stmt;
+DEALLOCATE PREPARE office_stmt;
+
+SET @office_ddl = IF(
+    (SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'document'
+       AND COLUMN_NAME = 'workflow_id') = 0,
+    'ALTER TABLE `document`
+       ADD COLUMN `workflow_id` BIGINT DEFAULT NULL AFTER `approval_chain`,
+       ADD COLUMN `current_step` INT DEFAULT NULL AFTER `workflow_id`,
+       ADD COLUMN `approval_round` INT NOT NULL DEFAULT 1 AFTER `current_step`',
+    'SELECT 1');
+PREPARE office_stmt FROM @office_ddl;
+EXECUTE office_stmt;
+DEALLOCATE PREPARE office_stmt;
+
+SET @office_ddl = IF(
+    (SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'document_approval'
+       AND COLUMN_NAME = 'task_id') = 0,
+    'ALTER TABLE `document_approval`
+       ADD COLUMN `task_id` BIGINT DEFAULT NULL AFTER `doc_id`,
+       ADD COLUMN `round_no` INT DEFAULT NULL AFTER `approver_id`,
+       ADD COLUMN `step_order` INT DEFAULT NULL AFTER `round_no`,
+       ADD COLUMN `step_name` VARCHAR(64) DEFAULT NULL AFTER `step_order`',
+    'SELECT 1');
+PREPARE office_stmt FROM @office_ddl;
+EXECUTE office_stmt;
+DEALLOCATE PREPARE office_stmt;
+
+-- =====================================
+-- 协同办公 RBAC 基线
+-- =====================================
+INSERT INTO `role` (`role_code`, `role_name`, `status`) VALUES
+    ('STUDENT', '学生', 1),
+    ('TEACHER', '教师', 1),
+    ('STAFF', '教职工', 1),
+    ('COUNSELOR', '辅导员', 1),
+    ('LEADER', '校领导', 1),
+    ('ADMIN', '系统管理员', 1)
+ON DUPLICATE KEY UPDATE `role_name` = VALUES(`role_name`), `status` = 1;
+
+INSERT INTO `permission` (`permission_code`, `permission_name`, `status`) VALUES
+    ('office:read', '读取办公数据', 1),
+    ('office:write', '维护办公数据', 1),
+    ('fee:self:read', '查询本人账单与流水', 1),
+    ('fee:self:pay', '支付本人账单', 1),
+    ('fee:manage', '管理费用账单', 1),
+    ('fee:overview:read', '查询学生缴费概览', 1),
+    ('asset:read', '读取资产台账', 1),
+    ('asset:apply', '提交资产申请', 1),
+    ('asset:manage', '管理和审批资产', 1),
+    ('work-plan:self', '维护本人工作计划', 1),
+    ('work-plan:manage', '管理和点评工作计划', 1),
+    ('document:self', '发起并查看本人公文', 1),
+    ('document:approve', '审批流转至本人的公文', 1),
+    ('document:manage', '管理公文审批资格与流程', 1),
+    ('meeting:self', '查看并反馈本人会议', 1),
+    ('meeting:manage', '发布和管理会议', 1),
+    ('notification:self:read', '读取本人通知', 1)
+ON DUPLICATE KEY UPDATE `permission_name` = VALUES(`permission_name`), `status` = 1;
+
+INSERT IGNORE INTO `role_permission` (`role_id`, `permission_id`)
+SELECT r.role_id, p.permission_id
+FROM `role` r
+CROSS JOIN `permission` p
+WHERE r.role_code = 'ADMIN'
+   OR (r.role_code = 'STUDENT' AND p.permission_code IN (
+       'fee:self:read', 'fee:self:pay', 'work-plan:self', 'document:self',
+       'notification:self:read'))
+   OR (r.role_code = 'TEACHER' AND p.permission_code IN (
+       'office:read', 'fee:overview:read', 'asset:read', 'asset:apply',
+       'work-plan:self', 'work-plan:manage', 'document:self', 'document:approve',
+       'meeting:self', 'meeting:manage', 'notification:self:read'))
+   OR (r.role_code = 'STAFF' AND p.permission_code IN (
+       'office:read', 'office:write', 'fee:self:read', 'fee:self:pay', 'fee:manage',
+       'fee:overview:read', 'asset:read', 'asset:apply', 'asset:manage',
+       'work-plan:self', 'work-plan:manage', 'document:self', 'document:approve',
+       'document:manage', 'meeting:self', 'meeting:manage', 'notification:self:read'))
+   OR (r.role_code = 'LEADER' AND p.permission_code IN (
+       'office:read', 'fee:overview:read'));
+
+INSERT INTO `menu` (`title`, `path`, `permission_code`, `sort_order`, `status`) VALUES
+    ('学杂费交纳', '/home/fee-payment', 'fee:self:read', 31, 1),
+    ('固定资产管理', '/home/asset-management', 'asset:read', 32, 1),
+    ('工作计划', '/home/work-plan', 'work-plan:self', 33, 1),
+    ('公文流转 OA', '/home/document-oa', 'document:self', 34, 1),
+    ('会议与通知', '/home/meeting-notice', 'notification:self:read', 35, 1)
+ON DUPLICATE KEY UPDATE
+    `title` = VALUES(`title`),
+    `permission_code` = VALUES(`permission_code`),
+    `sort_order` = VALUES(`sort_order`),
+    `status` = VALUES(`status`);
+
+-- =====================================
 -- 测试种子数据（含学生/教师/成绩/选课）
 -- =====================================
 DELETE FROM score WHERE 1=1;
@@ -632,29 +1023,43 @@ INSERT INTO course (course_id, course_name, course_code, classification, credit,
 (10, '数据库原理与应用',  'CS202',   '限选', 3, 2, 1)
 ON DUPLICATE KEY UPDATE course_name=VALUES(course_name);
 
--- 容量
-INSERT INTO course_capacity (course_id, semester, max_capacity, current_count, min_capacity) VALUES
-(1,'2025-2026-1',60,50,15),(2,'2025-2026-1',50,45,15),
-(3,'2025-2026-1',55,48,15),(4,'2025-2026-1',45,42,15),
-(5,'2025-2026-1',40,38,15),(6,'2025-2026-1',35,30,10),
-(7,'2025-2026-1',80,78,20),(8,'2025-2026-1',30,28,10),
-(9,'2025-2026-1',60,55,15),(10,'2025-2026-1',40,35,10)
-ON DUPLICATE KEY UPDATE current_count=VALUES(current_count);
+-- 容量（固定主键与排课首段关联，确保重复启动不会追加数据）
+INSERT INTO course_capacity
+    (capacity_id, course_id, semester, max_capacity, current_count, min_capacity, schedule_id) VALUES
+(1,1,'2025-2026-1',60,50,15,1),(2,2,'2025-2026-1',50,45,15,3),
+(3,3,'2025-2026-1',55,48,15,4),(4,4,'2025-2026-1',45,42,15,5),
+(5,5,'2025-2026-1',40,38,15,6),(6,6,'2025-2026-1',35,30,10,7),
+(7,7,'2025-2026-1',80,78,20,8),(8,8,'2025-2026-1',30,28,10,9),
+(9,9,'2025-2026-1',60,55,15,10),(10,10,'2025-2026-1',40,35,10,11)
+ON DUPLICATE KEY UPDATE
+    course_id=VALUES(course_id), semester=VALUES(semester),
+    max_capacity=VALUES(max_capacity), current_count=VALUES(current_count),
+    min_capacity=VALUES(min_capacity), schedule_id=VALUES(schedule_id);
 
--- 排课（teacherId: 3=700001, 4=800001, 5=admin, 后续=teacher01/02）
-INSERT INTO schedule (course_id, classroom_id, teacher_id, semester, week_day, start_period, end_period, start_week, end_week, schedule_type, week_pattern) VALUES
-(1, 6, 3, '2025-2026-1', 1, 1, 2, 1, 16, '正常', 'every'),
-(1, 6, 3, '2025-2026-1', 3, 3, 5, 1, 16, '正常', 'every'),
-(2, 1, 3, '2025-2026-1', 2, 3, 5, 1, 16, '正常', 'every'),
-(3, 3, 3, '2025-2026-1', 3, 8, 10, 1, 16, '正常', 'every'),
-(4, 2, 4, '2025-2026-1', 4, 3, 5, 1, 16, '正常', 'every'),
-(5, 3, 4, '2025-2026-1', 5, 8, 10, 1, 16, '正常', 'every'),
-(6, 1, 3, '2025-2026-1', 1, 8, 10, 1, 16, '正常', 'every'),
-(7, 6, 4, '2025-2026-1', 2, 1, 2, 1, 16, '正常', 'every'),
-(8, 4, 5, '2025-2026-1', 5, 6, 7, 1, 16, '正常', 'every'),
-(9, 5, 4, '2025-2026-1', 3, 1, 2, 1, 16, '正常', 'every'),
-(10,1, 3, '2025-2026-1', 4, 8, 10, 1, 16, '正常', 'every')
-ON DUPLICATE KEY UPDATE week_day=VALUES(week_day);
+-- 排课（固定主键供选课与容量种子引用；第二段高数排课关联首段）
+INSERT INTO schedule
+    (schedule_id, course_id, classroom_id, teacher_id, semester, week_day,
+     start_period, end_period, start_week, end_week, schedule_type,
+     parent_id, week_pattern, target_grade_id) VALUES
+(1, 1, 6, 3, '2025-2026-1', 1, 1, 2, 1, 16, '正常', NULL, 'every', NULL),
+(2, 1, 6, 3, '2025-2026-1', 3, 3, 5, 1, 16, '正常', 1,    'every', NULL),
+(3, 2, 1, 3, '2025-2026-1', 2, 3, 5, 1, 16, '正常', NULL, 'every', NULL),
+(4, 3, 3, 3, '2025-2026-1', 3, 8,10, 1, 16, '正常', NULL, 'every', NULL),
+(5, 4, 2, 4, '2025-2026-1', 4, 3, 5, 1, 16, '正常', NULL, 'every', NULL),
+(6, 5, 3, 4, '2025-2026-1', 5, 8,10, 1, 16, '正常', NULL, 'every', NULL),
+(7, 6, 1, 3, '2025-2026-1', 1, 8,10, 1, 16, '正常', NULL, 'every', NULL),
+(8, 7, 6, 4, '2025-2026-1', 2, 1, 2, 1, 16, '正常', NULL, 'every', NULL),
+(9, 8, 4, 5, '2025-2026-1', 5, 6, 7, 1, 16, '正常', NULL, 'every', NULL),
+(10,9, 5, 4, '2025-2026-1', 3, 1, 2, 1, 16, '正常', NULL, 'every', 1),
+(11,10,1, 3, '2025-2026-1', 4, 8,10, 1, 16, '正常', NULL, 'every', 1)
+ON DUPLICATE KEY UPDATE
+    course_id=VALUES(course_id), classroom_id=VALUES(classroom_id),
+    teacher_id=VALUES(teacher_id), semester=VALUES(semester),
+    week_day=VALUES(week_day), start_period=VALUES(start_period),
+    end_period=VALUES(end_period), start_week=VALUES(start_week),
+    end_week=VALUES(end_week), schedule_type=VALUES(schedule_type),
+    parent_id=VALUES(parent_id), week_pattern=VALUES(week_pattern),
+    target_grade_id=VALUES(target_grade_id);
 
 -- 选课（学生2=600001, 6-14=600002-600010）
 INSERT INTO course_selection (student_id, course_id, schedule_id, semester, status, select_time) VALUES
@@ -704,6 +1109,7 @@ INSERT INTO score (student_id, course_id, score_score, semester, gpa, status) VA
 (13,3, 80, '2025-2026-1', 3.0, 1),(13,7, 66, '2025-2026-1', 1.5, 1),
 -- 600010 孙鹏: 1门不及格
 (14,2, 59, '2025-2026-1', 0.0, 0),(14,9, 73, '2025-2026-1', 2.0, 1)
-ON DUPLICATE KEY UPDATE score_score=VALUES(score_score);
+ON DUPLICATE KEY UPDATE
+    score_score=VALUES(score_score), gpa=VALUES(gpa), status=VALUES(status);
 
 

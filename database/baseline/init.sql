@@ -102,8 +102,15 @@ CREATE TABLE IF NOT EXISTS `student` (
 
 -- 课程表
 CREATE TABLE IF NOT EXISTS `course` (
-    `course_id`   BIGINT       NOT NULL AUTO_INCREMENT COMMENT '课程主键ID',
-    `course_name` VARCHAR(64)  NOT NULL                COMMENT '课程名称',
+    `course_id`        BIGINT       NOT NULL AUTO_INCREMENT COMMENT '课程主键ID',
+    `course_name`      VARCHAR(64)  NOT NULL                COMMENT '课程名称',
+    `course_code`      VARCHAR(16)  DEFAULT NULL            COMMENT '课程编号',
+    `classification`   VARCHAR(8)   DEFAULT NULL            COMMENT '必修/选修/限选',
+    `credit`           DECIMAL(3,1) DEFAULT NULL            COMMENT '学分 1-5',
+    `weekly_frequency` INT          DEFAULT NULL            COMMENT '每周上课次数：1或2',
+    `prerequisite_id`  BIGINT       DEFAULT NULL            COMMENT '先修课程ID，自关联',
+    `is_active`        TINYINT      NOT NULL DEFAULT 1      COMMENT '是否开课: 1=正常, 0=停开',
+    `created_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`course_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='课程表';
 
@@ -170,7 +177,12 @@ CREATE TABLE IF NOT EXISTS `schedule` (
     `start_week`     INT          DEFAULT 1               COMMENT '起始周',
     `end_week`       INT          DEFAULT 16              COMMENT '结束周',
     `schedule_type`  VARCHAR(16)  DEFAULT '正常'          COMMENT '类型：正常/调课/补课',
-    PRIMARY KEY (`schedule_id`)
+    `parent_id`      BIGINT       DEFAULT NULL            COMMENT '跨时段分拆时指向首段排课ID',
+    `week_pattern`   VARCHAR(16)  NOT NULL DEFAULT 'every' COMMENT '周模式: every/odd/even',
+    `target_grade_id` BIGINT      DEFAULT NULL            COMMENT '选修课面向年级ID',
+    PRIMARY KEY (`schedule_id`),
+    KEY `idx_schedule_parent` (`parent_id`),
+    KEY `idx_schedule_target_grade` (`target_grade_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='排课课表表';
 
 -- 调课申请表
@@ -211,7 +223,9 @@ CREATE TABLE IF NOT EXISTS `course_capacity` (
     `max_capacity`   INT          NOT NULL DEFAULT 60     COMMENT '最大选课人数',
     `current_count`  INT          NOT NULL DEFAULT 0      COMMENT '当前已选人数',
     `min_capacity`   INT          DEFAULT 10              COMMENT '开课最低人数',
-    PRIMARY KEY (`capacity_id`)
+    `schedule_id`    BIGINT       DEFAULT NULL            COMMENT '对应教学班排课ID',
+    PRIMARY KEY (`capacity_id`),
+    KEY `idx_course_capacity_schedule` (`schedule_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='课程容量配置表';
 
 -- 成绩表
@@ -223,7 +237,8 @@ CREATE TABLE IF NOT EXISTS `score` (
     `semester`    VARCHAR(32) DEFAULT NULL       COMMENT '学期',
     `gpa`         DECIMAL(3,1) DEFAULT NULL      COMMENT '绩点',
     `status`      INT    DEFAULT 1               COMMENT '状态：1=正常, 0=不及格',
-    PRIMARY KEY (`score_id`)
+    PRIMARY KEY (`score_id`),
+    UNIQUE KEY `uk_score_student_course_sem` (`student_id`, `course_id`, `semester`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='成绩表';
 
 -- 考试安排表
@@ -379,6 +394,7 @@ CREATE TABLE IF NOT EXISTS `scholarship` (
 CREATE TABLE IF NOT EXISTS `evaluation` (
     `evaluation_id` BIGINT   NOT NULL AUTO_INCREMENT COMMENT '评教主键ID',
     `student_id`    BIGINT   NOT NULL                COMMENT '学生ID',
+    `schedule_id`   BIGINT   DEFAULT NULL            COMMENT '关联排课班次ID',
     `teacher_id`    BIGINT   NOT NULL                COMMENT '被评教师ID',
     `course_id`     BIGINT   NOT NULL                COMMENT '课程ID',
     `semester`      VARCHAR(32) NOT NULL             COMMENT '学期',
@@ -387,7 +403,10 @@ CREATE TABLE IF NOT EXISTS `evaluation` (
     `score_method`  INT      DEFAULT NULL            COMMENT '教学方法评分 1-5',
     `comment`       TEXT     DEFAULT NULL            COMMENT '匿名评价',
     `create_time`   DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '评价时间',
-    PRIMARY KEY (`evaluation_id`)
+    PRIMARY KEY (`evaluation_id`),
+    UNIQUE KEY `uk_evaluation_student_schedule` (`student_id`, `schedule_id`),
+    KEY `idx_evaluation_teacher_semester` (`teacher_id`, `semester`),
+    KEY `idx_evaluation_teacher_course` (`teacher_id`, `course_id`, `semester`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='评教表';
 
 -- 竞赛信息表

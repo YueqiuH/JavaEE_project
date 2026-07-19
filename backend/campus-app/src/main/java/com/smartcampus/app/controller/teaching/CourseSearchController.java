@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 课程搜索 Controller —— 供教师和学生使用。
  */
 @RestController
-@RequestMapping("/course")
+@RequestMapping("/api/v1/teaching/course")
 @Tag(name = "课程搜索", description = "多维搜索课程——按课程名、课程代码、教师名模糊/精确匹配")
 public class CourseSearchController {
 

@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/teaching/selection")
+@RequestMapping("/api/v1/teaching/selection")
 @Tag(name = "选课与容量控制", description = "用于处理学生选课、退选、容量管理的业务")
 public class CourseSelectionController {
 
