@@ -175,7 +175,7 @@ import { ChatDotRound, Checked, Grid, Right, Star, Top } from '@element-plus/ico
 import { ElMessage } from 'element-plus'
 import campusHero from '@/assets/images/campus-hero.jpg'
 import ServiceCard from '@/components/ServiceCard.vue'
-import { domains, getServicesByDomain, services } from '@/config/navigation.js'
+import { canAccessService, domains, getServicesByDomain, services } from '@/config/navigation.js'
 import { useServicePreferences } from '@/utils/servicePreferences.js'
 
 const router = useRouter()
@@ -208,11 +208,11 @@ const quickServices = computed(() => {
   let keys = defaultRecommended
   if (quickTab.value === 'recent') keys = recentKeys.value
   if (quickTab.value === 'favorites') keys = favoriteKeys.value
-  return keys.map((key) => services.find((service) => service.key === key)).filter(Boolean)
+  return keys.map((key) => services.find((service) => service.key === key)).filter((service) => service && canAccessService(service, currentUser.value?.permissions || []))
 })
-const domainServices = computed(() => getServicesByDomain(activeDomain.value))
+const domainServices = computed(() => getServicesByDomain(activeDomain.value, currentUser.value?.permissions || []))
 const activeDomainInfo = computed(() => domains.find((domain) => domain.key === activeDomain.value))
-const aiServices = computed(() => services.filter((service) => service.ai))
+const aiServices = computed(() => services.filter((service) => service.ai && canAccessService(service, currentUser.value?.permissions || [])))
 
 const openService = (service) => {
   recordRecent(service.key)

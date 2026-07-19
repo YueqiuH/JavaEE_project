@@ -93,7 +93,7 @@ provide('currentUser', currentUser)
 
 const workspaceMode = computed(() => Boolean(route.meta.workspace))
 const currentDomain = computed(() => domainMap[route.meta.domain] || domainMap.teaching)
-const sidebarServices = computed(() => getServicesByDomain(currentDomain.value.key))
+const sidebarServices = computed(() => getServicesByDomain(currentDomain.value.key, currentUser.value?.permissions || []))
 const displayName = computed(() => currentUser.value?.user?.realName || currentUser.value?.user?.username || '校园用户')
 const avatarText = computed(() => displayName.value.slice(0, 1).toUpperCase())
 const roleLabel = computed(() => {

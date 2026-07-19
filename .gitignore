@@ -27,6 +27,8 @@ Thumbs.db
 # Temp
 ~$*
 *.tmp
+__pycache__/
+*.py[cod]
 
 # Local environment
 .env

@@ -32,15 +32,16 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Search } from '@element-plus/icons-vue'
 import ServiceCard from '@/components/ServiceCard.vue'
-import { domainMap, domains, services } from '@/config/navigation.js'
+import { canAccessService, domainMap, domains, services } from '@/config/navigation.js'
 import { useServicePreferences } from '@/utils/servicePreferences.js'
 
 const route = useRoute()
 const router = useRouter()
+const currentUser = inject('currentUser', ref(null))
 const { favoriteKeys, isFavorite, toggleFavorite, recordRecent } = useServicePreferences()
 const keyword = ref('')
 const activeDomain = ref(domainMap[route.query.domain] ? route.query.domain : 'all')
@@ -53,10 +54,11 @@ const resultTitle = computed(() => activeDomain.value === 'all' ? '全部服务'
 const filteredServices = computed(() => {
   const normalizedKeyword = keyword.value.trim().toLowerCase()
   const result = services.filter((service) => {
+    const matchesPermission = canAccessService(service, currentUser.value?.permissions || [])
     const matchesDomain = activeDomain.value === 'all' || service.domain === activeDomain.value
     const matchesFavorite = !favoritesOnly.value || favoriteKeys.value.includes(service.key)
     const matchesKeyword = !normalizedKeyword || `${service.title}${service.description}`.toLowerCase().includes(normalizedKeyword)
-    return matchesDomain && matchesFavorite && matchesKeyword
+    return matchesPermission && matchesDomain && matchesFavorite && matchesKeyword
   })
   return sortMode.value === 'name' ? [...result].sort((a, b) => a.title.localeCompare(b.title, 'zh-CN')) : result
 })

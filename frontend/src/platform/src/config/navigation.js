@@ -18,12 +18,12 @@ export const services = [
   { key: 'teaching-evaluation', routeName: 'teachingEvaluation', title: '评教反馈', description: '课程评教、反馈与质量分析', domain: 'student', icon: 'ChatLineSquare', template: 'transaction', summary: '2 门课程待评教', status: '待完成' },
   { key: 'competition', routeName: 'competition', title: '学科竞赛', description: '竞赛发现、组队报名与成果管理', domain: 'student', icon: 'Trophy', template: 'transaction', summary: '6 项竞赛报名中', status: '报名中' },
   { key: 'lab-booking', routeName: 'labBooking', title: '实验室预约', description: '实验室当日容量预约', domain: 'student', icon: 'OfficeBuilding', template: 'schedule', summary: '按今日容量开放', status: '可预约' },
-  { key: 'fee-payment', routeName: 'feePayment', title: '学杂费交纳', description: '账单查询、在线缴费与流水查看', domain: 'office', icon: 'Wallet', template: 'transaction', summary: '当前无待缴账单', status: '已完成' },
-  { key: 'asset-management', routeName: 'assetManagement', title: '固定资产管理', description: '资产台账、申领、盘点与处置', domain: 'office', icon: 'Box', template: 'table', summary: '5 项资产待盘点', status: '待处理' },
-  { key: 'work-plan', routeName: 'workPlan', title: '工作计划', description: '计划制定、任务协同与进度跟踪', domain: 'office', icon: 'Checked', template: 'schedule', summary: '今日 3 项任务', status: '进行中' },
-  { key: 'document-oa', routeName: 'documentOA', title: '公文流转 OA', description: '收发文、会签、审批与催办', domain: 'office', icon: 'Document', template: 'approval', summary: '4 份公文待处理', status: '待办' },
-  { key: 'meeting-notice', routeName: 'meetingNotice', title: '会议与通知', description: '会议安排、通知发布与反馈', domain: 'office', icon: 'Bell', template: 'schedule', summary: '14:30 教学工作会', status: '今日' },
-  { key: 'ai-approval', routeName: 'aiApproval', title: 'AI 审批助手', description: '公文摘要、要点提取与意见草稿', domain: 'office', icon: 'MagicStick', template: 'ai', summary: '为审批工作提供智能建议', status: '演示模式', ai: true },
+
+  { key: 'fee-payment', routeName: 'feePayment', title: '学杂费交纳', description: '账单查询、在线缴费与学生缴费概览', domain: 'office', icon: 'Wallet', template: 'transaction', summary: '支持学生自助、教师欠费查询与财务导入', status: '已完成', permissions: ['fee:self:read', 'fee:overview:read', 'fee:manage'] },
+  { key: 'asset-management', routeName: 'assetManagement', title: '固定资产审批', description: '购买、添加、借用、损坏报废申请与管理员审批', domain: 'office', icon: 'Box', template: 'table', summary: '四类固定资产审批', status: '待处理', permissions: ['asset:read'] },
+  { key: 'work-plan', routeName: 'workPlan', title: '工作计划与勤工俭学', description: '个人计划、学生勤工俭学与工资结算', domain: 'office', icon: 'Checked', template: 'schedule', summary: '支持任务确认后工资入账', status: '进行中', permissions: ['work-plan:self', 'work-plan:manage'] },
+  { key: 'document-oa', routeName: 'documentOA', title: '公文流转 OA', description: '学生请假、公文会签、审批与催办', domain: 'office', icon: 'Document', template: 'approval', summary: '支持学生在线请假和固定流程审批', status: '待办', permissions: ['document:self', 'document:approve'] },
+  { key: 'meeting-notice', routeName: 'meetingNotice', title: '会议与通知', description: '会议安排、通知发布与反馈', domain: 'office', icon: 'Bell', template: 'schedule', summary: '14:30 教学工作会', status: '今日', permissions: ['meeting:self', 'meeting:manage', 'notification:self:read'] },
 
   { key: 'user-management', routeName: 'userManagement', title: '师生信息库', description: '师生数字档案与组合检索', domain: 'base', icon: 'UserFilled', template: 'table', summary: '数据更新于 10 分钟前', status: '已同步' },
   { key: 'enrollment-stats', routeName: 'enrollmentStats', title: '招生统计', description: '招生计划、报到率与生源分析', domain: 'base', icon: 'Histogram', template: 'analytics', summary: '2026 年招生数据', status: '实时' },
@@ -36,5 +36,10 @@ export const services = [
 export const domainMap = Object.fromEntries(domains.map((domain) => [domain.key, domain]))
 export const serviceMap = Object.fromEntries(services.map((service) => [service.key, service]))
 
-export const getServicesByDomain = (domain) => services.filter((service) => service.domain === domain)
+export const canAccessService = (service, permissions = []) => {
+  if (!service?.permissions?.length) return true
+  const granted = permissions instanceof Set ? permissions : new Set(permissions)
+  return service.permissions.some((permission) => granted.has(permission))
+}
+export const getServicesByDomain = (domain, permissions) => services.filter((service) => service.domain === domain && (permissions === undefined || canAccessService(service, permissions)))
 export const getServiceByRouteName = (routeName) => services.find((service) => service.routeName === routeName)
