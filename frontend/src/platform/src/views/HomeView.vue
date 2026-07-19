@@ -45,7 +45,7 @@
       <aside v-if="workspaceMode" class="domain-sidebar">
         <div class="sidebar-domain" :style="{ '--domain-color': currentDomain.color }">
           <span><el-icon><component :is="currentDomain.icon" /></el-icon></span>
-          <div><strong>{{ currentDomain.label }}</strong><small>{{ currentDomain.description }}</small></div>
+          <div><strong>{{ sidebarDomainLabel }}</strong><small>{{ currentDomain.description }}</small></div>
         </div>
         <nav aria-label="当前业务域功能">
           <router-link v-for="service in sidebarServices" :key="service.key" :to="{ name: service.routeName }">
@@ -64,7 +64,7 @@
       <div class="mobile-drawer">
         <div class="drawer-brand"><BrandMark /><div><strong>智慧校园</strong><small>服务平台</small></div><button type="button" aria-label="关闭导航" @click="mobileNavOpen=false"><el-icon><Close /></el-icon></button></div>
         <nav class="mobile-primary"><router-link to="/home" @click="mobileNavOpen=false"><el-icon><HomeFilled /></el-icon>首页</router-link><router-link to="/services" @click="mobileNavOpen=false"><el-icon><Grid /></el-icon>服务中心</router-link><router-link to="/workbench" @click="mobileNavOpen=false"><el-icon><Checked /></el-icon>工作台</router-link></nav>
-        <template v-if="workspaceMode"><p class="drawer-label">{{ currentDomain.label }}</p><nav class="mobile-domain"><router-link v-for="service in sidebarServices" :key="service.key" :to="{name:service.routeName}" @click="mobileNavOpen=false"><el-icon><component :is="service.icon" /></el-icon>{{service.title}}</router-link></nav></template>
+        <template v-if="workspaceMode"><p class="drawer-label">{{ sidebarDomainLabel }}</p><nav class="mobile-domain"><router-link v-for="service in sidebarServices" :key="service.key" :to="{name:service.routeName}" @click="mobileNavOpen=false"><el-icon><component :is="service.icon" /></el-icon>{{service.title}}</router-link></nav></template>
       </div>
     </el-drawer>
   </div>
@@ -76,7 +76,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ArrowDown, Bell, Checked, Close, Grid, HomeFilled, Menu, Search, Setting, SwitchButton, User } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import BrandMark from '@/components/BrandMark.vue'
-import { domainMap, getServicesByDomain } from '@/config/navigation.js'
+import { domainMap, getServicesByDomain, getBaseDomainLabel } from '@/config/navigation.js'
 import { getCurrentUser, logoutUser } from '@/api/auth.js'
 import { clearAccessToken } from '@/utils/authToken.js'
 import { clearStoredCurrentUser, getStoredCurrentUser, setStoredCurrentUser } from '@/utils/authSession.js'
@@ -93,7 +93,12 @@ provide('currentUser', currentUser)
 
 const workspaceMode = computed(() => Boolean(route.meta.workspace))
 const currentDomain = computed(() => domainMap[route.meta.domain] || domainMap.teaching)
-const sidebarServices = computed(() => getServicesByDomain(currentDomain.value.key, currentUser.value?.permissions || []))
+const userPerms = computed(() => getStoredCurrentUser()?.permissions || [])
+const canSee = (service) => !service.permission
+  || userPerms.value.includes(service.permission)
+  || (service.broadPermission && userPerms.value.includes(service.broadPermission))
+const sidebarDomainLabel = computed(() => currentDomain.value.key === 'base' ? getBaseDomainLabel(userPerms.value) : currentDomain.value.label)
+const sidebarServices = computed(() => getServicesByDomain(currentDomain.value.key).filter(canSee))
 const displayName = computed(() => currentUser.value?.user?.realName || currentUser.value?.user?.username || '校园用户')
 const avatarText = computed(() => displayName.value.slice(0, 1).toUpperCase())
 const roleLabel = computed(() => {
