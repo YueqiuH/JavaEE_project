@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 /**
  * 排课管理 Controller —— 仅对 TEACHER 角色开放。
  *
- * <p>路由基础路径: /teaching/schedule</p>
+ * <p>路由基础路径: /api/v1/teaching/schedule</p>
  *
  * <h3>权限控制说明</h3>
  * <p>由于项目全局权限由 {@code AuthenticationFilter} 基于 RBAC 控制，
@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.*;
  * 如果当前用户角色不是 TEACHER，直接返回权限错误。</p>
  */
 @RestController
-@RequestMapping("/teaching/schedule")
+@RequestMapping("/api/v1/teaching/schedule")
 @Tag(name = "排课管理", description = "排课CRUD、冲突校验、停开课程（仅限教师角色）")
 public class ScheduleController {
 

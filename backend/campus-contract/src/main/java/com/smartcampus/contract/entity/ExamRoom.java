@@ -12,7 +12,7 @@ public class ExamRoom implements Serializable {
     private Long examId;
     private Long classroomId;
     /** 座位号（按学号升序编排，1-based） */
-    private Integer seatNo;
+    private String seatNo;
     /** 安排的考生ID */
     private Long studentId;
 }

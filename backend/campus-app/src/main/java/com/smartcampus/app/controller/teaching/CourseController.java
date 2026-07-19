@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/course")
+@RequestMapping("/api/v1/teaching/course")
 @Tag(name = "课程信息", description = "用于查询课程列表及详细信息")
 public class CourseController {
 

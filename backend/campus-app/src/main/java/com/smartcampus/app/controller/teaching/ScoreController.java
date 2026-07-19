@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/teaching/score")
+@RequestMapping("/api/v1/teaching/score")
 @Tag(name = "成绩管理", description = "成绩录入、查询、绩点计算与学业预警（含角色权限控制）")
 public class ScoreController {
 

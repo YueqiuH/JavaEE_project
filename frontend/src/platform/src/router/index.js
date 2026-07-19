@@ -34,6 +34,7 @@ const router = createRouter({
         { path: 'course-selection', name: 'courseSelection', component: () => import('@/views/teaching/CourseSelection.vue'), meta: featureMeta('选课与容量', 'teaching', 'course-selection') },
         { path: 'score-management', name: 'scoreManagement', component: () => import('@/views/teaching/ScoreManagement.vue'), meta: featureMeta('成绩评定与预警', 'teaching', 'score-management') },
         { path: 'exam-arrangement', name: 'examArrangement', component: () => import('@/views/teaching/ExamArrangement.vue'), meta: featureMeta('考试与补考', 'teaching', 'exam-arrangement') },
+        { path: 'graduation-design', name: 'graduationDesign', component: () => import('@/views/teaching/GraduationDesign.vue'), meta: featureMeta('毕业设计管理', 'teaching', 'graduation-design') },
         { path: 'ai-learning', name: 'aiLearning', component: () => import('@/views/teaching/AiLearning.vue'), meta: featureMeta('AI 智能学习助理', 'teaching', 'ai-learning') },
 
         { path: 'student-status', name: 'studentStatus', component: () => import('@/views/student/StudentStatus.vue'), meta: featureMeta('学籍变动', 'student', 'student-status') },
@@ -68,7 +69,7 @@ router.beforeEach((to) => {
   }
   const service = serviceMap[to.meta.serviceKey]
   const currentUser = getStoredCurrentUser()
-  if (!UI_PREVIEW_MODE && service && currentUser && !canAccessService(service, currentUser.permissions || [])) {
+  if (!UI_PREVIEW_MODE && service && currentUser && !canAccessService(service, currentUser.permissions || [], currentUser.user?.userType)) {
     return { path: '/home', query: { denied: service.key } }
   }
   return true

@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/teaching/auto-schedule")
+@RequestMapping("/api/v1/teaching/auto-schedule")
 @Tag(name = "自动排课引擎", description = "一键自动排课、约束配置、进度监控、AI辅助诊断")
 public class AutoScheduleController {
 

@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/teaching/exam")
+@RequestMapping("/api/v1/teaching/exam")
 @Tag(name = "考试管理", description = "统一排考、考场编排、监考指派、补考/缓考报名")
 public class ExamController {
 
