@@ -32,19 +32,20 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Search } from '@element-plus/icons-vue'
 import ServiceCard from '@/components/ServiceCard.vue'
-import { domainMap, domains, services, getBaseDomainLabel } from '@/config/navigation.js'
+import { canAccessService, domainMap, domains, services, getBaseDomainLabel } from '@/config/navigation.js'
 import { useServicePreferences } from '@/utils/servicePreferences.js'
 import { getStoredCurrentUser } from '@/utils/authSession.js'
 
 const route = useRoute()
 const router = useRouter()
+const currentUser = inject('currentUser', ref(null))
 const { favoriteKeys, isFavorite, toggleFavorite, recordRecent } = useServicePreferences()
 const userPermissions = computed(() => getStoredCurrentUser()?.permissions || [])
-const canSeeSvc = (s) => !s.permission || userPermissions.value.includes(s.permission) || (s.broadPermission && userPermissions.value.includes(s.broadPermission))
+const canSeeSvc = (s) => canAccessService(s, userPermissions.value)
 const visibleServices = computed(() => services.filter(canSeeSvc))
 const visibleTotal = computed(() => visibleServices.value.length)
 const domainLabels = computed(() => {

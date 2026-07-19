@@ -175,7 +175,7 @@ import { ChatDotRound, Checked, Grid, Right, Star, Top } from '@element-plus/ico
 import { ElMessage } from 'element-plus'
 import campusHero from '@/assets/images/campus-hero.jpg'
 import ServiceCard from '@/components/ServiceCard.vue'
-import { domains, getServicesByDomain, services, getBaseDomainLabel } from '@/config/navigation.js'
+import { canAccessService, domains, getServicesByDomain, services, getBaseDomainLabel } from '@/config/navigation.js'
 import { useServicePreferences } from '@/utils/servicePreferences.js'
 import { getStoredCurrentUser } from '@/utils/authSession.js'
 
@@ -213,17 +213,13 @@ const domainLabels = computed(() => {
   }
   return labels
 })
-const canSee = (service) => !service.permission
-  || userPerms.value.includes(service.permission)
-  || (service.broadPermission && userPerms.value.includes(service.broadPermission))
+const canSee = (service) => canAccessService(service, userPerms.value)
 const visibleTotal = computed(() => services.filter(canSee).length)
 const visibleDomainCounts = computed(() => {
   const counts = {}
   for (const d of domains) counts[d.key] = services.filter(s => s.domain === d.key && canSee(s)).length
   return counts
 })
-  || userPerms.value.includes(service.permission)
-  || (service.broadPermission && userPerms.value.includes(service.broadPermission))
 
 const quickServices = computed(() => {
   let keys = defaultRecommended
