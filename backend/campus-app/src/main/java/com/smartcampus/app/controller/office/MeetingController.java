@@ -1,6 +1,7 @@
 package com.smartcampus.app.controller.office;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.smartcampus.app.dao.office.MeetingAttendeeMapper;
 import com.smartcampus.app.enums.OfficeErrorCodeConstants;
 import com.smartcampus.app.security.OfficePermissions;
 import com.smartcampus.app.service.office.IMeetingAttendeeService;
@@ -22,15 +23,24 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/office/meeting")
 @Tag(name = "校园会议与通知发布")
 public class MeetingController {
+    private static final Map<String, String> AUDIENCE_ROLE_CODES = Map.of(
+            "ALL_STUDENTS", "STUDENT",
+            "COUNSELORS", "TEACHER",
+            "STAFF", "STAFF",
+            "ACADEMIC_AFFAIRS", "ADMIN"
+    );
+
     @Autowired private IMeetingService meetingService;
     @Autowired private IMeetingAttendeeService attendeeService;
     @Autowired private INotificationService notificationService;
+    @Autowired private MeetingAttendeeMapper attendeeMapper;
 
     @PostMapping("/publish")
     @RequirePermission(OfficePermissions.MEETING_MANAGE)
@@ -43,17 +53,39 @@ public class MeetingController {
         Meeting meeting = request.getMeeting();
         if (meeting == null || meeting.getTitle() == null || meeting.getTitle().isBlank()
                 || meeting.getMeetingDate() == null || meeting.getStartTime() == null || meeting.getEndTime() == null
-                || request.getAttendeeIds() == null || request.getAttendeeIds().isEmpty()) {
-            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "会议标题、时间和参会人员不能为空");
+                || request.getAudienceTypes() == null || request.getAudienceTypes().isEmpty()) {
+            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "会议标题、时间和参会范围不能为空");
         }
         if (!meeting.getStartTime().before(meeting.getEndTime())) {
             throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "会议开始时间必须早于结束时间");
         }
+
+        List<String> audienceTypes = request.getAudienceTypes().stream()
+                .filter(value -> value != null && !value.isBlank())
+                .map(value -> value.trim().toUpperCase(Locale.ROOT))
+                .distinct()
+                .toList();
+        List<String> invalidAudienceTypes = audienceTypes.stream()
+                .filter(value -> !AUDIENCE_ROLE_CODES.containsKey(value))
+                .toList();
+        if (audienceTypes.isEmpty() || !invalidAudienceTypes.isEmpty()) {
+            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST,
+                    invalidAudienceTypes.isEmpty() ? "请选择参会范围" : "无效的参会范围：" + String.join(", ", invalidAudienceTypes));
+        }
+        List<String> roleCodes = audienceTypes.stream()
+                .map(AUDIENCE_ROLE_CODES::get)
+                .distinct()
+                .toList();
+        List<Long> attendeeIds = attendeeMapper.findActiveUserIdsByRoleCodes(roleCodes);
+        if (attendeeIds.isEmpty()) {
+            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "所选参会范围暂无启用用户");
+        }
+
         meeting.setMeetingId(null);
         meeting.setInitiatorId(CurrentUserContext.require().userId());
         meeting.setCreateTime(new java.sql.Date(System.currentTimeMillis()));
         meetingService.save(meeting);
-        for (Long userId : request.getAttendeeIds().stream().distinct().toList()) {
+        for (Long userId : attendeeIds) {
             MeetingAttendee attendee = new MeetingAttendee();
             attendee.setMeetingId(meeting.getMeetingId());
             attendee.setUserId(userId);
@@ -142,7 +174,7 @@ public class MeetingController {
 
     public static class PublishRequest {
         private Meeting meeting;
-        private List<Long> attendeeIds;
+        private List<String> audienceTypes;
 
         public Meeting getMeeting() {
             return meeting;
@@ -152,12 +184,12 @@ public class MeetingController {
             this.meeting = meeting;
         }
 
-        public List<Long> getAttendeeIds() {
-            return attendeeIds;
+        public List<String> getAudienceTypes() {
+            return audienceTypes;
         }
 
-        public void setAttendeeIds(List<Long> attendeeIds) {
-            this.attendeeIds = attendeeIds;
+        public void setAudienceTypes(List<String> audienceTypes) {
+            this.audienceTypes = audienceTypes;
         }
     }
 }
