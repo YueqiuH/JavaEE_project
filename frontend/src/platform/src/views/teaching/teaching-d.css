@@ -1,0 +1,376 @@
+/* ============================================
+   教务教学 视觉基座
+   与基础数据（base-d.css）共享结构，教学主题色为蓝色
+   ============================================ */
+
+:root {
+  --t-accent: #3973b7;
+  --t-accent-deep: #2c5f8a;
+  --t-accent-soft: #eaf2fb;
+  --t-accent-line: #b8d4f0;
+  --t-accent-glow: rgba(57, 115, 183, 0.12);
+  --t-num-font: 'Bahnschrift', 'DIN Alternate', ui-monospace, 'Consolas', monospace;
+  --t-transition: 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ---------- 页面骨架 ---------- */
+.d-page {
+  min-height: calc(100vh - var(--header-height));
+  padding: 24px 32px 64px;
+  background:
+    radial-gradient(540px 280px at 92% -80px, rgba(57, 115, 183, 0.04), transparent 70%),
+    radial-gradient(320px 200px at 6% 120px, rgba(57, 115, 183, 0.03), transparent 60%),
+    var(--color-background);
+}
+
+.d-crumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 20px;
+  color: var(--color-text-tertiary);
+  font-size: 12.5px;
+}
+.d-crumb a { color: inherit; text-decoration: none; transition: color var(--t-transition); }
+.d-crumb a:hover { color: var(--t-accent); }
+.d-crumb .el-icon { font-size: 11px; color: #b8d4f0; }
+
+.d-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.d-head h1 {
+  margin: 0;
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  background: linear-gradient(135deg, #1a365d, #3973b7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.d-head-desc {
+  margin: 6px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.d-head-side { display: flex; flex-shrink: 0; align-items: center; gap: 10px; }
+
+/* ---------- 面板与工具条 ---------- */
+.d-panel {
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(31, 35, 41, 0.04);
+  transition: box-shadow var(--t-transition);
+}
+.d-panel:hover { box-shadow: 0 2px 8px rgba(31, 35, 41, 0.06); }
+.d-panel-pad { padding: 20px 22px; }
+
+.d-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--color-border-light);
+  background: #fafafa;
+  border-radius: 12px 12px 0 0;
+}
+.d-toolbar h2 {
+  margin: 0 auto 0 0;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.d-toolbar-note { color: var(--color-text-tertiary); font-size: 12px; }
+.d-spacer { flex: 1; }
+
+.d-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  color: var(--color-text-tertiary);
+  font-size: 12.5px;
+  border-top: 1px solid var(--color-border-light);
+}
+
+/* ---------- 输入/选择器工艺 ---------- */
+.d-page .el-input__wrapper,
+.d-page .el-select .el-input__wrapper {
+  border-radius: 7px;
+  transition: box-shadow var(--t-transition), border-color var(--t-transition);
+  box-shadow: none;
+}
+.d-page .el-input.is-focus .el-input__wrapper,
+.d-page .el-select.is-focus .el-input__wrapper {
+  box-shadow: 0 0 0 3px var(--t-accent-glow);
+  border-color: var(--t-accent-line);
+}
+.d-page .el-input__wrapper:hover,
+.d-page .el-select .el-input__wrapper:hover {
+  border-color: #b8d4f0;
+}
+
+/* ---------- 按钮工艺 ---------- */
+.d-page .el-button--primary {
+  --el-button-bg-color: var(--t-accent);
+  --el-button-border-color: var(--t-accent);
+  --el-button-hover-bg-color: var(--t-accent-deep);
+  --el-button-hover-border-color: var(--t-accent-deep);
+}
+.d-page .el-button {
+  border-radius: 7px;
+  font-weight: 500;
+  transition: all var(--t-transition);
+}
+.d-page .el-button:not(.is-link):not(.is-text):hover {
+  transform: translateY(-1px);
+}
+
+/* ---------- 数字工艺 ---------- */
+.d-num, .d-page .el-table .d-num {
+  font-family: var(--t-num-font);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- 统计卡 ---------- */
+.d-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.d-stat {
+  position: relative;
+  overflow: hidden;
+  padding: 18px 20px 16px;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  transition: transform var(--t-transition), box-shadow var(--t-transition);
+  cursor: default;
+}
+.d-stat::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--t-accent), #6ba3d6 50%, transparent 80%);
+  opacity: 0.6;
+}
+.d-stat::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background: linear-gradient(180deg, transparent 60%, rgba(57, 115, 183, 0.02));
+  pointer-events: none;
+}
+.d-stat:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(57, 115, 183, 0.1);
+  border-color: var(--t-accent-line);
+}
+.d-stat small {
+  color: var(--color-text-secondary);
+  font-size: 12.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.d-stat strong {
+  display: block;
+  margin: 6px 0 4px;
+  font-family: var(--t-num-font);
+  font-size: 30px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  background: linear-gradient(135deg, #1a365d, #3973b7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.d-stat em {
+  color: var(--color-text-tertiary);
+  font-size: 11.5px;
+  font-style: normal;
+}
+.d-stat .unit {
+  margin-left: 3px;
+  color: var(--color-text-tertiary);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+/* ---------- 表格细节 ---------- */
+.d-page .el-table {
+  --el-table-header-bg-color: #f8f9fb;
+  font-size: 13.5px;
+  border-radius: 0 0 12px 12px;
+}
+.d-page .el-table th.el-table__cell {
+  color: var(--color-text-secondary);
+  font-weight: 650;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+}
+.d-page .el-table .cell { line-height: 1.5; padding: 8px 10px; }
+.d-page .el-table__body tr {
+  transition: background var(--t-transition);
+}
+.d-page .el-table__body tr:hover > td {
+  background-color: #eaf2fb;
+}
+.d-page .el-table .el-table__cell { transition: background var(--t-transition); }
+.d-page .el-table__expand-icon { color: var(--t-accent); }
+
+.d-page .el-pagination.is-background .el-pager li {
+  border-radius: 6px;
+  transition: all var(--t-transition);
+}
+.d-page .el-pagination.is-background .el-pager li.is-active {
+  background-color: var(--t-accent);
+}
+.d-page .el-pagination.is-background .el-pager li:hover {
+  color: var(--t-accent);
+}
+
+/* ---------- 标签工艺 ---------- */
+.d-page .el-tag {
+  border-radius: 5px;
+  font-weight: 500;
+  transition: all var(--t-transition);
+}
+
+/* ---------- 对话框/抽屉 ---------- */
+.d-page .el-dialog {
+  border-radius: 14px;
+  overflow: hidden;
+}
+.d-page .el-dialog__header {
+  padding: 20px 24px 0;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.d-page .el-dialog__body { padding: 20px 24px; }
+.d-page .el-dialog__footer { padding: 14px 24px 20px; }
+.d-page .el-overlay { backdrop-filter: blur(2px); }
+.d-page .el-drawer__header {
+  margin-bottom: 0;
+  padding: 18px 22px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  border-bottom: 1px solid var(--color-border-light);
+}
+.d-page .el-drawer__body { padding: 20px 22px; }
+
+/* ---------- 表单 ---------- */
+.d-page .el-form-item__label {
+  font-weight: 550;
+  color: var(--color-text-primary);
+  font-size: 13px;
+}
+.d-page .el-radio.is-checked .el-radio__inner {
+  border-color: var(--t-accent);
+  background: var(--t-accent);
+}
+
+/* ---------- Tabs ---------- */
+.d-page .el-tabs__item {
+  font-weight: 500;
+  font-size: 14px;
+  transition: all var(--t-transition);
+}
+.d-page .el-tabs__item.is-active {
+  color: var(--t-accent);
+  font-weight: 650;
+}
+.d-page .el-tabs__active-bar {
+  background-color: var(--t-accent);
+  height: 2.5px;
+  border-radius: 2px;
+}
+.d-page .el-tabs__item:hover { color: var(--t-accent-deep); }
+
+/* ---------- 搜索按钮 ---------- */
+.d-page .el-input-group__append .el-button {
+  border-radius: 0 7px 7px 0;
+  border-color: var(--color-border);
+}
+.d-page .el-input-group__append .el-button:hover {
+  color: var(--t-accent);
+  border-color: var(--t-accent-line);
+  background: var(--t-accent-soft);
+}
+
+/* ---------- 告警提示 ---------- */
+.d-page .el-alert {
+  border-radius: 8px;
+  border: none;
+}
+
+/* ---------- 空状态 ---------- */
+.d-page .el-empty__description {
+  color: var(--color-text-tertiary);
+  font-size: 13px;
+}
+
+/* ---------- 进场编排 ---------- */
+@keyframes t-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.d-rise {
+  animation: t-rise 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  animation-delay: calc(var(--rise, 0) * 70ms);
+}
+@keyframes t-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .d-rise { animation: t-fade-in 0.15s ease both; }
+  .d-stat, .d-stat:hover { transform: none; transition: none; }
+  .d-page .el-button:not(.is-link):not(.is-text):hover { transform: none; }
+}
+
+/* ---------- 图表卡 ---------- */
+.d-chart-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.d-chart-head h2 { margin: 0; font-size: 15px; font-weight: 650; }
+.d-chart-head p { margin: 0; color: var(--color-text-tertiary); font-size: 12px; }
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 1399px) {
+  .d-stats { gap: 12px; }
+}
+@media (max-width: 1199px) {
+  .d-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .d-page { padding: 18px 20px 48px; }
+}
+@media (max-width: 767px) {
+  .d-page { padding: 14px 12px 40px; }
+  .d-head { align-items: flex-start; flex-direction: column; gap: 12px; }
+  .d-head h1 { font-size: 19px; }
+  .d-stats { grid-template-columns: 1fr; gap: 10px; }
+  .d-stat strong { font-size: 26px; }
+  .d-panel-pad { padding: 14px 14px; }
+  .d-toolbar { padding: 12px 14px; }
+  .d-foot { padding: 10px 14px; flex-direction: column; gap: 8px; }
+}
+@media (max-width: 480px) {
+  .d-page { padding: 10px 8px 28px; }
+  .d-crumb { font-size: 11px; gap: 4px; }
+}

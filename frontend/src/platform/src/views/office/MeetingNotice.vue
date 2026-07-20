@@ -1,5 +1,6 @@
 <template>
   <section class="office-page">
+    <PageBreadcrumb domain="office" title="会议与通知" />
     <header class="office-page__header">
       <div><h1>校园会议与通知</h1><p>会议发布、本人参会反馈和通知已读管理。</p></div>
       <div class="office-page__actions"><el-badge :value="unread" :hidden="!unread"><el-button @click="load">刷新通知</el-button></el-badge><el-button v-if="canManage" type="primary" @click="visible=true">发布会议</el-button></div>
@@ -52,6 +53,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { meetingAPI } from '@/api/office.js'
 import { useOfficeAccess } from '@/composables/useOfficeAccess.js'
+import PageBreadcrumb from '@/components/business/PageBreadcrumb.vue'
 
 const { hasPermission } = useOfficeAccess()
 const canMeetingSelf = computed(() => hasPermission('meeting:self'))

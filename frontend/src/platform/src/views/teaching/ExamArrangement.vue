@@ -1,7 +1,15 @@
 <template>
-  <div class="ea-console">
-    <!-- ===== 顶部 ===== -->
-    <div class="ea-topbar">
+  <div class="d-page ea-console">
+    <PageBreadcrumb domain="teaching" title="考试与补考" />
+    <!-- ===== 顶部标题 ===== -->
+    <header class="d-head d-rise" style="--rise: 1">
+      <div>
+        <h1>考试与补考</h1>
+        <p class="d-head-desc">考试安排、监考分配与补考报名管理</p>
+      </div>
+    </header>
+    <!-- ===== 操作栏 ===== -->
+    <div class="d-toolbar">
       <span class="role-badge" :class="role">{{ roleLabel }}</span>
       <el-select v-model="semester" style="width:150px" @change="loadAll">
         <el-option v-for="s in ['2025-2026-1','2025-2026-2']" :key="s" :label="s" :value="s" />
@@ -11,7 +19,7 @@
       <el-button size="small" @click="loadAll">刷新</el-button>
     </div>
 
-    <div class="ea-body">
+    <div class="d-panel d-rise ea-body" style="--rise: 2">
       <!-- ===== 教务处视图 ===== -->
       <template v-if="role==='admin'">
         <div class="admin-panel">
@@ -160,6 +168,8 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { examApi, scoreApi } from '@/api/teaching.js'
 import { getStoredCurrentUser } from '@/utils/authSession.js'
+import PageBreadcrumb from '@/components/business/PageBreadcrumb.vue'
+import './teaching-d.css'
 
 const semester = ref('2025-2026-1')
 const loading = ref(false)
@@ -310,15 +320,16 @@ onMounted(loadAll)
 </script>
 
 <style scoped>
-.ea-console { height:100%; display:flex; flex-direction:column; background:#f0f2f5; overflow:hidden; }
-.ea-topbar { display:flex; align-items:center; gap:10px; padding:8px 16px; background:#fff; border-bottom:1px solid #e4e7ed; flex-shrink:0; }
+.ea-console { display:flex; flex-direction:column; overflow:hidden; }
+.ea-topbar { display:flex; align-items:center; gap:10px; padding:10px 16px; flex-shrink:0; }
+.ea-actions { display:flex; gap:8px; }
 .role-badge { padding:2px 10px; border-radius:4px; font-size:12px; font-weight:600; color:#fff; }
 .role-badge.admin { background:#7c3aed; }
 .role-badge.teacher { background:#059669; }
 .role-badge.counselor { background:#d97706; }
 .role-badge.student { background:#3B82F6; }
 
-.ea-body { flex:1; overflow-y:auto; padding:12px; }
+.ea-body { flex:1; overflow-y:auto; padding:14px 18px; display:flex; flex-direction:column; gap:12px; }
 .admin-panel, .student-panel, .teacher-panel { background:#fff; border-radius:6px; padding:12px; }
 .section-title { font-size:14px; font-weight:600; padding-bottom:8px; margin-bottom:8px; border-bottom:1px solid #f0f0f0; }
 .admin-actions { display:flex; gap:10px; margin-bottom:12px; }

@@ -1,7 +1,15 @@
 <template>
-  <div class="sm-console">
-    <!-- ==================== 顶部状态栏 ==================== -->
-    <div class="sm-topbar">
+  <div class="d-page sm-console">
+    <PageBreadcrumb domain="teaching" title="成绩评定与预警" />
+    <!-- ==================== 顶部标题 ==================== -->
+    <header class="d-head d-rise" style="--rise: 1">
+      <div>
+        <h1>成绩评定与预警</h1>
+        <p class="d-head-desc">成绩录入、绩点计算与学业预警处理</p>
+      </div>
+    </header>
+    <!-- ==================== 操作栏 ==================== -->
+    <div class="d-toolbar">
       <div class="top-left">
         <span class="role-badge" :class="store.role">{{ roleLabel }}</span>
         <span class="top-user">{{ store.currentUser?.username || '-' }}</span>
@@ -396,6 +404,8 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import { useScoreStore } from '@/stores/scoreManagement.js'
+import PageBreadcrumb from '@/components/business/PageBreadcrumb.vue'
+import './teaching-d.css'
 
 const store = useScoreStore()
 
@@ -570,10 +580,10 @@ onMounted(async () => {
 
 <style scoped>
 /* ========== 整体 ========== */
-.sm-console { height: 100%; display: flex; flex-direction: column; background: #f0f2f5; overflow: hidden; }
+.sm-console { display: flex; flex-direction: column; overflow: hidden; }
 .sm-topbar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 16px; background: #fff; border-bottom: 1px solid #e4e7ed; flex-shrink: 0; gap: 12px; flex-wrap: wrap;
+  padding: 10px 16px; flex-shrink: 0; gap: 12px; flex-wrap: wrap;
 }
 .top-left { display: flex; align-items: center; gap: 10px; }
 .role-badge {

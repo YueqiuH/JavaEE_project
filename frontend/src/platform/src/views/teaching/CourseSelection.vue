@@ -10,10 +10,15 @@
   </div>
 
   <!-- 正常界面 -->
-  <div v-else class="cs-console">
-    <!-- ========== 1. 顶部状态与统计栏 ========== -->
-    <div class="cs-topbar">
-      <div class="top-left">
+  <div v-else class="d-page cs-console">
+    <PageBreadcrumb domain="teaching" title="选课与容量" />
+    <!-- ========== 顶部标题 ========== -->
+    <header class="d-head d-rise" style="--rise: 1">
+      <div>
+        <h1>选课与容量</h1>
+        <p class="d-head-desc">课程检索、容量控制与选课办理</p>
+      </div>
+      <div class="d-head-side">
         <span class="top-avatar">{{ (store.studentInfo?.name || '?').slice(0,1) }}</span>
         <div class="top-info">
           <strong>{{ store.studentInfo?.name || '未登录' }}</strong>
@@ -21,7 +26,9 @@
         </div>
         <el-tag size="small" effect="plain" type="info">学期: {{ store.semester }}</el-tag>
       </div>
-      <div class="top-center">
+    </header>
+    <!-- ========== 操作栏 ========== -->
+    <div class="d-toolbar cs-topbar">
         <!-- 课程统计卡片（仅学生可见） -->
         <div v-if="role==='student'" class="stats-row">
           <div class="stat-item total">
@@ -56,7 +63,6 @@
         <el-tag v-if="store.creditProgress>=100" size="small" type="danger" effect="dark">
           🔒 学分已满，选课已锁定
         </el-tag>
-      </div>
       <div class="top-right">
         <el-button size="small" :icon="Refresh" @click="store.loadAll()" :loading="store.loading">刷新</el-button>
         <el-button size="small" @click="showLog=true">📝 选课日志 ({{ store.selectionLogs.length }})</el-button>
@@ -434,6 +440,8 @@ import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh } from '@element-plus/icons-vue'
 import { useCourseSelectionStore } from '@/stores/courseSelection.js'
+import PageBreadcrumb from '@/components/business/PageBreadcrumb.vue'
+import './teaching-d.css'
 
 const store = useCourseSelectionStore()
 
@@ -487,7 +495,7 @@ const hasSchedules = ref(true)
 async function checkSchedules() {
   try {
     const { default: request } = await import('@/utils/request.js')
-    const res = await request.get('/teaching/schedule/teacher/0', { params: { semester: store.semester } })
+    const res = await request.get('/api/v1/teaching/schedule/teacher/0', { params: { semester: store.semester } })
     hasSchedules.value = (res?.data || []).length > 0
     if (hasSchedules.value && role.value === 'student') store.loadAll()
   } catch { hasSchedules.value = true }
@@ -773,21 +781,17 @@ const showLog = ref(false)
 <style scoped>
 /* ========== 整体布局 ========== */
 .cs-console {
-  height: calc(100vh - var(--header-height, 64px));
   display: flex;
   flex-direction: column;
-  background: #f0f2f5;
   overflow: hidden;
 }
 
-/* ========== 1. 顶部状态栏 ========== */
+/* ========== 1. 操作栏 ========== */
 .cs-topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
-  background: #fff;
-  border-bottom: 1px solid #e4e7ed;
+  padding: 10px 16px;
   flex-shrink: 0;
   gap: 16px;
   flex-wrap: wrap;

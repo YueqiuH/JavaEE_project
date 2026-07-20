@@ -1,5 +1,6 @@
 <template>
   <section class="office-page">
+    <PageBreadcrumb domain="office" title="公文流转 OA" />
     <header class="office-page__header">
       <div>
         <h1>官方公文流转 OA</h1>
@@ -165,6 +166,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { documentAPI } from '@/api/office.js'
 import { useOfficeAccess } from '@/composables/useOfficeAccess.js'
+import PageBreadcrumb from '@/components/business/PageBreadcrumb.vue'
 
 const { currentUser, hasPermission } = useOfficeAccess()
 const canSelf = computed(() => hasPermission('document:self'))
@@ -211,7 +213,7 @@ const load = async () => {
       tasks.push(documentAPI.initiated().then(r => { mine.value = r.data || [] }))
     }
     if (canApprove.value) tasks.push(documentAPI.pending().then(r => { pending.value = r.data || [] }))
-    if (canManage.value) tasks.push(documentAPI.approverCandidates().then(r => { candidates.value = r.data || [] }))
+    if (canManage.value) tasks.push(documentAPI.approverCandidates().then(r => { candidates.value = (r.data || []).map(item => ({ ...item, qualified: !!item.qualified })) }))
     await Promise.all(tasks)
     if (canManage.value) resetWorkflowEditor()
   } finally {

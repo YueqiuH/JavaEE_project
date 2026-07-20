@@ -1,7 +1,14 @@
 <template>
-  <div class="as-console">
+  <div class="d-page as-console">
+    <PageBreadcrumb domain="teaching" title="自动排课引擎" />
     <!-- ===== 顶部标题 ===== -->
-    <div class="as-topbar">
+    <header class="d-head d-rise" style="--rise: 1">
+      <div>
+        <h1>自动排课引擎</h1>
+        <p class="d-head-desc">一键自动为待排课程分配合适的教室和时间</p>
+      </div>
+    </header>
+    <div class="d-toolbar">
       <span class="as-icon">⚙️</span>
       <div>
         <h2>一键自动排课控制台</h2>
@@ -200,6 +207,8 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { VideoPlay } from '@element-plus/icons-vue'
 import { autoScheduleApi, scheduleApi } from '@/api/teaching.js'
+import PageBreadcrumb from '@/components/business/PageBreadcrumb.vue'
+import './teaching-d.css'
 import { getStoredCurrentUser } from '@/utils/authSession.js'
 
 const router = useRouter()
@@ -377,10 +386,9 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.as-console { height: 100%; display: flex; flex-direction: column; background: #f0f2f5; overflow: hidden; }
+.as-console { display: flex; flex-direction: column; overflow: hidden; }
 .as-topbar {
-  display: flex; align-items: center; gap: 12px; padding: 14px 20px;
-  background: linear-gradient(135deg, #1e3a5f, #2d5a87); color: #fff; flex-shrink: 0;
+  display: flex; align-items: center; gap: 12px; padding: 10px 16px; flex-shrink: 0;
 }
 .as-topbar h2 { margin: 0; font-size: 20px; }
 .as-topbar p { margin: 2px 0 0; font-size: 12px; opacity: .75; }

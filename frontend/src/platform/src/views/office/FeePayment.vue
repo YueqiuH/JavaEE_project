@@ -1,5 +1,6 @@
 <template>
   <section class="office-page">
+    <PageBreadcrumb domain="office" title="学杂费交纳" />
     <header class="office-page__header">
       <div><h1>学杂费交纳与流水查询</h1><p>学生可查询并支付本人账单，教师可查看全校学生缴费情况。</p></div>
       <div class="office-page__actions">
@@ -95,6 +96,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { feeAPI } from '@/api/office.js'
 import { useOfficeAccess } from '@/composables/useOfficeAccess.js'
+import PageBreadcrumb from '@/components/business/PageBreadcrumb.vue'
 
 const { userId, hasPermission } = useOfficeAccess()
 const canRead = computed(() => hasPermission('fee:self:read'))

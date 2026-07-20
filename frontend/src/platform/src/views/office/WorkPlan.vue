@@ -1,5 +1,6 @@
 <template>
   <section class="office-page">
+    <PageBreadcrumb domain="office" title="工作计划与勤工俭学" />
     <header class="office-page__header">
       <div><h1>工作计划与勤工俭学</h1><p>教师或教职工可向学生指派带工资的勤工俭学任务，学生提交完成后由原指派人确认发薪。</p></div>
       <div class="office-page__actions">
@@ -52,6 +53,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { workPlanAPI } from '@/api/office.js'
 import { useOfficeAccess } from '@/composables/useOfficeAccess.js'
+import PageBreadcrumb from '@/components/business/PageBreadcrumb.vue'
 
 const { currentUser, userId, hasPermission } = useOfficeAccess()
 const canSelf = computed(() => hasPermission('work-plan:self'))

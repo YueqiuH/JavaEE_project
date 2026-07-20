@@ -1,6 +1,14 @@
 <template>
-  <div class="sch-console">
-    <!-- ===== 顶部 ===== -->
+  <div class="d-page sch-console">
+    <PageBreadcrumb domain="teaching" title="排课与课表" />
+    <!-- ===== 顶部标题 ===== -->
+    <header class="d-head d-rise" style="--rise: 1">
+      <div>
+        <h1>排课与课表</h1>
+        <p class="d-head-desc">按周查看课程安排、教室分配与调课信息</p>
+      </div>
+    </header>
+    <!-- ===== 操作栏 ===== -->
     <div class="sch-topbar">
       <span class="role-badge" :class="'role-'+role">{{ roleLabel }}</span>
       <el-select v-model="sem" style="width:150px" @change="loadAll">
@@ -37,6 +45,7 @@
     </div>
 
     <!-- ===== 主体 ===== -->
+    <section class="d-panel d-rise" style="--rise: 2;flex:1;display:flex;flex-direction:column;overflow:hidden">
     <div class="sch-body">
       <!-- 教务处：左侧课程管理 -->
       <div class="sch-left" v-if="role==='admin'">
@@ -100,6 +109,7 @@
         </div>
       </div>
     </div>
+    </section>
 
     <!-- 排课弹窗 -->
     <el-dialog v-model="dl" title="排课" width="440px" destroy-on-close>
@@ -139,6 +149,8 @@ import { ElMessage,ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { courseApi,scheduleApi } from '@/api/teaching.js'
 import { getStoredCurrentUser } from '@/utils/authSession.js'
+import PageBreadcrumb from '@/components/business/PageBreadcrumb.vue'
+import './teaching-d.css'
 
 const wlbl = ['一','二','三','四','五','六','日']
 const sms = ['2025-2026-1','2025-2026-2','2026-2027-1']
@@ -261,13 +273,13 @@ onMounted(loadAll)
 </script>
 
 <style scoped>
-.sch-console{height:100%;display:flex;flex-direction:column;background:#f0f2f5;overflow:hidden}
-.sch-topbar{display:flex;align-items:center;gap:10px;padding:8px 14px;background:#fff;border-bottom:1px solid #e4e7ed;flex-shrink:0;flex-wrap:wrap}
+.sch-console{display:flex;flex-direction:column;overflow:hidden}
+.sch-topbar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#fafafa;border-bottom:1px solid var(--color-border-light);flex-shrink:0;flex-wrap:wrap;border-radius:12px 12px 0 0}
 .role-badge{padding:2px 10px;border-radius:4px;font-size:12px;font-weight:600;color:#fff}
 .role-student{background:#3B82F6}.role-counselor{background:#d97706}.role-teacher{background:#059669}.role-admin{background:#7c3aed}
 .top-stats{display:flex;gap:14px;font-size:13px}
 
-.sch-body{flex:1;display:flex;gap:8px;padding:8px;overflow:hidden}
+.sch-body{flex:1;display:flex;gap:8px;padding:8px;overflow:hidden;background:#fff;border-radius:0 0 12px 12px}
 .sch-left{width:320px;flex-shrink:0;display:flex;flex-direction:column;gap:6px;overflow:hidden}
 .left-filter{display:flex;gap:6px;background:#fff;padding:8px;border-radius:6px;flex-shrink:0}
 .course-list{flex:1;overflow-y:auto;background:#fff;border-radius:6px;padding:4px;display:flex;flex-direction:column;gap:4px}

@@ -76,7 +76,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ArrowDown, Bell, Checked, Close, Grid, HomeFilled, Menu, Search, Setting, SwitchButton, User } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import BrandMark from '@/components/BrandMark.vue'
-import { domainMap, getServicesByDomain, getBaseDomainLabel } from '@/config/navigation.js'
+import { domainMap, getServicesByDomain, getBaseDomainLabel, canAccessService } from '@/config/navigation.js'
 import { getCurrentUser, logoutUser } from '@/api/auth.js'
 import { clearAccessToken } from '@/utils/authToken.js'
 import { clearStoredCurrentUser, getStoredCurrentUser, setStoredCurrentUser } from '@/utils/authSession.js'
@@ -94,12 +94,12 @@ provide('currentUser', currentUser)
 
 const workspaceMode = computed(() => Boolean(route.meta.workspace))
 const currentDomain = computed(() => domainMap[route.meta.domain] || domainMap.teaching)
-const userPerms = computed(() => getStoredCurrentUser()?.permissions || [])
-const canSee = (service) => !service.permission
-  || userPerms.value.includes(service.permission)
-  || (service.broadPermission && userPerms.value.includes(service.broadPermission))
-const sidebarDomainLabel = computed(() => currentDomain.value.key === 'base' ? getBaseDomainLabel(userPerms.value) : currentDomain.value.label)
-const sidebarServices = computed(() => getServicesByDomain(currentDomain.value.key).filter(canSee))
+const sidebarServices = computed(() => {
+  const perms = getStoredCurrentUser()?.permissions || []
+  const ut = getStoredCurrentUser()?.user?.userType
+  return getServicesByDomain(currentDomain.value.key).filter(s => canAccessService(s, perms, ut))
+})
+const sidebarDomainLabel = computed(() => currentDomain.value.key === 'base' ? getBaseDomainLabel(getStoredCurrentUser()?.permissions || []) : currentDomain.value.label)
 const displayName = computed(() => currentUser.value?.user?.realName || currentUser.value?.user?.username || '校园用户')
 const avatarText = computed(() => displayName.value.slice(0, 1).toUpperCase())
 const roleLabel = computed(() => {
