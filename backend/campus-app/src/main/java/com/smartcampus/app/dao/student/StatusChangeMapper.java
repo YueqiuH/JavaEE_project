@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.smartcampus.contract.dto.student.StudentProfileUpdateRequest;
-import com.smartcampus.contract.entity.StudentEntity;
+import com.smartcampus.contract.entity.Student;
 import com.smartcampus.contract.entity.StudentStatusChange;
 import com.smartcampus.contract.vo.student.MajorOptionVo;
 import com.smartcampus.contract.vo.student.StatusChangeApplicationVo;
@@ -18,7 +18,7 @@ import java.util.List;
 public interface StatusChangeMapper extends BaseMapper<StudentStatusChange> {
 
     @Select("SELECT * FROM student WHERE student_no = #{studentNo} LIMIT 1")
-    StudentEntity selectStudentByNo(@Param("studentNo") Long studentNo);
+    Student selectStudentByNo(@Param("studentNo") Long studentNo);
 
     @Select("""
             SELECT s.student_id, s.student_no, s.student_name, s.student_birth, s.student_age,

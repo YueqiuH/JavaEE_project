@@ -3,7 +3,7 @@ package com.smartcampus.app.service.teaching.impl;
 import com.smartcampus.app.dao.teaching.ScoreMapper;
 import com.smartcampus.app.service.teaching.IScoreService;
 import com.smartcampus.common.result.CommonResult;
-import com.smartcampus.contract.entity.ScoreEntity;
+import com.smartcampus.contract.entity.Score;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -72,7 +72,7 @@ public class ScoreServiceImpl implements IScoreService {
 
     @Override
     @Transactional
-    public CommonResult inputScore(ScoreEntity score) {
+    public CommonResult inputScore(Score score) {
         int week = getCurrentWeek();
         if (week < 17) return CommonResult.error(930, "第" + week + "周，成绩录入已锁定");
         if (week > 20) return CommonResult.error(931, "已归档，请联系教务处");
@@ -85,11 +85,11 @@ public class ScoreServiceImpl implements IScoreService {
         score.setGpa(gpa);
         score.setStatus(score.getScoreScore() >= 60 ? 1 : 0);
 
-        LambdaQueryWrapper<ScoreEntity> w = new LambdaQueryWrapper<>();
-        w.eq(ScoreEntity::getStudentId, score.getStudentId())
-         .eq(ScoreEntity::getCourseId, score.getCourseId())
-         .eq(ScoreEntity::getSemester, score.getSemester());
-        ScoreEntity exist = scoreMapper.selectOne(w);
+        LambdaQueryWrapper<Score> w = new LambdaQueryWrapper<>();
+        w.eq(Score::getStudentId, score.getStudentId())
+         .eq(Score::getCourseId, score.getCourseId())
+         .eq(Score::getSemester, score.getSemester());
+        Score exist = scoreMapper.selectOne(w);
         if (exist != null) {
             score.setScoreId(exist.getScoreId());
             scoreMapper.updateById(score);
@@ -102,7 +102,7 @@ public class ScoreServiceImpl implements IScoreService {
     }
 
     @Override
-    public CommonResult saveDraft(ScoreEntity score) {
+    public CommonResult saveDraft(Score score) {
         return inputScore(score);
     }
 
@@ -115,14 +115,14 @@ public class ScoreServiceImpl implements IScoreService {
 
     @Override
     public CommonResult getStudentReport(Long studentId, String semester) {
-        LambdaQueryWrapper<ScoreEntity> w = new LambdaQueryWrapper<>();
-        w.eq(ScoreEntity::getStudentId, studentId);
-        if (semester != null) w.eq(ScoreEntity::getSemester, semester);
-        List<ScoreEntity> list = scoreMapper.selectList(w);
+        LambdaQueryWrapper<Score> w = new LambdaQueryWrapper<>();
+        w.eq(Score::getStudentId, studentId);
+        if (semester != null) w.eq(Score::getSemester, semester);
+        List<Score> list = scoreMapper.selectList(w);
 
         int pass = 0, fail = 0;
         BigDecimal totalGpa = BigDecimal.ZERO;
-        for (ScoreEntity s : list) {
+        for (Score s : list) {
             if (s.getStatus() != null && s.getStatus() == 1) pass++; else fail++;
             if (s.getGpa() != null) totalGpa = totalGpa.add(s.getGpa());
         }
@@ -143,9 +143,9 @@ public class ScoreServiceImpl implements IScoreService {
 
     @Override
     public CommonResult getCourseScores(Long courseId, String semester) {
-        LambdaQueryWrapper<ScoreEntity> w = new LambdaQueryWrapper<>();
-        w.eq(ScoreEntity::getCourseId, courseId);
-        if (semester != null) w.eq(ScoreEntity::getSemester, semester);
+        LambdaQueryWrapper<Score> w = new LambdaQueryWrapper<>();
+        w.eq(Score::getCourseId, courseId);
+        if (semester != null) w.eq(Score::getSemester, semester);
         return CommonResult.success(scoreMapper.selectList(w));
     }
 
@@ -163,13 +163,13 @@ public class ScoreServiceImpl implements IScoreService {
 
     @Override
     public CommonResult getStudentFullProfile(Long studentId) {
-        LambdaQueryWrapper<ScoreEntity> w = new LambdaQueryWrapper<>();
-        w.eq(ScoreEntity::getStudentId, studentId);
-        List<ScoreEntity> all = scoreMapper.selectList(w);
+        LambdaQueryWrapper<Score> w = new LambdaQueryWrapper<>();
+        w.eq(Score::getStudentId, studentId);
+        List<Score> all = scoreMapper.selectList(w);
 
         int totalFail = 0, currentFail = 0;
         String currentSemester = getCurrentSemester();
-        for (ScoreEntity s : all) {
+        for (Score s : all) {
             if (s.getStatus() != null && s.getStatus() == 0) {
                 totalFail++;
                 if (currentSemester.equals(s.getSemester())) currentFail++;
@@ -188,7 +188,7 @@ public class ScoreServiceImpl implements IScoreService {
     @Override
     @Transactional
     public CommonResult adminModifyScore(Long scoreId, Integer newScore, Long adminId, String reason, String docNo) {
-        ScoreEntity score = scoreMapper.selectById(scoreId);
+        Score score = scoreMapper.selectById(scoreId);
         if (score == null) return CommonResult.error(932, "成绩记录不存在");
         int oldScore = score.getScoreScore() != null ? score.getScoreScore() : 0;
         score.setScoreScore(newScore);
@@ -216,12 +216,12 @@ public class ScoreServiceImpl implements IScoreService {
         int week = getCurrentWeek();
         if (week < 20) return;
 
-        LambdaQueryWrapper<ScoreEntity> w = new LambdaQueryWrapper<>();
-        w.eq(ScoreEntity::getStudentId, studentId).eq(ScoreEntity::getStatus, 0);
+        LambdaQueryWrapper<Score> w = new LambdaQueryWrapper<>();
+        w.eq(Score::getStudentId, studentId).eq(Score::getStatus, 0);
         long total = scoreMapper.selectCount(w);
 
-        LambdaQueryWrapper<ScoreEntity> cur = new LambdaQueryWrapper<>();
-        cur.eq(ScoreEntity::getStudentId, studentId).eq(ScoreEntity::getSemester, semester).eq(ScoreEntity::getStatus, 0);
+        LambdaQueryWrapper<Score> cur = new LambdaQueryWrapper<>();
+        cur.eq(Score::getStudentId, studentId).eq(Score::getSemester, semester).eq(Score::getStatus, 0);
         long current = scoreMapper.selectCount(cur);
 
         int currentCredits = (int) current * 2;

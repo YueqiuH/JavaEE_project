@@ -14,7 +14,7 @@ import com.smartcampus.contract.entity.Lab;
 import com.smartcampus.contract.entity.LabBooking;
 import com.smartcampus.contract.entity.LabBookingNotice;
 import com.smartcampus.contract.entity.LabOpenSlot;
-import com.smartcampus.contract.entity.StudentEntity;
+import com.smartcampus.contract.entity.Student;
 import com.smartcampus.contract.vo.student.LabBookingVo;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.junit.jupiter.api.AfterEach;
@@ -278,8 +278,8 @@ class LabBookingServiceTest {
         return booking;
     }
 
-    private StudentEntity student(Long id) {
-        StudentEntity student = new StudentEntity();
+    private Student student(Long id) {
+        Student student = new Student();
         student.setStudentId(id);
         student.setStudentNo(600001L);
         return student;

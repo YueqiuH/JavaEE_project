@@ -8,7 +8,7 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 
 @Data @ToString @TableName(value = "score")
-public class ScoreEntity implements Serializable {
+public class Score implements Serializable {
     @TableId(type = IdType.AUTO) private Long scoreId;
     private Long studentId;
     private Long courseId;

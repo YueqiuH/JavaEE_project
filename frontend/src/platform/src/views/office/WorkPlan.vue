@@ -77,15 +77,15 @@ const statusType = (row) => isWorkStudy(row) ? ({ 1: 'primary', 2: 'warning', 3:
 const canSettle = (row) => canAssignWorkStudy.value && row.assignerId === userId.value && isWorkStudy(row) && row.status === 2 && !row.wagePaid
 const canDelete = (row) => isWorkStudy(row) ? (canAssignWorkStudy.value && row.assignerId === userId.value && !row.wagePaid) : (isMine(row) || canManage.value)
 const assigneeName = (id) => { if (id === userId.value) return '本人'; const item = assignees.value.find(value => value.userId === id); return item ? item.username : `用户 ${id}` }
-const loadMine = async () => { rows.value=(await workPlanAPI.getMine()).data||[] }
-const loadAll = async () => { rows.value=(await workPlanAPI.list()).data||[] }
+const loadMine = async () => { try { rows.value=(await workPlanAPI.getMine()).data||[] } catch(e) { ElMessage.error('操作失败'); console.error(e) } }
+const loadAll = async () => { try { rows.value=(await workPlanAPI.list()).data||[] } catch(e) { ElMessage.error('操作失败'); console.error(e) } }
 const loadAssignees = async () => { assignees.value=(await workPlanAPI.assignees()).data||[] }
 const openCreate = () => { Object.assign(form,{planId:null,planType:'周计划',content:'',status:1}); dateRange.value=[]; visible.value=true }
 const edit = (row) => { Object.assign(form,{planId:row.planId,planType:row.planType,content:row.content,status:row.status}); dateRange.value=[row.startDate,row.endDate].filter(Boolean); visible.value=true }
-const save = async () => { await workPlanAPI.save({...form,startDate:dateRange.value?.[0],endDate:dateRange.value?.[1]}); ElMessage.success('计划已保存'); visible.value=false; await loadMine() }
+const save = async () => { try { await workPlanAPI.save({...form,startDate:dateRange.value?.[0],endDate:dateRange.value?.[1]}); ElMessage.success('计划已保存'); visible.value=false; await loadMine() } catch(e) { ElMessage.error('操作失败'); console.error(e) } }
 const openAssign = async () => { if (!assignees.value.length) await loadAssignees(); if (!assignees.value.length) return ElMessage.warning('当前没有可接收任务的学生'); Object.assign(assignForm,{assigneeId:assignees.value[0].userId,content:'',wageAmount:100}); assignDateRange.value=[]; assignVisible.value=true }
-const assignTask = async () => { if (!assignForm.assigneeId || !assignForm.content.trim() || !assignForm.wageAmount) return ElMessage.warning('请选择学生并填写任务内容和工资'); await workPlanAPI.assign({...assignForm,startDate:assignDateRange.value?.[0],endDate:assignDateRange.value?.[1]}); ElMessage.success('勤工俭学任务已指派'); assignVisible.value=false; await loadAll() }
-const settle = async (row) => { await ElMessageBox.confirm(`确认任务完成并向学生发放 ¥${Number(row.wageAmount).toFixed(2)}？工资将直接计入余额且不可撤销。`,'确认发薪'); await workPlanAPI.settle(row.planId); ElMessage.success('工资已计入学生余额并生成流水'); await loadAll() }
+const assignTask = async () => { if (!assignForm.assigneeId || !assignForm.content.trim() || !assignForm.wageAmount) return ElMessage.warning('请选择学生并填写任务内容和工资'); try { await workPlanAPI.assign({...assignForm,startDate:assignDateRange.value?.[0],endDate:assignDateRange.value?.[1]}); ElMessage.success('勤工俭学任务已指派'); assignVisible.value=false; await loadAll() } catch(e) { ElMessage.error('操作失败'); console.error(e) } }
+const settle = async (row) => { try { await ElMessageBox.confirm(`确认任务完成并向学生发放 ¥${Number(row.wageAmount).toFixed(2)}？工资将直接计入余额且不可撤销。`,'确认发薪'); await workPlanAPI.settle(row.planId); ElMessage.success('工资已计入学生余额并生成流水'); await loadAll() } catch(e) { if (e !== 'cancel' && e !== 'close') { ElMessage.error('操作失败'); console.error(e) } } }
 const comment = async (row) => { const {value}=await ElMessageBox.prompt('请输入负责人点评','计划点评',{inputValue:row.supervisorComment||''}); await workPlanAPI.comment(row.planId,value); ElMessage.success('点评成功'); await loadAll() }
 const remove = async (row) => { await ElMessageBox.confirm('确认删除该计划？','删除确认'); await workPlanAPI.remove(row.planId); ElMessage.success('已删除'); if(canManage.value&&!isMine(row)) await loadAll(); else await loadMine() }
 onMounted(() => { if(canSelf.value) loadMine(); else if(canManage.value) loadAll(); if(canAssignWorkStudy.value) loadAssignees() })

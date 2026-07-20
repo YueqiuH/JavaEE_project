@@ -7,15 +7,16 @@ import lombok.Data;
 import lombok.ToString;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 
 @Data
 @ToString
 @TableName(value = "student")
-public class StudentEntity implements Serializable {
+public class Student implements Serializable {
     @TableId(type = IdType.AUTO)
     private Long studentId;
     private String studentName;
-    private String studentBirth;
+    private LocalDate studentBirth;
     private String studentAddress;
     private Long studentNo;
     private Long gradeId;

@@ -1,16 +1,16 @@
 package com.smartcampus.app.service.teaching;
 
 import com.smartcampus.common.result.CommonResult;
-import com.smartcampus.contract.entity.ScoreEntity;
+import com.smartcampus.contract.entity.Score;
 
 import java.util.Map;
 
 public interface IScoreService {
     /** 教师录入/暂存/发布成绩 */
-    CommonResult inputScore(ScoreEntity score);
+    CommonResult inputScore(Score score);
 
     /** 教师暂存草稿（不发布） */
-    CommonResult saveDraft(ScoreEntity score);
+    CommonResult saveDraft(Score score);
 
     /** 教师一键发布某教学班全部草稿成绩 */
     CommonResult publishScores(Long scheduleId, Long teacherId, String semester);

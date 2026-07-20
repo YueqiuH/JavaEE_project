@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @Data
 @ToString
 @TableName(value = "course")
-public class CourseEntity implements Serializable {
+public class Course implements Serializable {
     @TableId(type = IdType.AUTO)
     private Long courseId;
     private String courseName;

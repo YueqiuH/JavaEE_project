@@ -262,7 +262,7 @@
     <!-- 教职工表单 -->
     <el-dialog v-model="staffFormVisible" :title="staffForm.userId ? '编辑教职工档案' : '新增教职工档案'" width="min(640px, calc(100vw - 32px))">
       <el-alert v-if="!staffForm.userId" type="info" :closable="false" class="form-tip"
-        title="创建后将同时开通登录账号，默认密码 123321" />
+        title="创建后将同时开通登录账号，初始密码随机生成" />
       <el-form ref="staffFormRef" :model="staffForm" :rules="staffRules" label-position="top" class="form-grid">
         <el-form-item label="工号（登录账号）" prop="username">
           <el-input v-model="staffForm.username" maxlength="64" :disabled="!!staffForm.userId" placeholder="如：700010" />

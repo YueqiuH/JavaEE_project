@@ -8,7 +8,7 @@ import com.smartcampus.common.exception.BusinessException;
 import com.smartcampus.contract.dto.student.EvaluationSubmissionRequest;
 import com.smartcampus.contract.entity.CounselorEvaluation;
 import com.smartcampus.contract.entity.Evaluation;
-import com.smartcampus.contract.entity.StudentEntity;
+import com.smartcampus.contract.entity.Student;
 import com.smartcampus.contract.vo.student.EvaluationCourseSummaryVo;
 import com.smartcampus.contract.vo.student.EvaluationTaskVo;
 import com.smartcampus.contract.vo.student.EvaluationTeacherOverviewVo;
@@ -196,8 +196,8 @@ class EvaluationServiceTest {
         return task;
     }
 
-    private StudentEntity student(Long id) {
-        StudentEntity student = new StudentEntity();
+    private Student student(Long id) {
+        Student student = new Student();
         student.setStudentId(id);
         student.setStudentNo(600001L);
         return student;

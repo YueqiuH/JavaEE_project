@@ -14,7 +14,7 @@ import com.smartcampus.app.validator.ScheduleValidator;
 import com.smartcampus.common.result.CommonResult;
 import com.smartcampus.contract.entity.Classroom;
 import com.smartcampus.contract.entity.CourseCapacity;
-import com.smartcampus.contract.entity.CourseEntity;
+import com.smartcampus.contract.entity.Course;
 import com.smartcampus.contract.entity.CourseSelection;
 import com.smartcampus.contract.entity.Schedule;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -50,7 +50,7 @@ public class CourseScheduleServiceImpl implements ICourseScheduleService {
     @Transactional
     public CommonResult addSchedule(ScheduleDto dto) {
 
-        CourseEntity course = courseMapper.selectById(dto.getCourseId());
+        Course course = courseMapper.selectById(dto.getCourseId());
         if (course == null) return CommonResult.error(1001, "课程不存在");
         dto.setCourseName(course.getCourseName());
 
@@ -174,7 +174,7 @@ public class CourseScheduleServiceImpl implements ICourseScheduleService {
      * <p>单双周模式需折半计算实际授课周数。</p>
      */
     private CommonResult validateCreditHours(ScheduleDto dto) {
-        CourseEntity course = courseMapper.selectById(dto.getCourseId());
+        Course course = courseMapper.selectById(dto.getCourseId());
         if (course == null) return null; // 已在前面校验
 
         int credits = course.getCredit() != null ? course.getCredit().intValue() : 0;
@@ -377,7 +377,7 @@ public class CourseScheduleServiceImpl implements ICourseScheduleService {
         courseSelectionMapper.delete(csW);
 
         // 漏洞7: 标记课程为停开，课表和学分计算自动过滤
-        CourseEntity course = courseMapper.selectById(courseId);
+        Course course = courseMapper.selectById(courseId);
         if (course != null) {
             course.setIsActive(0);
             courseMapper.updateById(course);
@@ -396,7 +396,7 @@ public class CourseScheduleServiceImpl implements ICourseScheduleService {
         Schedule existing = scheduleMapper.selectById(dto.getScheduleId());
         if (existing == null) return CommonResult.error(1004, "排课记录不存在");
 
-        CourseEntity course = courseMapper.selectById(dto.getCourseId());
+        Course course = courseMapper.selectById(dto.getCourseId());
         if (course != null) dto.setCourseName(course.getCourseName());
 
         try { ScheduleValidator.validateSchedule(dto, 0, 0); }
@@ -464,7 +464,7 @@ public class CourseScheduleServiceImpl implements ICourseScheduleService {
         List<Schedule> list = scheduleMapper.selectList(w);
         if (!list.isEmpty()) {
             Schedule c = list.get(0);
-            CourseEntity conflictCourse = courseMapper.selectById(c.getCourseId());
+            Course conflictCourse = courseMapper.selectById(c.getCourseId());
             return CommonResult.error(1018,
                 String.format("教室冲突！%s在星期%d 第%d-%d节(第%d-%d周)已被《%s》占用。"
                     + "两个排课的周数区间存在重叠，无法共用该教室。",

@@ -15,7 +15,7 @@ import com.smartcampus.contract.dto.student.CompetitionTeamRequest;
 import com.smartcampus.contract.entity.Competition;
 import com.smartcampus.contract.entity.CompetitionMember;
 import com.smartcampus.contract.entity.CompetitionTeam;
-import com.smartcampus.contract.entity.StudentEntity;
+import com.smartcampus.contract.entity.Student;
 import com.smartcampus.contract.vo.student.CompetitionTeamVo;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -292,8 +292,8 @@ class CompetitionServiceTest {
         return request;
     }
 
-    private StudentEntity student(Long id, Long number) {
-        StudentEntity student = new StudentEntity();
+    private Student student(Long id, Long number) {
+        Student student = new Student();
         student.setStudentId(id);
         student.setStudentNo(number);
         return student;

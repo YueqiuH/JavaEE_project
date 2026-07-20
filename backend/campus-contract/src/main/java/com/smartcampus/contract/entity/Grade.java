@@ -10,15 +10,9 @@ import java.io.Serializable;
 
 @Data
 @ToString
-@TableName(value = "menu")
-public class MenuEntity implements Serializable {
+@TableName(value = "grade")
+public class Grade implements Serializable {
     @TableId(type = IdType.AUTO)
-    private Long menuId;
-    private String title;
-    private String path;
-    private String icon;
-    private Long parentId;
-    private String permissionCode;
-    private Integer sortOrder;
-    private Integer status;
+    private Long gradeId;
+    private String gradeName;
 }

@@ -56,6 +56,7 @@ public class StatusChangeController {
     }
 
     @GetMapping("/status-change-majors")
+    @RequirePermission("student:read")
     @Operation(summary = "查询转专业可选专业")
     public CommonResult<List<MajorOptionVo>> listMajors() {
         return CommonResult.success(statusChangeService.listMajors());
@@ -83,6 +84,7 @@ public class StatusChangeController {
     }
 
     @GetMapping("/status-changes/{id}")
+    @RequirePermission("student:read")
     @Operation(summary = "查询学籍异动申请详情")
     public CommonResult<StatusChangeApplicationVo> get(@PathVariable Long id) {
         return CommonResult.success(statusChangeService.getApplication(id));

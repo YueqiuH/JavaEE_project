@@ -402,7 +402,6 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh } from '@element-plus/icons-vue'
 import { useScoreStore } from '@/stores/scoreManagement.js'
 import PageBreadcrumb from '@/components/business/PageBreadcrumb.vue'
 import './teaching-d.css'

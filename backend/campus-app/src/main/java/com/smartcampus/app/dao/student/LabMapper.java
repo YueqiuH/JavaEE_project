@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.smartcampus.contract.entity.Lab;
-import com.smartcampus.contract.entity.StudentEntity;
+import com.smartcampus.contract.entity.Student;
 import com.smartcampus.contract.vo.student.LabVo;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -12,7 +12,7 @@ import org.apache.ibatis.annotations.Select;
 public interface LabMapper extends BaseMapper<Lab> {
 
     @Select("SELECT * FROM student WHERE student_no = #{studentNo} LIMIT 1")
-    StudentEntity selectStudentByNo(@Param("studentNo") Long studentNo);
+    Student selectStudentByNo(@Param("studentNo") Long studentNo);
 
     @Select("""
             <script>

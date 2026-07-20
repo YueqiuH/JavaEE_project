@@ -8,7 +8,7 @@ import com.smartcampus.common.enums.GlobalErrorCodeConstants;
 import com.smartcampus.common.exception.BusinessException;
 import com.smartcampus.contract.dto.student.StatusChangeApplicationRequest;
 import com.smartcampus.contract.dto.student.StatusChangeReviewRequest;
-import com.smartcampus.contract.entity.StudentEntity;
+import com.smartcampus.contract.entity.Student;
 import com.smartcampus.contract.entity.StudentStatusChange;
 import com.smartcampus.contract.vo.student.StatusChangeApplicationVo;
 import org.junit.jupiter.api.AfterEach;
@@ -215,8 +215,8 @@ class StatusChangeServiceTest {
         return new AuthSession(4L, "admin", 4, Set.of("ADMIN"), Set.of("status:review:read"), 0);
     }
 
-    private StudentEntity student(Long id) {
-        StudentEntity student = new StudentEntity();
+    private Student student(Long id) {
+        Student student = new Student();
         student.setStudentId(id);
         student.setStudentNo(600001L);
         return student;

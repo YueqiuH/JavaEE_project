@@ -46,7 +46,7 @@
 
     <section v-else-if="service.template === 'analytics'" class="analytics-content">
       <div class="analytics-filter surface-panel"><div><span>统计周期</span><el-radio-group v-model="period" size="small"><el-radio-button value="month">本月</el-radio-button><el-radio-button value="term">本学期</el-radio-button><el-radio-button value="year">本年度</el-radio-button></el-radio-group></div><el-select v-model="analyticsDepartment" style="width:180px"><el-option label="全部院系" value="all" /><el-option label="计算机与人工智能学院" value="computer" /><el-option label="经济管理学院" value="business" /></el-select><el-button :icon="Download" @click="exportData">导出报告</el-button></div>
-      <div class="chart-grid"><article class="surface-panel"><div class="chart-heading"><div><h2>学生规模趋势</h2><p>近 7 个月在校学生变化</p></div><el-tag effect="plain" type="success">同比 +6.8%</el-tag></div><Suspense><AnalyticsChart title="学生规模趋势" /><template #fallback><div class="chart-loading"><el-icon><Loading /></el-icon><span>正在加载图表</span></div></template></Suspense></article><article class="surface-panel"><div class="chart-heading"><div><h2>学科门类分布</h2><p>计划人数与实际报到对比</p></div></div><Suspense><AnalyticsChart title="学科门类分布" mode="bar" /><template #fallback><div class="chart-loading"><el-icon><Loading /></el-icon><span>正在加载图表</span></div></template></Suspense></article></div>
+      <div class="chart-grid"><article class="surface-panel"><div class="chart-heading"><div><h2>学生规模趋势</h2><p>近 7 个月在校学生变化</p></div><el-tag effect="plain" type="success">同比 +6.8%</el-tag></div><Suspense><AnalyticsChart title="学生规模趋势" :categories="lineCategories" :series="lineSeries" /><template #fallback><div class="chart-loading"><el-icon><Loading /></el-icon><span>正在加载图表</span></div></template></Suspense></article><article class="surface-panel"><div class="chart-heading"><div><h2>学科门类分布</h2><p>计划人数与实际报到对比</p></div></div><Suspense><AnalyticsChart title="学科门类分布" mode="bar" :categories="barCategories" :series="barSeries" /><template #fallback><div class="chart-loading"><el-icon><Loading /></el-icon><span>正在加载图表</span></div></template></Suspense></article></div>
       <div class="analysis-bottom"><section class="surface-panel"><div class="chart-heading"><div><h2>院系数据概览</h2><p>按在校人数从高到低排序</p></div><el-button text>查看详情</el-button></div><el-table :data="departmentRows"><el-table-column prop="name" label="院系" min-width="200" /><el-table-column prop="students" label="在校人数" min-width="100" /><el-table-column prop="ratio" label="占比" min-width="100" /><el-table-column prop="change" label="同比" min-width="100"><template #default="scope"><span class="positive">{{scope.row.change}}</span></template></el-table-column></el-table></section><aside class="surface-panel"><div class="chart-heading"><div><h2>数据洞察</h2><p>基于当前筛选条件</p></div></div><ul><li><span class="insight-icon"><el-icon><TrendCharts /></el-icon></span><div><strong>总体规模稳步增长</strong><p>本年度在校人数较去年同期增长 6.8%。</p></div></li><li><span class="insight-icon warning"><el-icon><Warning /></el-icon></span><div><strong>重点关注报到率</strong><p>2 个专业报到率低于 90%，建议进一步核查。</p></div></li><li><span class="insight-icon success"><el-icon><CircleCheck /></el-icon></span><div><strong>数据完整度良好</strong><p>当前数据完整度为 98.6%。</p></div></li></ul></aside></div>
     </section>
 
@@ -69,12 +69,12 @@
 </template>
 
 <script setup>
-import { computed, defineAsyncComponent, nextTick, reactive, ref } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowLeft, ArrowRight, CircleCheck, Clock, Delete, Download, Filter, InfoFilled, MoreFilled, Paperclip, Plus, Promotion, Refresh, Search, TrendCharts, Warning } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { domainMap, serviceMap } from '@/config/navigation.js'
 import { useServicePreferences } from '@/utils/servicePreferences.js'
+import { getEnrollmentStats, getStudentStats } from '@/api/base.js'
 
 const props = defineProps({ serviceKey: { type: String, required: true } })
 const AnalyticsChart = defineAsyncComponent(() => import('@/components/business/AnalyticsChart.vue'))
@@ -96,14 +96,70 @@ const approvalRows=[{code:'AP-20260716-018',title:`${service.value.title}申请`
 const scheduleTimes=['08:00','10:00','12:00','14:00','16:00','18:00']
 const weekDays=[{week:'周一',date:'7/13',events:[{title:'业务安排 A',time:'08:30-10:00',place:'A楼 302',top:34,height:74,color:'#3973b7'}]},{week:'周二',date:'7/14',events:[{title:'业务协调会',time:'14:30-16:00',place:'行政楼 210',top:224,height:74,color:'#c77800'}]},{week:'周三',date:'7/15',events:[{title:'资料审核',time:'10:20-11:50',place:'线上办理',top:98,height:74,color:'#16865b'}]},{week:'周四',date:'7/16',events:[{title:service.value.title,time:'08:30-10:00',place:'服务中心',top:34,height:74,color:domain.value.color},{title:'工作小组讨论',time:'16:20-17:30',place:'会议室 3',top:286,height:66,color:'#8a4d8f'}]},{week:'周五',date:'7/17',events:[{title:'结果确认',time:'10:20-11:20',place:'线上办理',top:98,height:60,color:'#16865b'}]},{week:'周六',date:'7/18',events:[]},{week:'周日',date:'7/19',events:[]}]
 const scheduleRows=weekDays.flatMap(day=>day.events.map(event=>({time:`2026-${day.date} ${event.time}`,title:event.title,place:event.place,owner:'张老师'})))
-const departmentRows=[{name:'计算机与人工智能学院',students:'2,186',ratio:'17.3%',change:'+8.2%'},{name:'经济管理学院',students:'1,942',ratio:'15.4%',change:'+5.6%'},{name:'土木工程学院',students:'1,685',ratio:'13.3%',change:'+4.1%'},{name:'外国语学院',students:'1,224',ratio:'9.7%',change:'+3.8%'}]
+const departmentRows = computed(() =>
+  apiDeptRows.value.length ? apiDeptRows.value
+  : [{name:'计算机与人工智能学院',students:'2,186',ratio:'17.3%',change:'+8.2%'},{name:'经济管理学院',students:'1,942',ratio:'15.4%',change:'+5.6%'},{name:'土木工程学院',students:'1,685',ratio:'13.3%',change:'+4.1%'},{name:'外国语学院',students:'1,224',ratio:'9.7%',change:'+3.8%'}]
+)
+
+const lineCategories = computed(() => apiTrendCategories.value.length ? apiTrendCategories.value : null)
+const lineSeries = computed(() => apiTrendValues.value.length ? [{ data: apiTrendValues.value }] : null)
+const barCategories = computed(() => apiBarCategories.value.length ? apiBarCategories.value : null)
+const barSeries = computed(() =>
+  apiBarPlanSeries.value.length
+    ? [{ name: '计划数', data: apiBarPlanSeries.value }, { name: '实际数', data: apiBarActualSeries.value }]
+    : null
+)
 const transactionItems=[{title:`${service.value.title}在线办理`,description:'在线填写申请信息并提交相关材料',time:'约 5 分钟',material:'无需纸质材料',status:'可办理',type:'success',icon:'EditPen'},{title:'业务信息查询',description:'查询个人相关信息和历史办理结果',time:'即时查询',material:'无需材料',status:'可查询',type:'info',icon:'Search'},{title:'信息更正申请',description:'对已有信息提出更正并上传证明',time:'1-3 个工作日',material:'需 1 项材料',status:'可办理',type:'warning',icon:'Refresh'}]
 const transactionRecords=[{title:`${service.value.title}申请`,number:'YW-20260712-106',updated:'更新于昨天 16:20',status:'审核中',tagType:'warning',type:'warning',icon:'Loading'},{title:'历史信息查询',number:'YW-20260708-044',updated:'完成于 7月8日',status:'已完成',tagType:'success',type:'success',icon:'CircleCheck'}]
 const aiHistory=[{id:1,title:'本周学习计划建议',time:'10:24'},{id:2,title:'材料要点整理',time:'昨天'},{id:3,title:'数据趋势分析',time:'7月14日'}]
 const aiWelcome=computed(()=>({title:`你好，我是${service.value.title}`,description:service.value.description, prompts: service.value.domain==='teaching'?['总结这份课程材料的核心知识点','为我制定一周复习计划','根据薄弱项生成 5 道练习题']:service.value.domain==='base'?['分析本学期学生规模变化','生成院系数据对比摘要','帮我设计一份招生统计报表']:['提炼当前事项的关键信息','给出规范的办理意见草稿','列出需要重点核验的材料']}))
 const userInitial='我'
 const statusType=(status)=>({正常:'success',已完成:'success',待处理:'warning',审核中:'warning',已通过:'success'}[status]||'info')
-const refreshPage=()=>{ElMessage.success('数据已刷新')}
+
+// ===== Real API data for analytics template =====
+const analyticsLoading = ref(false)
+const apiDeptRows = ref([])
+const apiTrendCategories = ref([])
+const apiTrendValues = ref([])
+const apiBarCategories = ref([])
+const apiBarPlanSeries = ref([])
+const apiBarActualSeries = ref([])
+
+const fetchAnalyticsData = async () => {
+  analyticsLoading.value = true
+  try {
+    const [enrollRes, statsRes] = await Promise.allSettled([
+      getEnrollmentStats({ year: new Date().getFullYear() }),
+      getStudentStats({}),
+    ])
+    if (enrollRes.status === 'fulfilled' && enrollRes.value?.data) {
+      const d = enrollRes.value.data
+      const trend = d.trend || []
+      apiTrendCategories.value = trend.map((r) => r.label)
+      apiTrendValues.value = trend.map((r) => r.actualCount ?? r.planCount ?? 0)
+      const byDept = d.byDept || []
+      apiBarCategories.value = byDept.map((r) => r.label)
+      apiBarPlanSeries.value = byDept.map((r) => r.planCount ?? 0)
+      apiBarActualSeries.value = byDept.map((r) => r.actualCount ?? 0)
+    }
+    if (statsRes.status === 'fulfilled' && statsRes.value?.data) {
+      const d = statsRes.value.data
+      const byGroup = d.byGroup || []
+      apiDeptRows.value = byGroup.map((r) => ({
+        name: r.name,
+        students: String(r.value ?? ''),
+        ratio: byGroup.length ? ((r.value / byGroup.reduce((s, x) => s + (x.value || 0), 0)) * 100).toFixed(1) + '%' : '-',
+        change: '-',
+      }))
+    }
+  } catch { /* keep demo fallback */ }
+  finally { analyticsLoading.value = false }
+}
+
+const isAnalytics = computed(() => service.value?.template === 'analytics')
+onMounted(() => { if (isAnalytics.value) fetchAnalyticsData() })
+watch(() => props.serviceKey, () => { if (isAnalytics.value) fetchAnalyticsData() })
+const refreshPage=()=>{if(isAnalytics.value)fetchAnalyticsData();ElMessage.success('数据已刷新')}
 const primaryAction=()=>{if(service.value.template==='analytics')return exportData();if(service.value.template==='ai')return newConversation();formVisible.value=true}
 const exportData=()=>ElMessage.success('演示报表已生成')
 const openRecord=(row)=>{selectedRecord.value=row;detailVisible.value=true}

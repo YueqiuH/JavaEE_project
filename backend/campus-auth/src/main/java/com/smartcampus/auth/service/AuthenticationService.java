@@ -7,8 +7,8 @@ import com.smartcampus.auth.repository.AuthUserMapper;
 import com.smartcampus.common.enums.GlobalErrorCodeConstants;
 import com.smartcampus.common.exception.BusinessException;
 import com.smartcampus.contract.dto.LoginRequest;
-import com.smartcampus.contract.entity.MenuEntity;
-import com.smartcampus.contract.entity.UserEntity;
+import com.smartcampus.contract.entity.Menu;
+import com.smartcampus.contract.entity.User;
 import com.smartcampus.contract.vo.CurrentUserVo;
 import com.smartcampus.contract.vo.LoginUserVo;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -37,7 +37,7 @@ public class AuthenticationService {
     }
 
     public LoginUserVo login(LoginRequest request) {
-        UserEntity user = userMapper.findActiveByUsername(request.getUsername());
+        User user = userMapper.findActiveByUsername(request.getUsername());
         if (user == null || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new BusinessException(GlobalErrorCodeConstants.LOGIN_ERROR);
         }
@@ -61,17 +61,17 @@ public class AuthenticationService {
 
     public CurrentUserVo currentUser() {
         AuthSession session = CurrentUserContext.require();
-        UserEntity user = userMapper.findActiveById(session.userId());
+        User user = userMapper.findActiveById(session.userId());
         if (user == null) {
             throw new BusinessException(GlobalErrorCodeConstants.UNAUTHORIZED);
         }
         return loadCurrentUser(user);
     }
 
-    private CurrentUserVo loadCurrentUser(UserEntity user) {
+    private CurrentUserVo loadCurrentUser(User user) {
         Set<String> roles = new LinkedHashSet<>(userMapper.findRoleCodes(user.getUserId()));
         Set<String> permissions = new LinkedHashSet<>(userMapper.findPermissionCodes(user.getUserId()));
-        List<MenuEntity> menus = userMapper.findMenus(user.getUserId());
+        List<Menu> menus = userMapper.findMenus(user.getUserId());
         return new CurrentUserVo(user, roles, permissions, menus);
     }
 }

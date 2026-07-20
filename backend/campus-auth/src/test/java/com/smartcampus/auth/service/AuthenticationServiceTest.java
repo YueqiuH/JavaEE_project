@@ -4,7 +4,7 @@ import com.smartcampus.auth.model.IssuedToken;
 import com.smartcampus.auth.repository.AuthUserMapper;
 import com.smartcampus.common.exception.BusinessException;
 import com.smartcampus.contract.dto.LoginRequest;
-import com.smartcampus.contract.entity.UserEntity;
+import com.smartcampus.contract.entity.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,7 +39,7 @@ class AuthenticationServiceTest {
 
     @Test
     void shouldLoginWithBcryptPasswordAndReturnSession() {
-        UserEntity user = user("600001", passwordEncoder.encode("123321"));
+        User user = user("600001", passwordEncoder.encode("123321"));
         when(userMapper.findActiveByUsername("600001")).thenReturn(user);
         when(userMapper.findRoleCodes(1L)).thenReturn(List.of("STUDENT"));
         when(userMapper.findPermissionCodes(1L)).thenReturn(List.of("student:read"));
@@ -63,8 +63,8 @@ class AuthenticationServiceTest {
                 .hasMessage("账号或密码错误");
     }
 
-    private UserEntity user(String username, String password) {
-        UserEntity user = new UserEntity();
+    private User user(String username, String password) {
+        User user = new User();
         user.setUserId(1L);
         user.setUsername(username);
         user.setPassword(password);

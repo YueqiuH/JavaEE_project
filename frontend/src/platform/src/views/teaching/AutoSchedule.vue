@@ -205,7 +205,6 @@
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { VideoPlay } from '@element-plus/icons-vue'
 import { autoScheduleApi, scheduleApi } from '@/api/teaching.js'
 import PageBreadcrumb from '@/components/business/PageBreadcrumb.vue'
 import './teaching-d.css'

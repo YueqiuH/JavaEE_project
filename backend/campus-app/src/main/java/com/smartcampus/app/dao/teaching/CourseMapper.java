@@ -2,7 +2,7 @@ package com.smartcampus.app.dao.teaching;
 
 import com.smartcampus.app.dto.teaching.CourseSearchQueryDto;
 import com.smartcampus.app.vo.teaching.CourseVo;
-import com.smartcampus.contract.entity.CourseEntity;
+import com.smartcampus.contract.entity.Course;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -11,7 +11,7 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 import java.util.Map;
 
-public interface CourseMapper extends BaseMapper<CourseEntity> {
+public interface CourseMapper extends BaseMapper<Course> {
 
     /**
      * 查询课程列表（含排课时间、教室、容量、教师名）

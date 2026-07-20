@@ -7,7 +7,7 @@ import com.smartcampus.common.exception.BusinessException;
 import com.smartcampus.contract.dto.student.ScholarshipResultRequest;
 import com.smartcampus.contract.dto.student.ScholarshipReviewRequest;
 import com.smartcampus.contract.entity.Scholarship;
-import com.smartcampus.contract.entity.StudentEntity;
+import com.smartcampus.contract.entity.Student;
 import com.smartcampus.contract.vo.student.ScholarshipApplicationVo;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -140,8 +140,8 @@ class ScholarshipServiceTest {
                 Set.of("scholarship:review:read", "scholarship:result:generate"), 0);
     }
 
-    private StudentEntity student(Long id) {
-        StudentEntity student = new StudentEntity();
+    private Student student(Long id) {
+        Student student = new Student();
         student.setStudentId(id);
         student.setStudentNo(600001L);
         return student;

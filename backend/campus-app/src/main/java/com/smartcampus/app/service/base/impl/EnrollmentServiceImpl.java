@@ -13,7 +13,7 @@ import com.smartcampus.common.result.PageParam;
 import com.smartcampus.contract.dto.EnrollmentSaveRequest;
 import com.smartcampus.contract.entity.Enrollment;
 import com.smartcampus.contract.vo.EnrollmentStatVo;
-import com.smartcampus.contract.entity.StudentEntity;
+import com.smartcampus.contract.entity.Student;
 import com.smartcampus.contract.vo.EnrollmentStatsVo;
 import com.smartcampus.contract.vo.EnrollmentVo;
 import org.springframework.stereotype.Service;
@@ -83,8 +83,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         long planTotal = byDept.stream()
                 .mapToLong(s -> { Long v = s.getPlanCount(); return v != null ? v : 0L; }).sum();
         Long actualTotal = studentMapper.selectCount(
-                new LambdaQueryWrapper<StudentEntity>()
-                        .eq(StudentEntity::getEnrollYear, year));
+                new LambdaQueryWrapper<Student>()
+                        .eq(Student::getEnrollYear, year));
 
         EnrollmentStatsVo stats = new EnrollmentStatsVo();
         stats.setYear(year);
@@ -138,9 +138,9 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         for (Enrollment plan : plans) {
             Long majorId = plan.getMajorId();
             Long actualCount = studentMapper.selectCount(
-                    new LambdaQueryWrapper<StudentEntity>()
-                            .eq(StudentEntity::getMajorId, majorId)
-                            .eq(StudentEntity::getEnrollYear, year));
+                    new LambdaQueryWrapper<Student>()
+                            .eq(Student::getMajorId, majorId)
+                            .eq(Student::getEnrollYear, year));
             plan.setActualCount(actualCount != null ? actualCount.intValue() : 0);
             plan.setReportRate(rate(actualCount, plan.getPlanCount() != null ? plan.getPlanCount().longValue() : null));
             enrollmentMapper.updateById(plan);

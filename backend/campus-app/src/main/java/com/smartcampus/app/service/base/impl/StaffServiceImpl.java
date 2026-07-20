@@ -12,7 +12,7 @@ import com.smartcampus.common.exception.BusinessException;
 import com.smartcampus.contract.dto.StaffQuery;
 import com.smartcampus.contract.dto.StaffSaveRequest;
 import com.smartcampus.contract.entity.Department;
-import com.smartcampus.contract.entity.UserEntity;
+import com.smartcampus.contract.entity.User;
 import com.smartcampus.contract.vo.StaffVo;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,9 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class StaffServiceImpl implements StaffService {
-
-    /** 新开账号的默认登录密码 */
-    private static final String DEFAULT_PASSWORD = "123321";
 
     private static final int USER_TYPE_TEACHER = 2;
 
@@ -49,9 +46,9 @@ public class StaffServiceImpl implements StaffService {
     public StaffVo create(StaffSaveRequest request) {
         assertUsernameAvailable(request.getUsername());
         assertDeptExists(request.getDeptId());
-        UserEntity user = new UserEntity();
+        User user = new User();
         user.setUsername(request.getUsername());
-        user.setPassword(passwordEncoder.encode(DEFAULT_PASSWORD));
+        user.setPassword(passwordEncoder.encode(java.util.UUID.randomUUID().toString().substring(0, 8)));
         user.setUserType(request.getUserType());
         applyProfile(user, request);
         if (user.getStatus() == null) {
@@ -69,7 +66,7 @@ public class StaffServiceImpl implements StaffService {
     @Override
     @Transactional
     public StaffVo update(Long userId, StaffSaveRequest request) {
-        UserEntity user = requireStaff(userId);
+        User user = requireStaff(userId);
         assertDeptExists(request.getDeptId());
         Integer oldType = user.getUserType();
         user.setUserType(request.getUserType());
@@ -86,20 +83,20 @@ public class StaffServiceImpl implements StaffService {
 
     @Override
     public void disable(Long userId) {
-        UserEntity user = requireStaff(userId);
+        User user = requireStaff(userId);
         user.setStatus(0);
         staffMapper.updateById(user);
     }
 
-    private UserEntity requireStaff(Long userId) {
-        UserEntity user = staffMapper.selectById(userId);
+    private User requireStaff(Long userId) {
+        User user = staffMapper.selectById(userId);
         if (user == null || user.getUserType() == null || user.getUserType() < 2 || user.getUserType() > 3) {
             throw new BusinessException(BaseErrorCodes.STAFF_NOT_FOUND);
         }
         return user;
     }
 
-    private void applyProfile(UserEntity user, StaffSaveRequest request) {
+    private void applyProfile(User user, StaffSaveRequest request) {
         user.setRealName(request.getRealName());
         user.setGender(request.getGender());
         user.setPhone(request.getPhone());
@@ -114,7 +111,7 @@ public class StaffServiceImpl implements StaffService {
 
     private void assertUsernameAvailable(String username) {
         long count = staffMapper.selectCount(
-                new LambdaQueryWrapper<UserEntity>().eq(UserEntity::getUsername, username));
+                new LambdaQueryWrapper<User>().eq(User::getUsername, username));
         if (count > 0) {
             throw new BusinessException(BaseErrorCodes.USERNAME_DUPLICATE);
         }
@@ -126,7 +123,7 @@ public class StaffServiceImpl implements StaffService {
         }
     }
 
-    private StaffVo toVo(UserEntity user) {
+    private StaffVo toVo(User user) {
         StaffVo vo = new StaffVo();
         vo.setUserId(user.getUserId());
         vo.setUsername(user.getUsername());

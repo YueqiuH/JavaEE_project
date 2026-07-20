@@ -13,7 +13,7 @@ import com.smartcampus.common.exception.BusinessException;
 import com.smartcampus.contract.dto.StudentQuery;
 import com.smartcampus.contract.dto.StudentSaveRequest;
 import com.smartcampus.contract.entity.Major;
-import com.smartcampus.contract.entity.StudentEntity;
+import com.smartcampus.contract.entity.Student;
 import com.smartcampus.contract.vo.StudentStatsVo;
 import com.smartcampus.contract.vo.StudentVo;
 import org.springframework.stereotype.Service;
@@ -43,7 +43,7 @@ public class StudentServiceImpl implements StudentService {
     public StudentVo create(StudentSaveRequest request) {
         assertStudentNoAvailable(request.getStudentNo(), null);
         assertDeptMajorConsistent(request.getDeptId(), request.getMajorId());
-        StudentEntity student = new StudentEntity();
+        Student student = new Student();
         applyRequest(student, request);
         if (student.getStatus() == null) {
             student.setStatus(1);
@@ -54,7 +54,7 @@ public class StudentServiceImpl implements StudentService {
 
     @Override
     public StudentVo update(Long studentId, StudentSaveRequest request) {
-        StudentEntity student = requireStudent(studentId);
+        Student student = requireStudent(studentId);
         assertStudentNoAvailable(request.getStudentNo(), studentId);
         assertDeptMajorConsistent(request.getDeptId(), request.getMajorId());
         applyRequest(student, request);
@@ -91,15 +91,15 @@ public class StudentServiceImpl implements StudentService {
         return stats;
     }
 
-    private StudentEntity requireStudent(Long studentId) {
-        StudentEntity student = studentMapper.selectById(studentId);
+    private Student requireStudent(Long studentId) {
+        Student student = studentMapper.selectById(studentId);
         if (student == null) {
             throw new BusinessException(BaseErrorCodes.STUDENT_NOT_FOUND);
         }
         return student;
     }
 
-    private void applyRequest(StudentEntity student, StudentSaveRequest request) {
+    private void applyRequest(Student student, StudentSaveRequest request) {
         student.setStudentNo(request.getStudentNo());
         student.setStudentName(request.getStudentName());
         student.setGender(request.getGender());
@@ -116,7 +116,7 @@ public class StudentServiceImpl implements StudentService {
         }
     }
 
-    private StudentVo toVo(StudentEntity student) {
+    private StudentVo toVo(Student student) {
         StudentVo vo = new StudentVo();
         vo.setStudentId(student.getStudentId());
         vo.setStudentNo(student.getStudentNo());
@@ -144,10 +144,10 @@ public class StudentServiceImpl implements StudentService {
 
     /** 校验学号未被其他学生占用 */
     private void assertStudentNoAvailable(Long studentNo, Long excludeStudentId) {
-        LambdaQueryWrapper<StudentEntity> wrapper = new LambdaQueryWrapper<StudentEntity>()
-                .eq(StudentEntity::getStudentNo, studentNo);
+        LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<Student>()
+                .eq(Student::getStudentNo, studentNo);
         if (excludeStudentId != null) {
-            wrapper.ne(StudentEntity::getStudentId, excludeStudentId);
+            wrapper.ne(Student::getStudentId, excludeStudentId);
         }
         if (studentMapper.selectCount(wrapper) > 0) {
             throw new BusinessException(GlobalErrorCodeConstants.STUDENT_NO_ERROR);

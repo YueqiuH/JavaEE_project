@@ -58,7 +58,7 @@ public class StaffController {
 
     @PostMapping
     @Operation(summary = "新增教职工档案",
-            description = "同时开通登录账号（默认密码 123321）并按类别赋予角色；错误示例：409105 工号/账号已存在")
+            description = "同时开通登录账号（随机密码）并按类别赋予角色；错误示例：409105 工号/账号已存在")
     @RequirePermission("base:write")
     public CommonResult<StaffVo> create(@Valid @RequestBody StaffSaveRequest request) {
         return CommonResult.success(staffService.create(request));
@@ -135,7 +135,7 @@ public class StaffController {
     public void export(HttpServletResponse response) throws IOException {
         var query = new com.smartcampus.contract.dto.StaffQuery();
         query.setPage(1);
-        query.setSize(10000);
+        query.setSize(50000);
         var page = staffService.pageVo(query);
         List<ExcelExportService.ColumnDef> columns = List.of(
                 new ExcelExportService.ColumnDef("工号", "username"),

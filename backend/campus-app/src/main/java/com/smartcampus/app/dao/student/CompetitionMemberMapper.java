@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.smartcampus.contract.entity.CompetitionMember;
-import com.smartcampus.contract.entity.StudentEntity;
+import com.smartcampus.contract.entity.Student;
 import com.smartcampus.contract.vo.student.CompetitionInvitationVo;
 import com.smartcampus.contract.vo.student.CompetitionMemberVo;
 import org.apache.ibatis.annotations.Param;
@@ -15,7 +15,7 @@ import java.util.List;
 public interface CompetitionMemberMapper extends BaseMapper<CompetitionMember> {
 
     @Select("SELECT * FROM student WHERE student_no = #{studentNo} LIMIT 1")
-    StudentEntity selectStudentByNo(@Param("studentNo") Long studentNo);
+    Student selectStudentByNo(@Param("studentNo") Long studentNo);
 
     @Select("""
             SELECT m.member_id, m.student_id, s.student_no, s.student_name, m.role,

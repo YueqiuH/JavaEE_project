@@ -9,7 +9,7 @@ import com.smartcampus.common.exception.BusinessException;
 import com.smartcampus.contract.dto.student.EvaluationSubmissionRequest;
 import com.smartcampus.contract.entity.CounselorEvaluation;
 import com.smartcampus.contract.entity.Evaluation;
-import com.smartcampus.contract.entity.StudentEntity;
+import com.smartcampus.contract.entity.Student;
 import com.smartcampus.contract.vo.student.EvaluationCourseDetailVo;
 import com.smartcampus.contract.vo.student.EvaluationCourseSummaryVo;
 import com.smartcampus.contract.vo.student.EvaluationTaskVo;
@@ -47,7 +47,7 @@ public class EvaluationService {
 
     public List<EvaluationTaskVo> listMyTasks() {
         AuthSession session = requireStudentSession(STUDENT_READ_PERMISSION);
-        StudentEntity student = requireStudent(session);
+        Student student = requireStudent(session);
         List<EvaluationTaskVo> tasks = new ArrayList<>(evaluationMapper.selectTasks(student.getStudentId()));
         EvaluationTaskVo counselorTask = counselorEvaluationMapper.selectTask(
                 student.getStudentId(), resolveSemester(student.getStudentId()));
@@ -61,7 +61,7 @@ public class EvaluationService {
     @Transactional
     public EvaluationTaskVo submit(Long selectionId, EvaluationSubmissionRequest request) {
         AuthSession session = requireStudentSession(STUDENT_SUBMIT_PERMISSION);
-        StudentEntity student = requireStudent(session);
+        Student student = requireStudent(session);
         EvaluationTaskVo task = evaluationMapper.selectTask(student.getStudentId(), selectionId);
         if (task == null) {
             throw new BusinessException(EvaluationErrorCodes.TASK_NOT_AVAILABLE);
@@ -96,7 +96,7 @@ public class EvaluationService {
     @Transactional
     public EvaluationTaskVo submitCounselor(EvaluationSubmissionRequest request) {
         AuthSession session = requireStudentSession(STUDENT_SUBMIT_PERMISSION);
-        StudentEntity student = requireStudent(session);
+        Student student = requireStudent(session);
         String semester = resolveSemester(student.getStudentId());
         EvaluationTaskVo task = counselorEvaluationMapper.selectTask(student.getStudentId(), semester);
         if (task == null) {
@@ -221,9 +221,9 @@ public class EvaluationService {
         throw new BusinessException(GlobalErrorCodeConstants.FORBIDDEN);
     }
 
-    private StudentEntity requireStudent(AuthSession session) {
+    private Student requireStudent(AuthSession session) {
         try {
-            StudentEntity student = evaluationMapper.selectStudentByNo(Long.valueOf(session.username()));
+            Student student = evaluationMapper.selectStudentByNo(Long.valueOf(session.username()));
             if (student != null) {
                 return student;
             }

@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { getAccessToken } from '@/utils/authToken.js'
-import { getStoredCurrentUser } from '@/utils/authSession.js'
+import { clearAccessToken, getAccessToken } from '@/utils/authToken.js'
+import { clearStoredCurrentUser, getStoredCurrentUser } from '@/utils/authSession.js'
+import { isTokenExpired } from '@/utils/jwt.js'
 import { canAccessService, serviceMap } from '@/config/navigation.js'
 
 const UI_PREVIEW_MODE = import.meta.env.DEV && import.meta.env.VITE_UI_PREVIEW === 'true'
@@ -55,17 +56,35 @@ const router = createRouter({
         { path: 'ai-report', name: 'aiReport', component: () => import('@/views/base/AiReport.vue'), meta: featureMeta('AI 智能报表', 'base', 'ai-report') },
       ],
     },
-    { path: '/:pathMatch(.*)*', redirect: '/' },
+    { path: '/:pathMatch(.*)*', name: 'notFound', component: () => import('@/views/NotFoundView.vue') },
   ],
 })
 
 router.beforeEach((to) => {
-  if (to.matched.some((record) => record.meta.requiresAuth) && !getAccessToken() && !UI_PREVIEW_MODE) {
+  const token = getAccessToken()
+
+  // ---- 需要认证但无 token → 跳登录 ----
+  if (to.matched.some((record) => record.meta.requiresAuth) && !token && !UI_PREVIEW_MODE) {
     return { path: '/login', query: { redirect: to.fullPath } }
   }
-  if ((to.path === '/login' || to.path === '/') && getAccessToken() && to.query.preview !== 'public') {
+
+  // ---- 有 token 但已过期 → 清理会话，跳登录 ----
+  if (token && isTokenExpired(token)) {
+    clearAccessToken()
+    clearStoredCurrentUser()
+    if (to.matched.some((record) => record.meta.requiresAuth) && !UI_PREVIEW_MODE) {
+      return { path: '/login', query: { redirect: to.fullPath } }
+    }
+    // 非认证页面也清理过期 token，但不强制跳转
+    return true
+  }
+
+  // ---- 已登录用户访问登录页/首页 → 重定向到 home ----
+  if ((to.path === '/login' || to.path === '/') && token && !isTokenExpired(token) && to.query.preview !== 'public') {
     return { path: '/home' }
   }
+
+  // ---- 服务权限校验 ----
   const service = serviceMap[to.meta.serviceKey]
   const currentUser = getStoredCurrentUser()
   if (!UI_PREVIEW_MODE && service && currentUser && !canAccessService(service, currentUser.permissions || [], currentUser.user?.userType)) {

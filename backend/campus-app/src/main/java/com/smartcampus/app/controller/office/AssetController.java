@@ -36,7 +36,8 @@ public class AssetController {
     private static final String APPLICATION_SCRAP = "SCRAP";
     private static final List<String> SUPPORTED_ASSET_TYPES = List.of("设备", "办公用品", "其他");
 
-    @Autowired private IAssetService assetService;
+    private final IAssetService assetService;
+public AssetController(IAssetService assetService) {        this.assetService = assetService;    }
 
     @GetMapping("/list")
     @RequirePermission(OfficePermissions.ASSET_READ)
