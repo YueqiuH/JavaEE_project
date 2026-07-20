@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 public interface ExamMapper extends BaseMapper<Exam> {
-    List<Exam> selectByStudent(@Param("studentId") Long studentId, @Param("semester") String semester);
+    List<Map<String, Object>> selectByStudent(@Param("studentId") Long studentId, @Param("semester") String semester);
 
     List<Map<String, Object>> selectExamStudents(@Param("examId") Long examId);
 

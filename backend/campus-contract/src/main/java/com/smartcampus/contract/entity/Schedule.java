@@ -1,6 +1,7 @@
 package com.smartcampus.contract.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -26,4 +27,16 @@ public class Schedule implements Serializable {
     private String weekPattern;
     /** 漏洞10: 选修课面向年级，排课避开该年级必修时段 */
     private Long targetGradeId;
+
+    /** 课程名称（JOIN 填充） */
+    @TableField(exist = false)
+    private String courseName;
+
+    /** 教师姓名（JOIN 填充） */
+    @TableField(exist = false)
+    private String teacherName;
+
+    /** 教室名称（JOIN 填充） */
+    @TableField(exist = false)
+    private String classroomName;
 }

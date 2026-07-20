@@ -50,6 +50,13 @@ public class StudentController {
         this.excelImportService = excelImportService;
     }
 
+    @GetMapping("/by-no/{studentNo}")
+    @Operation(summary = "按学号查询学生详情（含院系专业班级）")
+    @RequirePermission("base:read")
+    public CommonResult<StudentVo> getByNo(@PathVariable Long studentNo) {
+        return CommonResult.success(studentService.getByStudentNo(studentNo));
+    }
+
     @GetMapping
     @Operation(summary = "多条件分页检索学生档案",
             description = "支持姓名/学号关键字、院系、专业、入学年份、学籍状态组合检索；错误示例：401001 账号未登录")

@@ -7,6 +7,8 @@ import com.smartcampus.auth.repository.AuthUserMapper;
 import com.smartcampus.common.enums.GlobalErrorCodeConstants;
 import com.smartcampus.common.exception.BusinessException;
 import com.smartcampus.contract.dto.LoginRequest;
+import com.smartcampus.contract.dto.UpdatePasswordRequest;
+import com.smartcampus.contract.dto.UpdateProfileRequest;
 import com.smartcampus.contract.entity.Menu;
 import com.smartcampus.contract.entity.User;
 import com.smartcampus.contract.vo.CurrentUserVo;
@@ -65,6 +67,30 @@ public class AuthenticationService {
         if (user == null) {
             throw new BusinessException(GlobalErrorCodeConstants.UNAUTHORIZED);
         }
+        return loadCurrentUser(user);
+    }
+
+    public void changePassword(UpdatePasswordRequest request) {
+        AuthSession session = CurrentUserContext.require();
+        User user = userMapper.findActiveById(session.userId());
+        if (user == null || !passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw new BusinessException(GlobalErrorCodeConstants.LOGIN_ERROR);
+        }
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userMapper.updateById(user);
+    }
+
+    public CurrentUserVo updateProfile(UpdateProfileRequest request) {
+        AuthSession session = CurrentUserContext.require();
+        User user = userMapper.findActiveById(session.userId());
+        if (user == null) {
+            throw new BusinessException(GlobalErrorCodeConstants.UNAUTHORIZED);
+        }
+        if (request.getRealName() != null) user.setRealName(request.getRealName());
+        if (request.getGender() != null) user.setGender(request.getGender());
+        if (request.getPhone() != null) user.setPhone(request.getPhone());
+        if (request.getEmail() != null) user.setEmail(request.getEmail());
+        userMapper.updateById(user);
         return loadCurrentUser(user);
     }
 

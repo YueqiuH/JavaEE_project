@@ -6,6 +6,8 @@ import com.smartcampus.common.enums.GlobalErrorCodeConstants;
 import com.smartcampus.common.exception.BusinessException;
 import com.smartcampus.common.result.CommonResult;
 import com.smartcampus.contract.dto.LoginRequest;
+import com.smartcampus.contract.dto.UpdatePasswordRequest;
+import com.smartcampus.contract.dto.UpdateProfileRequest;
 import com.smartcampus.contract.vo.CurrentUserVo;
 import com.smartcampus.contract.vo.LoginUserVo;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,6 +17,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -53,5 +56,20 @@ public class AuthController {
     @SecurityRequirement(name = "bearerAuth")
     public CommonResult<CurrentUserVo> currentUser() {
         return CommonResult.success(authenticationService.currentUser());
+    }
+
+    @PutMapping("/password")
+    @Operation(summary = "修改密码")
+    @SecurityRequirement(name = "bearerAuth")
+    public CommonResult<Void> changePassword(@Valid @RequestBody UpdatePasswordRequest request) {
+        authenticationService.changePassword(request);
+        return CommonResult.success();
+    }
+
+    @PutMapping("/profile")
+    @Operation(summary = "更新个人信息")
+    @SecurityRequirement(name = "bearerAuth")
+    public CommonResult<CurrentUserVo> updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
+        return CommonResult.success(authenticationService.updateProfile(request));
     }
 }

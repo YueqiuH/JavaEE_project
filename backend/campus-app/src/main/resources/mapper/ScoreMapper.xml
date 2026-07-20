@@ -11,13 +11,15 @@
     </select>
 
     <select id="selectByCourseAndSemester" resultType="map">
-        SELECT s.*, st.student_name, st.student_no, u.username
+        SELECT s.*, st.student_name, st.student_no, st.class_name,
+               m.major_name, u.username
         FROM score s
         LEFT JOIN student st ON s.student_id = st.student_id
         LEFT JOIN user u ON s.student_id = u.user_id
+        LEFT JOIN major m ON st.major_id = m.major_id
         WHERE s.course_id = #{courseId}
         <if test="semester != null">AND s.semester = #{semester}</if>
-        ORDER BY s.score_score DESC
+        ORDER BY st.student_no
     </select>
 
     <select id="selectTeacherClasses" resultType="map">

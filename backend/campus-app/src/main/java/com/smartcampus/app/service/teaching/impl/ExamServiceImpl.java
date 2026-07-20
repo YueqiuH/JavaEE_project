@@ -451,7 +451,7 @@ public class ExamServiceImpl implements IExamService {
 
     @Override
     public CommonResult getStudentExams(Long studentId, String semester) {
-        List<Exam> exams = examMapper.selectByStudent(studentId, semester);
+        List<Map<String, Object>> exams = examMapper.selectByStudent(studentId, semester);
         return CommonResult.success(exams);
     }
 }

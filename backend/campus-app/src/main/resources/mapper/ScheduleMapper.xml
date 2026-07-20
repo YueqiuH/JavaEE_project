@@ -19,27 +19,48 @@
         <result column="parent_id" property="parentId"/>
         <result column="week_pattern" property="weekPattern"/>
         <result column="target_grade_id" property="targetGradeId"/>
+        <result column="course_name" property="courseName"/>
+        <result column="teacher_name" property="teacherName"/>
+        <result column="classroom_name" property="classroomName"/>
     </resultMap>
+
+    <!-- 全局课表（管理员视图） -->
+    <select id="selectAll" resultMap="ScheduleResultMap">
+        SELECT s.*, c.course_name, cr.classroom_name,
+               COALESCE(u.real_name, CAST(s.teacher_id AS CHAR)) AS teacher_name
+        FROM schedule s
+        LEFT JOIN course c ON s.course_id = c.course_id
+        LEFT JOIN classroom cr ON s.classroom_id = cr.classroom_id
+        LEFT JOIN user u ON s.teacher_id = u.user_id
+        WHERE s.semester = #{semester}
+        ORDER BY s.week_day, s.start_period
+    </select>
 
     <!-- 学生课表查询（关联选课表） -->
     <select id="selectByStudent" resultMap="ScheduleResultMap">
-        SELECT s.*
+        SELECT s.*, c.course_name, cr.classroom_name,
+               COALESCE(u.real_name, CAST(s.teacher_id AS CHAR)) AS teacher_name
         FROM schedule s
         INNER JOIN course_selection cs
             ON s.course_id = cs.course_id
             AND cs.student_id = #{studentId}
             AND cs.semester = #{semester}
             AND cs.status = 1
+        LEFT JOIN course c ON s.course_id = c.course_id
+        LEFT JOIN classroom cr ON s.classroom_id = cr.classroom_id
+        LEFT JOIN user u ON s.teacher_id = u.user_id
         WHERE s.semester = #{semester}
         ORDER BY s.week_day, s.start_period
     </select>
 
     <!-- 教师课表查询 -->
     <select id="selectByTeacher" resultMap="ScheduleResultMap">
-        SELECT s.*, c.course_name, cr.classroom_name
+        SELECT s.*, c.course_name, cr.classroom_name,
+               COALESCE(u.real_name, CAST(s.teacher_id AS CHAR)) AS teacher_name
         FROM schedule s
         LEFT JOIN course c ON s.course_id = c.course_id
         LEFT JOIN classroom cr ON s.classroom_id = cr.classroom_id
+        LEFT JOIN user u ON s.teacher_id = u.user_id
         WHERE s.teacher_id = #{teacherId}
           AND s.semester = #{semester}
         ORDER BY s.week_day, s.start_period

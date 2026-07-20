@@ -5,6 +5,7 @@ import com.smartcampus.app.service.teaching.IScoreService;
 import com.smartcampus.common.result.CommonResult;
 import com.smartcampus.contract.entity.Score;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -108,7 +109,13 @@ public class ScoreServiceImpl implements IScoreService {
 
     @Override
     public CommonResult publishScores(Long scheduleId, Long teacherId, String semester) {
-        return CommonResult.success(Map.of("published", 0));
+        LambdaUpdateWrapper<Score> w = new LambdaUpdateWrapper<>();
+        w.eq(Score::getScheduleId, scheduleId)
+         .eq(Score::getTeacherId, teacherId)
+         .eq(Score::getPublishStatus, 1)
+         .set(Score::getPublishStatus, 2);
+        int count = scoreMapper.update(null, w);
+        return CommonResult.success(Map.of("published", count));
     }
 
     // ==================== 学生查询 ====================
@@ -143,10 +150,7 @@ public class ScoreServiceImpl implements IScoreService {
 
     @Override
     public CommonResult getCourseScores(Long courseId, String semester) {
-        LambdaQueryWrapper<Score> w = new LambdaQueryWrapper<>();
-        w.eq(Score::getCourseId, courseId);
-        if (semester != null) w.eq(Score::getSemester, semester);
-        return CommonResult.success(scoreMapper.selectList(w));
+        return CommonResult.success(scoreMapper.selectByCourseAndSemester(courseId, semester));
     }
 
     @Override

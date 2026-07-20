@@ -14,6 +14,8 @@ export const getGradeAll = () => request.get(`${BASE_API_PREFIX}/grades`)
 
 export const listStudentByConditionPage = (params) => request.get(`${BASE_API_PREFIX}/students`, { params })
 
+export const getStudentByNo = (studentNo) => request.get(`${BASE_API_PREFIX}/students/by-no/${studentNo}`)
+
 export const addStudent = (data) => request.post(`${BASE_API_PREFIX}/students`, data)
 
 export const updateStudent = (id, data) => request.put(`${BASE_API_PREFIX}/students/${id}`, data)

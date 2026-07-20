@@ -313,8 +313,8 @@ async function applyResit(row, type) {
   } catch (e) { ElMessage.error(e?.response?.data?.msg || '报名失败') }
 }
 
-function getExamRoom(row) { return row._classroomName || '-' }
-function getSeatNo(row) { return row._seatNo || '-' }
+function getExamRoom(row) { return row.classroom_name || row._classroomName || '-' }
+function getSeatNo(row) { return row.seat_no || row._seatNo || '-' }
 
 onMounted(loadAll)
 </script>

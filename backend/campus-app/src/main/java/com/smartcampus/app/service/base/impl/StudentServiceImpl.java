@@ -91,6 +91,14 @@ public class StudentServiceImpl implements StudentService {
         return stats;
     }
 
+    @Override
+    public StudentVo getByStudentNo(Long studentNo) {
+        Student student = studentMapper.selectOne(
+                new LambdaQueryWrapper<Student>().eq(Student::getStudentNo, studentNo));
+        if (student == null) throw new BusinessException(BaseErrorCodes.STUDENT_NOT_FOUND);
+        return toVo(student);
+    }
+
     private Student requireStudent(Long studentId) {
         Student student = studentMapper.selectById(studentId);
         if (student == null) {

@@ -54,6 +54,7 @@ const router = createRouter({
         { path: 'department-major', name: 'departmentMajor', component: () => import('@/views/base/DepartmentMajor.vue'), meta: featureMeta('院系专业管理', 'base', 'department-major') },
         { path: 'news-forum', name: 'newsForum', component: () => import('@/views/base/NewsForum.vue'), meta: featureMeta('新闻与论坛', 'base', 'news-forum') },
         { path: 'ai-report', name: 'aiReport', component: () => import('@/views/base/AiReport.vue'), meta: featureMeta('AI 智能报表', 'base', 'ai-report') },
+        { path: 'profile', name: 'profile', component: () => import('@/views/ProfileView.vue'), meta: { name: '个人中心' } },
       ],
     },
     { path: '/:pathMatch(.*)*', name: 'notFound', component: () => import('@/views/NotFoundView.vue') },

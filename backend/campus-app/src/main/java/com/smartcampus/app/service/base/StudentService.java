@@ -21,4 +21,7 @@ public interface StudentService {
      * D3 多维统计。穿透规则：未传院系按院系分组；传院系按专业分组；传专业按班级分组。
      */
     StudentStatsVo stats(Long deptId, Long majorId, Integer enrollYear);
+
+    /** 按学号查学生详情（含院系专业班级） */
+    StudentVo getByStudentNo(Long studentNo);
 }

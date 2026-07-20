@@ -31,7 +31,7 @@
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item :icon="User" command="profile">个人信息</el-dropdown-item>
-                <el-dropdown-item :icon="Setting" command="settings">账号设置</el-dropdown-item>
+                <el-dropdown-item :icon="Setting" command="settings">修改密码</el-dropdown-item>
                 <el-dropdown-item divided :icon="SwitchButton" command="logout">退出登录</el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -123,7 +123,7 @@ const logout = async () => {
 
 const handleUserCommand = async (command) => {
   if (command === 'logout') return logout()
-  ElMessage.info(command === 'profile' ? '个人信息将在账号中心开放' : '账号设置将在后续版本开放')
+  router.push({ name: 'profile', query: { tab: command === 'settings' ? 'password' : 'info' } })
 }
 
 onMounted(() => {
