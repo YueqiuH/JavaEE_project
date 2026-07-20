@@ -1,5 +1,6 @@
 <template>
   <section class="status-workspace">
+    <PageBreadcrumb domain="student" title="学籍变动" />
     <header class="workspace-header">
       <div>
         <p class="eyebrow">学生事务</p>
@@ -149,6 +150,7 @@ import {
   listStatusChangeReviews, reviewStatusChange, submitStatusChange, updateStatusChange,
   updateStudentProfile, withdrawStatusChange,
 } from '@/api/student.js'
+import PageBreadcrumb from '@/components/business/PageBreadcrumb.vue'
 
 const changeTypes = [
   { value: 'SUSPENSION', label: '休学' }, { value: 'RESUMPTION', label: '复学' },

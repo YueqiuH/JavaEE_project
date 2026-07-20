@@ -1,5 +1,6 @@
 <template>
   <section class="competition-workspace">
+    <PageBreadcrumb domain="student" title="学科竞赛" />
     <header class="workspace-header">
       <div>
         <p class="eyebrow">学生事务</p>
@@ -211,6 +212,7 @@ import {
   listMyCompetitionTeams, publishCompetition, removeCompetitionMember, respondCompetitionInvitation,
   reviewCompetitionTeam, submitCompetitionTeam, updateCompetition, updateCompetitionTeam, uploadCompetitionMaterial,
 } from '@/api/student.js'
+import PageBreadcrumb from '@/components/business/PageBreadcrumb.vue'
 
 const router = useRouter()
 const currentUser = inject('currentUser', ref(null))

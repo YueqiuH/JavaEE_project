@@ -1,5 +1,6 @@
 <template>
   <section class="office-page">
+    <PageBreadcrumb domain="office" title="固定资产审批" />
     <header class="office-page__header">
       <div><h1>固定资产申请与审批</h1><p>购买、添加入库、借用和损坏报废均由教师或教职工申请，管理员统一审批。</p></div>
       <div class="office-page__actions">
@@ -66,6 +67,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { assetAPI } from '@/api/office.js'
 import { useOfficeAccess } from '@/composables/useOfficeAccess.js'
+import PageBreadcrumb from '@/components/business/PageBreadcrumb.vue'
 
 const { currentUser, userId, hasPermission } = useOfficeAccess()
 const canRead = computed(() => hasPermission('asset:read'))

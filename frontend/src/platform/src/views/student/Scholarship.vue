@@ -1,5 +1,6 @@
 <template>
   <section class="scholarship-workspace">
+    <PageBreadcrumb domain="student" title="奖助贷评审" />
     <header class="workspace-header">
       <div>
         <p class="eyebrow">学生事务</p>
@@ -235,6 +236,7 @@ import {
   updateScholarshipApplication,
   withdrawScholarshipApplication,
 } from '@/api/student.js'
+import PageBreadcrumb from '@/components/business/PageBreadcrumb.vue'
 
 const currentUser = inject('currentUser', ref(null))
 const roles = computed(() => new Set(currentUser.value?.roles || []))

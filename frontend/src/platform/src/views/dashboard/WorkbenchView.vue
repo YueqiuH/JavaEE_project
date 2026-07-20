@@ -72,15 +72,14 @@ const displayName = computed(() => currentUser.value?.user?.realName || currentU
 const greeting = computed(() => new Date().getHours() < 12 ? '上午好' : new Date().getHours() < 18 ? '下午好' : '晚上好')
 const formattedDate = new Intl.DateTimeFormat('zh-CN', { year:'numeric', month:'long', day:'numeric', weekday:'long' }).format(new Date())
 const metrics = [
-  { label:'待办事项', value:'6', note:'2 项即将超时', icon:'Checked', color:'#c2413b', soft:'#fcebea', action:()=>document.querySelector('.todo-section')?.scrollIntoView({behavior:'smooth'}) },
+  { label:'待办事项', value:'5', note:'1 项即将超时', icon:'Checked', color:'#c2413b', soft:'#fcebea', action:()=>document.querySelector('.todo-section')?.scrollIntoView({behavior:'smooth'}) },
   { label:'今日课程', value:'4', note:'下一节 10:20', icon:'Reading', color:'#3973b7', soft:'#eaf2fb', action:()=>router.push({name:'courseSchedule'}) },
   { label:'未读通知', value:'3', note:'1 条重要通知', icon:'Bell', color:'#c77800', soft:'#fff4df', action:()=>router.push({name:'meetingNotice'}) },
   { label:'办理中', value:'2', note:'进度均正常', icon:'Loading', color:'#16865b', soft:'#e8f5ef', action:()=>document.querySelector('.progress-section')?.scrollIntoView({behavior:'smooth'}) },
 ]
-const todoTabs = [{key:'all',label:'全部',count:6},{key:'approval',label:'审批',count:3},{key:'study',label:'教学',count:2},{key:'notice',label:'通知',count:1}]
+const todoTabs = [{key:'all',label:'全部',count:5},{key:'approval',label:'审批',count:2},{key:'study',label:'教学',count:2},{key:'notice',label:'通知',count:1}]
 const todos = [
   {id:1,title:'2026 年度设备购置申请待确认',source:'固定资产管理',time:'30分钟前',status:'即将超时',tagType:'danger',priority:'urgent',group:'approval',routeName:'assetManagement'},
-  {id:2,title:'本科毕业设计中期材料审核',source:'毕业设计管理',time:'1小时前',status:'待审核',tagType:'warning',priority:'important',group:'approval',routeName:'graduationDesign'},
   {id:3,title:'《数据结构》课程评教',source:'评教反馈',time:'今天 18:00 截止',status:'待完成',tagType:'warning',priority:'important',group:'study',routeName:'teachingEvaluation'},
   {id:4,title:'第二轮选课结果确认',source:'选课与容量',time:'昨天',status:'待确认',tagType:'info',priority:'normal',group:'study',routeName:'courseSelection'},
   {id:5,title:'关于暑期实验室开放的通知',source:'会议与通知',time:'昨天',status:'未读',tagType:'info',priority:'normal',group:'notice',routeName:'meetingNotice'},

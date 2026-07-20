@@ -1,5 +1,6 @@
 <template>
   <section class="lab-workspace">
+    <PageBreadcrumb domain="student" title="实验室预约" />
     <header class="workspace-header">
       <div>
         <p class="eyebrow">学生事务</p>
@@ -88,6 +89,7 @@ import { computed, inject, reactive, ref, watch } from 'vue'
 import { Bell, Calendar, CircleCheck, Close, EditPen, OfficeBuilding, Plus, Refresh, SwitchButton, View } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { cancelLabBooking, checkInLabBooking, checkOutLabBooking, completeLabBooking, createLab, createLabBooking, getLab, getLabBooking, listLabs, listManagedLabBookings, listMyLabBookingNotices, listMyLabBookings, markLabBookingNoticeRead, updateLab } from '@/api/student.js'
+import PageBreadcrumb from '@/components/business/PageBreadcrumb.vue'
 
 const currentUser = inject('currentUser', ref(null))
 const roles = computed(() => new Set(currentUser.value?.roles || []))

@@ -1,5 +1,6 @@
 <template>
   <section class="evaluation-workspace">
+    <PageBreadcrumb domain="student" title="评教反馈" />
     <header class="workspace-header">
       <div>
         <p class="eyebrow">教学质量</p>
@@ -186,6 +187,7 @@ import { computed, inject, reactive, ref, watch } from 'vue'
 import { EditPen, InfoFilled, Lock, Refresh, View } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getCounselorEvaluationDetail, getMyCourseEvaluationDetail, getMyEvaluationOverview, listMyEvaluationTasks, submitCounselorEvaluation, submitEvaluation } from '@/api/student.js'
+import PageBreadcrumb from '@/components/business/PageBreadcrumb.vue'
 
 const currentUser = inject('currentUser', ref(null))
 const roles = computed(() => new Set(currentUser.value?.roles || []))

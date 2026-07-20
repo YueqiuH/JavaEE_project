@@ -1,5 +1,6 @@
 <template>
   <section class="teams-page">
+    <PageBreadcrumb domain="student" title="学科竞赛" />
     <header class="page-header">
       <el-button :icon="ArrowLeft" circle aria-label="返回学科竞赛" @click="router.push({ name: 'competition' })" />
       <div>
@@ -91,6 +92,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, CircleCheck, Download, Refresh, View } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { downloadCompetitionMaterial, getCompetition, getCompetitionTeam, listCompetitionTeams, reviewCompetitionTeam } from '@/api/student.js'
+import PageBreadcrumb from '@/components/business/PageBreadcrumb.vue'
 
 const route = useRoute()
 const router = useRouter()
