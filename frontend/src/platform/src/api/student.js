@@ -1,5 +1,7 @@
 import request from '@/utils/request.js'
 import { getAccessToken } from '@/utils/authToken.js'
+import { ElMessage } from 'element-plus'
+import Router from '@/router'
 
 export const STUDENT_API_PREFIX = '/api/v1/student'
 
@@ -102,6 +104,13 @@ export const downloadCompetitionMaterial = async (id) => {
   const response = await fetch(`${apiBaseUrl}${STUDENT_API_PREFIX}/competition-teams/${id}/material`, {
     headers: { Authorization: `Bearer ${getAccessToken()}` },
   })
+  if (response.status === 401) {
+    ElMessage.warning('登录已过期，请重新登录')
+    if (Router.currentRoute.value.path !== '/login') {
+      Router.push({ path: '/login', query: { redirect: Router.currentRoute.value.fullPath } })
+    }
+    throw new Error('未登录')
+  }
   if (!response.ok) {
     const result = await response.json().catch(() => ({}))
     throw new Error(result.message || '报名材料下载失败')

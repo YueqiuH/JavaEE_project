@@ -11,7 +11,7 @@ import com.smartcampus.app.service.teaching.IAutoScheduleService;
 import com.smartcampus.common.result.CommonResult;
 import com.smartcampus.contract.entity.Classroom;
 import com.smartcampus.contract.entity.CourseCapacity;
-import com.smartcampus.contract.entity.CourseEntity;
+import com.smartcampus.contract.entity.Course;
 import com.smartcampus.contract.entity.Schedule;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -281,8 +281,8 @@ public class AutoScheduleServiceImpl implements IAutoScheduleService {
             updateProgress(taskId, "running", "任务池初始化", 5, "加载课程与教室数据...", 0, 0, 0);
 
             // 加载所有待排课程
-            List<CourseEntity> allCourses = courseMapper.selectList(
-                new LambdaQueryWrapper<CourseEntity>().eq(CourseEntity::getIsActive, 1));
+            List<Course> allCourses = courseMapper.selectList(
+                new LambdaQueryWrapper<Course>().eq(Course::getIsActive, 1));
             if (config.getExcludedCourseIds() != null) {
                 allCourses.removeIf(c -> config.getExcludedCourseIds().contains(c.getCourseId()));
             }
@@ -617,11 +617,11 @@ public class AutoScheduleServiceImpl implements IAutoScheduleService {
      * 难度 = 选课人数 × 课程分类系数
      */
     private List<ScheduleDto> buildTaskQueue(
-            List<CourseEntity> courses, String semester, AutoScheduleConfigDto config) {
+            List<Course> courses, String semester, AutoScheduleConfigDto config) {
 
         List<ScheduleDto> queue = new ArrayList<>();
 
-        for (CourseEntity course : courses) {
+        for (Course course : courses) {
             ScheduleDto task = new ScheduleDto();
             task.setCourseId(course.getCourseId());
             task.setCourseName(course.getCourseName());
@@ -768,7 +768,7 @@ public class AutoScheduleServiceImpl implements IAutoScheduleService {
         task.setCourseId(schedule.getCourseId());
         task.setTeacherId(schedule.getTeacherId());
         task.setSemester(semester);
-        CourseEntity course = courseMapper.selectById(schedule.getCourseId());
+        Course course = courseMapper.selectById(schedule.getCourseId());
         task.setCredits(course != null && course.getCredit() != null ? course.getCredit().intValue() : 2);
         task.setCourseCategory(course != null ? course.getClassification() : "必修");
         task.setStartWeek(1); task.setEndWeek(16);
@@ -813,7 +813,7 @@ public class AutoScheduleServiceImpl implements IAutoScheduleService {
         Schedule schedule = scheduleMapper.selectById(scheduleId);
         if (schedule == null) return CommonResult.error(1052, "排课记录不存在");
 
-        CourseEntity course = courseMapper.selectById(schedule.getCourseId());
+        Course course = courseMapper.selectById(schedule.getCourseId());
         List<Map<String, Object>> recommendations = new ArrayList<>();
 
         // 方案骨架：尝试平移至不同天

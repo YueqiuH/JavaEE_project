@@ -1,5 +1,8 @@
 import request from '@/utils/request.js'
-import { getAccessToken } from '@/utils/authToken.js'
+import { clearAccessToken, getAccessToken } from '@/utils/authToken.js'
+import { clearStoredCurrentUser } from '@/utils/authSession.js'
+import { ElMessage } from 'element-plus'
+import Router from '@/router'
 
 export const BASE_API_PREFIX = '/api/v1/base'
 
@@ -106,6 +109,16 @@ async function downloadFile(path, params, filename) {
   const res = await fetch(`${baseUrl}${path}${query}`, {
     headers: { 'Authorization': token ? `Bearer ${token}` : '' }
   })
+  // 401 处理：与 axios 拦截器行为一致
+  if (res.status === 401) {
+    clearAccessToken()
+    clearStoredCurrentUser()
+    ElMessage.warning('登录已过期，请重新登录')
+    if (Router.currentRoute.value.path !== '/login') {
+      Router.push({ path: '/login', query: { redirect: Router.currentRoute.value.fullPath } })
+    }
+    throw new Error('未登录')
+  }
   if (!res.ok) throw new Error('HTTP ' + res.status)
   const blob = await res.blob()
   if (blob.size < 100) {

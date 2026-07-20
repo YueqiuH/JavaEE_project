@@ -118,6 +118,7 @@ public class CompetitionController {
     }
 
     @GetMapping("/competition-teams/{id}")
+    @RequirePermission("student:read")
     @Operation(summary = "按归属查询竞赛队伍详情")
     public CommonResult<CompetitionTeamVo> getTeam(@PathVariable Long id) {
         return CommonResult.success(competitionService.getTeam(id));
@@ -151,6 +152,7 @@ public class CompetitionController {
     }
 
     @GetMapping("/competition-teams/{id}/material")
+    @RequirePermission("student:read")
     @Operation(summary = "按队伍归属下载报名材料")
     public ResponseEntity<Resource> downloadMaterial(@PathVariable Long id) {
         CompetitionService.DownloadMaterial material = competitionService.downloadMaterial(id);

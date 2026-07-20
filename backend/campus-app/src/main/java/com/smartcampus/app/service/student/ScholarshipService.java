@@ -13,7 +13,7 @@ import com.smartcampus.contract.dto.student.ScholarshipApplicationRequest;
 import com.smartcampus.contract.dto.student.ScholarshipResultRequest;
 import com.smartcampus.contract.dto.student.ScholarshipReviewRequest;
 import com.smartcampus.contract.entity.Scholarship;
-import com.smartcampus.contract.entity.StudentEntity;
+import com.smartcampus.contract.entity.Student;
 import com.smartcampus.contract.vo.student.ScholarshipApplicationVo;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -89,7 +89,7 @@ public class ScholarshipService {
 
     @Transactional
     public ScholarshipApplicationVo create(ScholarshipApplicationRequest request) {
-        StudentEntity student = requireStudent();
+        Student student = requireStudent();
         LocalDateTime now = LocalDateTime.now();
         Scholarship application = new Scholarship();
         application.setApplicationNo(createApplicationNo());
@@ -285,13 +285,13 @@ public class ScholarshipService {
         return application;
     }
 
-    private StudentEntity requireStudent() {
+    private Student requireStudent() {
         AuthSession session = CurrentUserContext.require();
         if (!session.roles().contains(STUDENT_ROLE)) {
             throw new BusinessException(GlobalErrorCodeConstants.FORBIDDEN);
         }
         try {
-            StudentEntity student = scholarshipMapper.selectStudentByNo(Long.valueOf(session.username()));
+            Student student = scholarshipMapper.selectStudentByNo(Long.valueOf(session.username()));
             if (student != null) {
                 return student;
             }

@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @Data
 @ToString(exclude = "password")
 @TableName(value = "user")
-public class UserEntity implements Serializable {
+public class User implements Serializable {
 
     @TableId(type = IdType.AUTO)
     @TableField(value = "user_id")

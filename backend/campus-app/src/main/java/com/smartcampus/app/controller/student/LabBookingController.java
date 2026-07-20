@@ -152,6 +152,7 @@ public class LabBookingController {
     }
 
     @GetMapping("/lab-bookings/{id}")
+    @RequirePermission("student:read")
     @Operation(summary = "按本人预约或实验室归属查询预约详情")
     public CommonResult<LabBookingVo> getBooking(@PathVariable Long id) {
         return CommonResult.success(labBookingService.getBooking(id));

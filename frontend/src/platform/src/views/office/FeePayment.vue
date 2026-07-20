@@ -79,11 +79,11 @@
     </el-card>
 
     <el-dialog v-model="dialogVisible" title="财务人员导入账单" width="min(500px,92vw)">
-      <el-form label-position="top">
-        <el-form-item label="学生用户 ID"><el-input-number v-model="form.studentId" :min="1" /></el-form-item>
-        <el-form-item label="费用类型"><el-select v-model="form.feeType"><el-option v-for="value in ['学费','报考费','住宿费']" :key="value" :value="value" /></el-select></el-form-item>
-        <el-form-item label="金额"><el-input-number v-model="form.amount" :min="0.01" :precision="2" /></el-form-item>
-        <el-form-item label="学期"><el-input v-model="form.semester" /></el-form-item>
+      <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
+        <el-form-item label="学生用户 ID" prop="studentId"><el-input-number v-model="form.studentId" :min="1" /></el-form-item>
+        <el-form-item label="费用类型" prop="feeType"><el-select v-model="form.feeType"><el-option v-for="value in ['学费','报考费','住宿费']" :key="value" :value="value" /></el-select></el-form-item>
+        <el-form-item label="金额" prop="amount"><el-input-number v-model="form.amount" :min="0.01" :precision="2" /></el-form-item>
+        <el-form-item label="学期" prop="semester"><el-input v-model="form.semester" /></el-form-item>
         <el-form-item label="截止日期"><el-date-picker v-model="form.dueDate" value-format="YYYY-MM-DD" /></el-form-item>
       </el-form>
       <template #footer><el-button @click="dialogVisible=false">取消</el-button><el-button type="primary" @click="importFee">导入</el-button></template>
@@ -111,6 +111,16 @@ const overviewQuery = reactive({ keyword: '', status: '', page: 1, size: 20 })
 const loading = ref(false)
 const dialogVisible = ref(false)
 const form = reactive({ studentId: 1, feeType: '学费', amount: 0.01, semester: '2025-2026-1', dueDate: '' })
+const formRef = ref(null)
+const rules = {
+  studentId: [{ required: true, message: '请输入学生用户 ID', trigger: 'blur' }],
+  feeType: [{ required: true, message: '请选择费用类型', trigger: 'change' }],
+  amount: [
+    { required: true, message: '请输入金额', trigger: 'blur' },
+    { type: 'number', min: 0.01, message: '金额必须为正数', trigger: 'blur' },
+  ],
+  semester: [{ required: true, message: '请输入学期', trigger: 'blur' }],
+}
 
 const load = async () => {
   if (!canRead.value && !canOverview.value) return
@@ -132,6 +142,9 @@ const load = async () => {
       }))
     }
     await Promise.all(tasks)
+  } catch (e) {
+    ElMessage.error('加载费用数据失败')
+    console.error('FeePayment load error:', e)
   } finally { loading.value = false }
 }
 const searchOverview = () => {
@@ -146,6 +159,7 @@ const pay = async (row) => {
   await load()
 }
 const importFee = async () => {
+  try { await formRef.value.validate() } catch { return }
   await feeAPI.importFees([{ ...form }])
   ElMessage.success('账单导入成功')
   dialogVisible.value = false

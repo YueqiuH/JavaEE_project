@@ -2,7 +2,7 @@ package com.smartcampus.app.controller.teaching;
 
 import com.smartcampus.app.service.teaching.IScoreService;
 import com.smartcampus.common.result.CommonResult;
-import com.smartcampus.contract.entity.ScoreEntity;
+import com.smartcampus.contract.entity.Score;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,13 +21,13 @@ public class ScoreController {
 
     @PostMapping("/input")
     @Operation(summary = "教师录入/修改成绩（含平时+期末分项）")
-    public CommonResult input(@RequestBody ScoreEntity score) {
+    public CommonResult input(@RequestBody Score score) {
         return scoreService.inputScore(score);
     }
 
     @PostMapping("/save-draft")
     @Operation(summary = "教师暂存草稿（学生不可见）")
-    public CommonResult saveDraft(@RequestBody ScoreEntity score) {
+    public CommonResult saveDraft(@RequestBody Score score) {
         return scoreService.saveDraft(score);
     }
 

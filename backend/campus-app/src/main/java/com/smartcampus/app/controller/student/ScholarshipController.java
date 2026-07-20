@@ -60,6 +60,7 @@ public class ScholarshipController {
     }
 
     @GetMapping("/scholarships/{id}")
+    @RequirePermission("student:read")
     @Operation(summary = "查询申请详情")
     public CommonResult<ScholarshipApplicationVo> get(@PathVariable Long id) {
         return CommonResult.success(scholarshipService.getApplication(id));
@@ -105,6 +106,7 @@ public class ScholarshipController {
     }
 
     @GetMapping("/scholarship-results")
+    @RequirePermission("student:read")
     @Operation(summary = "查询已生成的资助名单")
     public CommonResult<PageResult<ScholarshipApplicationVo>> listResults(
             @RequestParam(defaultValue = "1") @Min(1) long page,

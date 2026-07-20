@@ -3,7 +3,7 @@ package com.smartcampus.app.dao.base;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.smartcampus.contract.dto.StaffQuery;
-import com.smartcampus.contract.entity.UserEntity;
+import com.smartcampus.contract.entity.User;
 import com.smartcampus.contract.vo.StaffVo;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
@@ -14,7 +14,7 @@ import org.apache.ibatis.annotations.Select;
  * 教职工档案数据访问（user 表中 user_type IN (2,3) 的记录）。
  * 登录认证相关查询见 campus-auth 的 AuthUserMapper，此处仅维护档案业务。
  */
-public interface StaffMapper extends BaseMapper<UserEntity> {
+public interface StaffMapper extends BaseMapper<User> {
 
     @Select("""
             SELECT u.user_id, u.username, u.user_type, u.real_name, u.gender, u.phone, u.email,

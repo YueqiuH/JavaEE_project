@@ -1,13 +1,13 @@
 package com.smartcampus.app.dao.teaching;
 
-import com.smartcampus.contract.entity.ScoreEntity;
+import com.smartcampus.contract.entity.Score;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 import java.util.Map;
 
-public interface ScoreMapper extends BaseMapper<ScoreEntity> {
+public interface ScoreMapper extends BaseMapper<Score> {
 
     /** 根据学生ID查询所有成绩（含课程名） */
     List<Map<String, Object>> selectByStudentId(@Param("studentId") Long studentId);

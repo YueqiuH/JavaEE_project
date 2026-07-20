@@ -12,7 +12,7 @@ import com.smartcampus.common.result.PageResult;
 import com.smartcampus.contract.dto.student.StatusChangeApplicationRequest;
 import com.smartcampus.contract.dto.student.StatusChangeReviewRequest;
 import com.smartcampus.contract.dto.student.StudentProfileUpdateRequest;
-import com.smartcampus.contract.entity.StudentEntity;
+import com.smartcampus.contract.entity.Student;
 import com.smartcampus.contract.entity.StudentStatusChange;
 import com.smartcampus.contract.vo.student.MajorOptionVo;
 import com.smartcampus.contract.vo.student.StatusChangeApplicationVo;
@@ -269,13 +269,13 @@ public class StatusChangeService {
         return application;
     }
 
-    private StudentEntity requireStudent() {
+    private Student requireStudent() {
         AuthSession session = CurrentUserContext.require();
         if (!session.roles().contains(STUDENT_ROLE)) {
             throw new BusinessException(GlobalErrorCodeConstants.FORBIDDEN);
         }
         try {
-            StudentEntity student = statusChangeMapper.selectStudentByNo(Long.valueOf(session.username()));
+            Student student = statusChangeMapper.selectStudentByNo(Long.valueOf(session.username()));
             if (student != null) {
                 return student;
             }

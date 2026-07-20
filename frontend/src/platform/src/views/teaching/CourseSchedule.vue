@@ -146,7 +146,6 @@
 <script setup>
 import { ref,reactive,computed,onMounted } from 'vue'
 import { ElMessage,ElMessageBox } from 'element-plus'
-import { Search } from '@element-plus/icons-vue'
 import { courseApi,scheduleApi } from '@/api/teaching.js'
 import { getStoredCurrentUser } from '@/utils/authSession.js'
 import PageBreadcrumb from '@/components/business/PageBreadcrumb.vue'

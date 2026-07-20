@@ -154,7 +154,7 @@ public class ExamServiceImpl implements IExamService {
         Exam exam = examMapper.selectById(examId);
         if (exam == null) return CommonResult.error(940, "考试不存在");
 
-        CourseEntity course = courseMapper.selectById(exam.getCourseId());
+        Course course = courseMapper.selectById(exam.getCourseId());
         String courseCode = course != null ? course.getCourseCode() : "UNKNOWN";
 
         // 1. 查询该考试下所有选课学生（按学号升序）
@@ -246,7 +246,7 @@ public class ExamServiceImpl implements IExamService {
         }
 
         // 授课回避：主副监考不能是该考场内任何考生的授课教师
-        CourseEntity course2 = courseMapper.selectById(exam.getCourseId());
+        Course course2 = courseMapper.selectById(exam.getCourseId());
         String courseCode2 = course2 != null ? course2.getCourseCode() : "UNKNOWN";
         List<Map<String, Object>> students = selectionMapper.selectByCourseCodeAndSemester(
             courseCode2, exam.getSemester());
@@ -265,7 +265,7 @@ public class ExamServiceImpl implements IExamService {
                 for (Map<String, Object> cs : classStudents) {
                     Long sid = (Long) cs.get("student_id");
                     if (studentIds.contains(sid)) {
-                        CourseEntity course = courseMapper.selectById(sch.getCourseId());
+                        Course course = courseMapper.selectById(sch.getCourseId());
                         return CommonResult.error(943,
                             "教师" + tid + "是考场内考生《" +
                             (course != null ? course.getCourseName() : "未知") + "》的授课教师，不可监考");
@@ -301,13 +301,13 @@ public class ExamServiceImpl implements IExamService {
         if (exams.isEmpty()) return CommonResult.error(945, "无考试记录");
 
         // 获取所有教职工（user_type=3）
-        List<com.smartcampus.contract.entity.UserEntity> teachers = new ArrayList<>();
+        List<com.smartcampus.contract.entity.User> teachers = new ArrayList<>();
         try {
             com.smartcampus.auth.repository.AuthUserMapper authMapper = null;
             // 直接查 user 表中 user_type=3 的用户
-            com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.smartcampus.contract.entity.UserEntity> uw =
+            com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.smartcampus.contract.entity.User> uw =
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
-            uw.eq(com.smartcampus.contract.entity.UserEntity::getUserType, 3);
+            uw.eq(com.smartcampus.contract.entity.User::getUserType, 3);
         } catch (Exception ignored) {}
 
         // 简化：使用固定教师ID池 (3,4,5)
@@ -374,10 +374,10 @@ public class ExamServiceImpl implements IExamService {
     @Transactional
     public CommonResult applyResit(Long studentId, Long courseId, String semester,
                                     String applyType) {
-        LambdaQueryWrapper<ScoreEntity> sw = new LambdaQueryWrapper<>();
-        sw.eq(ScoreEntity::getStudentId, studentId)
-          .eq(ScoreEntity::getCourseId, courseId);
-        ScoreEntity score = scoreMapper.selectOne(sw);
+        LambdaQueryWrapper<Score> sw = new LambdaQueryWrapper<>();
+        sw.eq(Score::getStudentId, studentId)
+          .eq(Score::getCourseId, courseId);
+        Score score = scoreMapper.selectOne(sw);
 
         if (score != null && score.getStatus() != null && score.getStatus() == 1) {
             return CommonResult.error(935, "该课程成绩已及格，无需补考");
@@ -409,10 +409,10 @@ public class ExamServiceImpl implements IExamService {
     @Override
     @Transactional
     public CommonResult autoRevokeIfPassed(Long studentId, Long courseId, String semester) {
-        LambdaQueryWrapper<ScoreEntity> sw = new LambdaQueryWrapper<>();
-        sw.eq(ScoreEntity::getStudentId, studentId)
-          .eq(ScoreEntity::getCourseId, courseId);
-        ScoreEntity score = scoreMapper.selectOne(sw);
+        LambdaQueryWrapper<Score> sw = new LambdaQueryWrapper<>();
+        sw.eq(Score::getStudentId, studentId)
+          .eq(Score::getCourseId, courseId);
+        Score score = scoreMapper.selectOne(sw);
 
         if (score != null && score.getScoreScore() != null && score.getScoreScore() >= 60) {
             LambdaQueryWrapper<ResitApply> aw = new LambdaQueryWrapper<>();

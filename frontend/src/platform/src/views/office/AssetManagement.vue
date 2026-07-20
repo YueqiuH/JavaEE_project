@@ -50,11 +50,11 @@
     </template>
 
     <el-dialog v-model="visible" :title="dialogTitle" width="min(520px,92vw)">
-      <el-form label-position="top">
+      <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
         <el-alert v-if="dialogMode==='purchase'" type="info" :closable="false" title="购买审批通过仅代表同意采购；资产到货后还需提交添加入库审批。" />
-        <el-form-item label="资产名称" required><el-input v-model="form.assetName" :disabled="['borrow','scrap'].includes(dialogMode)" /></el-form-item>
-        <el-form-item label="资产类型" required><el-select v-model="form.assetType" style="width:100%" :disabled="['borrow','scrap'].includes(dialogMode)"><el-option v-for="value in ['设备','办公用品','其他']" :key="value" :value="value" /></el-select></el-form-item>
-        <el-form-item label="数量" required><el-input-number v-model="form.quantity" :min="1" :max="['borrow','scrap'].includes(dialogMode)?selectedInventory?.quantity:undefined" /></el-form-item>
+        <el-form-item label="资产名称" required prop="assetName"><el-input v-model="form.assetName" :disabled="['borrow','scrap'].includes(dialogMode)" /></el-form-item>
+        <el-form-item label="资产类型" required prop="assetType"><el-select v-model="form.assetType" style="width:100%" :disabled="['borrow','scrap'].includes(dialogMode)"><el-option v-for="value in ['设备','办公用品','其他']" :key="value" :value="value" /></el-select></el-form-item>
+        <el-form-item label="数量" required prop="quantity"><el-input-number v-model="form.quantity" :min="1" :max="['borrow','scrap'].includes(dialogMode)?selectedInventory?.quantity:undefined" /></el-form-item>
         <el-form-item v-if="dialogMode==='scrap'" label="损坏情况和报废原因" required><el-input v-model="form.applicationReason" type="textarea" :rows="4" maxlength="512" show-word-limit /></el-form-item>
       </el-form>
       <template #footer><el-button @click="visible=false">取消</el-button><el-button type="primary" @click="submit">提交</el-button></template>
@@ -82,6 +82,15 @@ const visible = ref(false)
 const dialogMode = ref('purchase')
 const selectedInventory = ref(null)
 const form = reactive({ assetName: '', assetType: '设备', quantity: 1, applicationReason: '' })
+const formRef = ref(null)
+const rules = {
+  assetName: [{ required: true, message: '请输入资产名称', trigger: 'blur' }],
+  assetType: [{ required: true, message: '请选择资产类型', trigger: 'change' }],
+  quantity: [
+    { required: true, message: '请输入数量', trigger: 'blur' },
+    { type: 'number', min: 1, message: '数量不能小于 1', trigger: 'blur' },
+  ],
+}
 const approvalTexts = ['待审批', '已通过', '已拒绝']
 const approvalTypes = ['warning', 'success', 'danger']
 const applicationTypeTexts = { PURCHASE: '购买申请', ADD: '添加审批', BORROW: '借用审批', SCRAP: '损坏/报废', LEGACY: '历史申请' }
@@ -104,7 +113,7 @@ const openDialog = (mode) => { dialogMode.value = mode; selectedInventory.value 
 const openAvailableApply = (row) => { dialogMode.value = 'borrow'; selectedInventory.value = row; Object.assign(form, { assetName: row.assetName, assetType: row.assetType, quantity: 1, applicationReason: '' }); visible.value = true }
 const openScrapApply = (row) => { dialogMode.value = 'scrap'; selectedInventory.value = row; Object.assign(form, { assetName: row.assetName, assetType: row.assetType, quantity: 1, applicationReason: '' }); visible.value = true }
 const submit = async () => {
-  if (!form.assetName.trim() || !form.quantity) return ElMessage.warning('请填写资产名称和数量')
+  try { await formRef.value.validate() } catch { return }
   if (dialogMode.value === 'scrap' && !form.applicationReason.trim()) return ElMessage.warning('请填写资产损坏情况和报废原因')
   if (dialogMode.value === 'borrow') {
     await assetAPI.applyAvailable(selectedInventory.value.assetId, form.quantity)

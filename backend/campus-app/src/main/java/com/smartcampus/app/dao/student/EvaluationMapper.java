@@ -2,7 +2,7 @@ package com.smartcampus.app.dao.student;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.smartcampus.contract.entity.Evaluation;
-import com.smartcampus.contract.entity.StudentEntity;
+import com.smartcampus.contract.entity.Student;
 import com.smartcampus.contract.vo.student.EvaluationCourseSummaryVo;
 import com.smartcampus.contract.vo.student.EvaluationTaskVo;
 import com.smartcampus.contract.vo.student.EvaluationTeacherOverviewVo;
@@ -14,7 +14,7 @@ import java.util.List;
 public interface EvaluationMapper extends BaseMapper<Evaluation> {
 
     @Select("SELECT * FROM student WHERE student_no = #{studentNo} LIMIT 1")
-    StudentEntity selectStudentByNo(@Param("studentNo") Long studentNo);
+    Student selectStudentByNo(@Param("studentNo") Long studentNo);
 
     @Select("""
             SELECT 'TEACHER' AS target_type, cs.selection_id, cs.schedule_id, e.evaluation_id, c.course_id, c.course_name,

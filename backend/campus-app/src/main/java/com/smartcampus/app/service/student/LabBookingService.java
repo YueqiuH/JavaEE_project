@@ -22,7 +22,7 @@ import com.smartcampus.contract.entity.LabBooking;
 import com.smartcampus.contract.entity.LabBookingNotice;
 import com.smartcampus.contract.entity.LabOpenSlot;
 import com.smartcampus.contract.entity.LabResource;
-import com.smartcampus.contract.entity.StudentEntity;
+import com.smartcampus.contract.entity.Student;
 import com.smartcampus.contract.vo.student.LabBookingNoticeVo;
 import com.smartcampus.contract.vo.student.LabBookingVo;
 import com.smartcampus.contract.vo.student.LabOpenSlotVo;
@@ -216,7 +216,7 @@ public class LabBookingService {
     }
 
     public PageResult<LabBookingVo> listMyBookings(long page, long size, String statusName) {
-        StudentEntity student = requireStudent("lab:booking:read-self");
+        Student student = requireStudent("lab:booking:read-self");
         expireStaleBookings();
         return listBookings(page, size, student.getStudentId(), null, parseBookingStatus(statusName));
     }
@@ -232,7 +232,7 @@ public class LabBookingService {
         AuthSession session = CurrentUserContext.require();
         LabBookingVo booking = requireBookingView(id);
         if (session.roles().contains(STUDENT_ROLE)) {
-            StudentEntity student = requireStudent("lab:booking:read-self");
+            Student student = requireStudent("lab:booking:read-self");
             if (!student.getStudentId().equals(booking.getStudentId())) {
                 throw new BusinessException(LabBookingErrorCodes.BOOKING_NOT_OWNED);
             }
@@ -248,7 +248,7 @@ public class LabBookingService {
 
     @Transactional
     public LabBookingVo createBooking(LabBookingRequest request) {
-        StudentEntity student = requireStudent("lab:booking:create");
+        Student student = requireStudent("lab:booking:create");
         LocalDate today = LocalDate.now();
         LocalDateTime now = LocalDateTime.now();
         bookingMapper.expireStaleBookings(today, now);
@@ -291,7 +291,7 @@ public class LabBookingService {
 
     @Transactional
     public LabBookingVo cancelBooking(Long id) {
-        StudentEntity student = requireStudent("lab:booking:cancel-self");
+        Student student = requireStudent("lab:booking:cancel-self");
         expireStaleBookings();
         LabBooking booking = requireBooking(id);
         if (!student.getStudentId().equals(booking.getStudentId())) {
@@ -311,7 +311,7 @@ public class LabBookingService {
 
     @Transactional
     public LabBookingVo checkIn(Long id) {
-        StudentEntity student = requireStudent("lab:booking:check-in-self");
+        Student student = requireStudent("lab:booking:check-in-self");
         expireStaleBookings();
         LabBooking booking = requireBooking(id);
         requireOwnedBooking(booking, student.getStudentId());
@@ -338,7 +338,7 @@ public class LabBookingService {
 
     @Transactional
     public LabBookingVo checkOut(Long id) {
-        StudentEntity student = requireStudent("lab:booking:check-out-self");
+        Student student = requireStudent("lab:booking:check-out-self");
         LabBooking booking = requireBooking(id);
         requireOwnedBooking(booking, student.getStudentId());
         requireBookingToday(booking);
@@ -372,14 +372,14 @@ public class LabBookingService {
     }
 
     public PageResult<LabBookingNoticeVo> listNotices(long page, long size, Integer isRead) {
-        StudentEntity student = requireStudent("lab:notice:read-self");
+        Student student = requireStudent("lab:notice:read-self");
         Page<LabBookingNoticeVo> query = new Page<>(page, size);
         return PageResult.from(noticeMapper.selectNoticePage(query, student.getStudentId(), isRead));
     }
 
     @Transactional
     public LabBookingNoticeVo markNoticeRead(Long id) {
-        StudentEntity student = requireStudent("lab:notice:mark-self");
+        Student student = requireStudent("lab:notice:mark-self");
         LabBookingNotice notice = noticeMapper.selectById(id);
         if (notice == null) throw new BusinessException(LabBookingErrorCodes.NOTICE_NOT_FOUND);
         if (!student.getStudentId().equals(notice.getStudentId())) {
@@ -550,13 +550,13 @@ public class LabBookingService {
                 || session.roles().contains(ADMIN_ROLE);
     }
 
-    private StudentEntity requireStudent(String permission) {
+    private Student requireStudent(String permission) {
         AuthSession session = CurrentUserContext.require();
         if (!session.roles().contains(STUDENT_ROLE) || !session.hasPermission(permission)) {
             throw new BusinessException(GlobalErrorCodeConstants.FORBIDDEN);
         }
         try {
-            StudentEntity student = labMapper.selectStudentByNo(Long.valueOf(session.username()));
+            Student student = labMapper.selectStudentByNo(Long.valueOf(session.username()));
             if (student != null) return student;
         } catch (NumberFormatException ignored) {
             // Fall through to the stable profile error.

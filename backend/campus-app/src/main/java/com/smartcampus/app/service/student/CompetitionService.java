@@ -19,7 +19,7 @@ import com.smartcampus.contract.dto.student.CompetitionTeamRequest;
 import com.smartcampus.contract.entity.Competition;
 import com.smartcampus.contract.entity.CompetitionMember;
 import com.smartcampus.contract.entity.CompetitionTeam;
-import com.smartcampus.contract.entity.StudentEntity;
+import com.smartcampus.contract.entity.Student;
 import com.smartcampus.contract.vo.student.CompetitionInvitationVo;
 import com.smartcampus.contract.vo.student.CompetitionMemberVo;
 import com.smartcampus.contract.vo.student.CompetitionTeamVo;
@@ -155,7 +155,7 @@ public class CompetitionService {
 
     public PageResult<CompetitionTeamVo> listMyTeams(long page, long size, String statusName) {
         AuthSession session = requireStudent("competition:team:read-self");
-        StudentEntity student = requireStudent(session);
+        Student student = requireStudent(session);
         return listTeams(page, size, student.getStudentId(), null, null, parseTeamStatus(statusName));
     }
 
@@ -186,7 +186,7 @@ public class CompetitionService {
 
     public PageResult<CompetitionInvitationVo> listMyInvitations(long page, long size, String statusName) {
         AuthSession session = requireStudent("competition:team:read-self");
-        StudentEntity student = requireStudent(session);
+        Student student = requireStudent(session);
         Page<CompetitionInvitationVo> query = new Page<>(page, size);
         IPage<CompetitionInvitationVo> result = memberMapper.selectInvitationPage(
                 query, student.getStudentId(), parseInvitationStatus(statusName));
@@ -201,7 +201,7 @@ public class CompetitionService {
             if (!session.hasPermission("competition:team:read-self")) {
                 throw forbidden();
             }
-            StudentEntity student = requireStudent(session);
+            Student student = requireStudent(session);
             CompetitionMember member = memberMapper.selectTeamMember(id, student.getStudentId());
             if (member == null || member.getInvitationStatus() == CompetitionInvitationStatus.REMOVED.code()) {
                 throw new BusinessException(CompetitionErrorCodes.TEAM_NOT_VISIBLE);
@@ -224,7 +224,7 @@ public class CompetitionService {
     @Transactional
     public CompetitionTeamVo createTeam(Long competitionId, CompetitionTeamRequest request) {
         AuthSession session = requireStudent("competition:team:create");
-        StudentEntity student = requireStudent(session);
+        Student student = requireStudent(session);
         Competition competition = requireCompetition(competitionId);
         requireRegistrationOpen(competition);
         if (teamMapper.countStudentActiveTeams(competitionId, student.getStudentId(), null) > 0) {
@@ -265,7 +265,7 @@ public class CompetitionService {
     @Transactional
     public CompetitionTeamVo updateTeam(Long id, CompetitionTeamRequest request) {
         AuthSession session = requireStudent("competition:team:manage-self");
-        StudentEntity student = requireStudent(session);
+        Student student = requireStudent(session);
         CompetitionTeam current = requireLeaderTeam(id, student.getStudentId());
         requireManageableTeam(current);
         CompetitionTeam update = new CompetitionTeam();
@@ -281,7 +281,7 @@ public class CompetitionService {
     @Transactional
     public CompetitionTeamVo uploadMaterial(Long id, MultipartFile file) {
         AuthSession session = requireStudent("competition:team:manage-self");
-        StudentEntity student = requireStudent(session);
+        Student student = requireStudent(session);
         CompetitionTeam current = requireLeaderTeam(id, student.getStudentId());
         requireManageableTeam(current);
 
@@ -322,13 +322,13 @@ public class CompetitionService {
     @Transactional
     public CompetitionTeamVo inviteMember(Long id, CompetitionInvitationRequest request) {
         AuthSession session = requireStudent("competition:team:manage-self");
-        StudentEntity leader = requireStudent(session);
+        Student leader = requireStudent(session);
         CompetitionTeam team = requireLeaderTeam(id, leader.getStudentId());
         requireManageableTeam(team);
         Competition competition = requireCompetition(team.getCompetitionId());
         requireRegistrationOpen(competition);
 
-        StudentEntity invitee = memberMapper.selectStudentByNo(request.getStudentNo());
+        Student invitee = memberMapper.selectStudentByNo(request.getStudentNo());
         if (invitee == null) {
             throw new BusinessException(CompetitionErrorCodes.INVITEE_NOT_FOUND);
         }
@@ -376,7 +376,7 @@ public class CompetitionService {
     @Transactional
     public CompetitionInvitationVo respondInvitation(Long memberId, CompetitionInvitationResponseRequest request) {
         AuthSession session = requireStudent("competition:invitation:respond-self");
-        StudentEntity student = requireStudent(session);
+        Student student = requireStudent(session);
         CompetitionMember invitation = memberMapper.selectById(memberId);
         if (invitation == null) {
             throw new BusinessException(CompetitionErrorCodes.INVITATION_NOT_FOUND);
@@ -414,7 +414,7 @@ public class CompetitionService {
     @Transactional
     public CompetitionTeamVo removeMember(Long teamId, Long memberId) {
         AuthSession session = requireStudent("competition:team:manage-self");
-        StudentEntity leader = requireStudent(session);
+        Student leader = requireStudent(session);
         CompetitionTeam team = requireLeaderTeam(teamId, leader.getStudentId());
         requireManageableTeam(team);
         CompetitionMember member = memberMapper.selectById(memberId);
@@ -436,7 +436,7 @@ public class CompetitionService {
     @Transactional
     public CompetitionTeamVo submitTeam(Long id) {
         AuthSession session = requireStudent("competition:team:submit-self");
-        StudentEntity leader = requireStudent(session);
+        Student leader = requireStudent(session);
         CompetitionTeam team = requireLeaderTeam(id, leader.getStudentId());
         requireManageableTeam(team);
         Competition competition = requireCompetition(team.getCompetitionId());
@@ -626,9 +626,9 @@ public class CompetitionService {
                 && session.hasPermission("competition:oversight:read");
     }
 
-    private StudentEntity requireStudent(AuthSession session) {
+    private Student requireStudent(AuthSession session) {
         try {
-            StudentEntity student = memberMapper.selectStudentByNo(Long.valueOf(session.username()));
+            Student student = memberMapper.selectStudentByNo(Long.valueOf(session.username()));
             if (student != null) {
                 return student;
             }

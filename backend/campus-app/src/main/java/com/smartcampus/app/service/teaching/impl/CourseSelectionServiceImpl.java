@@ -8,10 +8,10 @@ import com.smartcampus.app.dao.teaching.ScoreMapper;
 import com.smartcampus.common.enums.GlobalErrorCodeConstants;
 import com.smartcampus.common.result.CommonResult;
 import com.smartcampus.contract.entity.CourseCapacity;
-import com.smartcampus.contract.entity.CourseEntity;
+import com.smartcampus.contract.entity.Course;
 import com.smartcampus.contract.entity.CourseSelection;
 import com.smartcampus.contract.entity.Schedule;
-import com.smartcampus.contract.entity.ScoreEntity;
+import com.smartcampus.contract.entity.Score;
 import com.smartcampus.app.service.teaching.ICourseSelectionService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -59,7 +59,7 @@ public class CourseSelectionServiceImpl
 
         // ===== 第1步：容量校验（漏洞9: 下沉到教学班级别） =====
         // 获取课程信息
-        CourseEntity courseEntity = courseMapper.selectById(courseId);
+        Course courseEntity = courseMapper.selectById(courseId);
         if (courseEntity == null) {
             return CommonResult.error(910, "课程不存在");
         }
@@ -114,7 +114,7 @@ public class CourseSelectionServiceImpl
                 // 通过已选记录的 course_id 查出 course_code
                 Long selCourseId = (Long) sel.get("course_id");
                 if (selCourseId != null && !selCourseId.equals(courseId)) {
-                    CourseEntity selCourse = courseMapper.selectById(selCourseId);
+                    Course selCourse = courseMapper.selectById(selCourseId);
                     if (selCourse != null && targetCourseCode.equals(selCourse.getCourseCode())) {
                         return CommonResult.error(919,
                             "您已选了课程代码为《" + targetCourseCode + "》的另一个教学班（"
@@ -126,13 +126,13 @@ public class CourseSelectionServiceImpl
 
         // ===== F3: 先修课校验（courseEntity 已在第1步获取） =====
         if (courseEntity.getPrerequisiteId() != null) {
-            LambdaQueryWrapper<ScoreEntity> scoreWrapper = new LambdaQueryWrapper<>();
-            scoreWrapper.eq(ScoreEntity::getStudentId, studentId)
-                       .eq(ScoreEntity::getCourseId, courseEntity.getPrerequisiteId())
-                       .eq(ScoreEntity::getStatus, 1); // 1=已通过
+            LambdaQueryWrapper<Score> scoreWrapper = new LambdaQueryWrapper<>();
+            scoreWrapper.eq(Score::getStudentId, studentId)
+                       .eq(Score::getCourseId, courseEntity.getPrerequisiteId())
+                       .eq(Score::getStatus, 1); // 1=已通过
             Long passCount = scoreMapper.selectCount(scoreWrapper);
             if (passCount == null || passCount == 0) {
-                CourseEntity prereq = courseMapper.selectById(courseEntity.getPrerequisiteId());
+                Course prereq = courseMapper.selectById(courseEntity.getPrerequisiteId());
                 String prereqName = prereq != null ? prereq.getCourseName() : "未知课程";
                 return CommonResult.error(918,
                     "您尚未取得先修课程《" + prereqName + "》的学分，无法修读本课程。");
@@ -154,7 +154,7 @@ public class CourseSelectionServiceImpl
             for (Schedule existing : existingSchedules) {
                 for (Schedule newSch : newSchedules) {
                     if (isTimeOverlap(existing, newSch)) {
-                        CourseEntity conflictCourse = courseMapper.selectById(existing.getCourseId());
+                        Course conflictCourse = courseMapper.selectById(existing.getCourseId());
                         String conflictName = conflictCourse != null ? conflictCourse.getCourseName() : "未知课程";
                         return CommonResult.error(913,
                             "与已选课程《" + conflictName + "》时间冲突！（星期" + existing.getWeekDay()

@@ -27,12 +27,12 @@
     </template>
 
     <el-dialog v-model="visible" title="发布会议" width="min(620px,92vw)">
-      <el-form label-position="top">
-        <el-form-item label="会议主题"><el-input v-model="form.title" /></el-form-item>
-        <el-form-item label="会议内容"><el-input v-model="form.content" type="textarea" :rows="4" /></el-form-item>
-        <el-form-item label="会议日期"><el-date-picker v-model="form.meetingDate" value-format="YYYY-MM-DD" /></el-form-item>
+      <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
+        <el-form-item label="会议主题" prop="title"><el-input v-model="form.title" /></el-form-item>
+        <el-form-item label="会议内容" prop="content"><el-input v-model="form.content" type="textarea" :rows="4" /></el-form-item>
+        <el-form-item label="会议日期" prop="meetingDate"><el-date-picker v-model="form.meetingDate" value-format="YYYY-MM-DD" /></el-form-item>
         <el-form-item label="起止时间"><el-time-picker v-model="timeRange" is-range value-format="HH:mm:ss" /></el-form-item>
-        <el-form-item label="会议地点"><el-input v-model="form.location" /></el-form-item>
+        <el-form-item label="会议地点" prop="location"><el-input v-model="form.location" /></el-form-item>
         <el-form-item label="参会范围">
           <el-checkbox-group v-model="audienceTypes" class="meeting-audience-options">
             <el-checkbox v-for="option in audienceOptions" :key="option.value" :value="option.value" border>
@@ -73,9 +73,17 @@ const audienceOptions = [
 const audienceTypes = ref(['ALL_STUDENTS'])
 const timeRange = ref([])
 const form = reactive({ title: '', content: '', meetingDate: '', location: '' })
+const formRef = ref(null)
+const rules = {
+  title: [{ required: true, message: '请输入会议主题', trigger: 'blur' }],
+  content: [{ required: true, message: '请输入会议内容', trigger: 'blur' }],
+  meetingDate: [{ required: true, message: '请选择会议日期', trigger: 'change' }],
+  location: [{ required: true, message: '请输入会议地点', trigger: 'blur' }],
+}
 const unread = computed(() => notifications.value.filter(item=>item.isRead===0).length)
-const load = async () => { const tasks=[]; if(canManage.value)tasks.push(meetingAPI.list().then(r=>{meetings.value=r.data||[]})); else if(canMeetingSelf.value)tasks.push(meetingAPI.mine().then(r=>{meetings.value=r.data||[]})); if(canNotify.value)tasks.push(meetingAPI.notifications().then(r=>{notifications.value=r.data||[]})); await Promise.all(tasks) }
+const load = async () => { try { const tasks=[]; if(canManage.value)tasks.push(meetingAPI.list().then(r=>{meetings.value=r.data||[]})); else if(canMeetingSelf.value)tasks.push(meetingAPI.mine().then(r=>{meetings.value=r.data||[]})); if(canNotify.value)tasks.push(meetingAPI.notifications().then(r=>{notifications.value=r.data||[]})); await Promise.all(tasks) } catch(e) { ElMessage.error('加载会议数据失败'); console.error('MeetingNotice load error:', e) } }
 const publish = async () => {
+  try { await formRef.value.validate() } catch { return }
   if (!audienceTypes.value.length) {
     ElMessage.warning('请至少选择一个参会范围')
     return
