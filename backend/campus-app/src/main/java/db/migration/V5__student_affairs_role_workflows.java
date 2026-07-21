@@ -10,7 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-public class V53__student_affairs_role_workflows extends BaseJavaMigration {
+public class V5__student_affairs_role_workflows extends BaseJavaMigration {
 
     @Override
     public void migrate(Context context) throws Exception {

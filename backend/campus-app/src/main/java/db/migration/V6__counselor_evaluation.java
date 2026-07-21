@@ -5,7 +5,7 @@ import org.flywaydb.core.api.migration.Context;
 
 import java.sql.Statement;
 
-public class V54__counselor_evaluation extends BaseJavaMigration {
+public class V6__counselor_evaluation extends BaseJavaMigration {
 
     @Override
     public void migrate(Context context) throws Exception {
