@@ -60,21 +60,21 @@ public class ForumController {
 
     @PostMapping("/posts")
     @Operation(summary = "发布帖子", description = "作者取当前登录用户")
-    @RequirePermission("forum:read")
+    @RequirePermission("forum:write")
     public CommonResult<ForumPost> createPost(@Valid @RequestBody ForumPostCreateRequest request) {
         return CommonResult.success(forumService.createPost(request));
     }
 
     @PostMapping("/posts/{postId}/likes")
     @Operation(summary = "点赞/取消点赞帖子", description = "返回 true=已赞, false=已取消")
-    @RequirePermission("forum:read")
+    @RequirePermission("forum:write")
     public CommonResult<Boolean> likePost(@PathVariable Long postId) {
         return CommonResult.success(forumService.likePost(postId));
     }
 
     @DeleteMapping("/posts/{postId}")
     @Operation(summary = "删除帖子", description = "作者本人或管理员可删（软删除）；错误示例：403001 没有该操作权限")
-    @RequirePermission("forum:read")
+    @RequirePermission("forum:write")
     public CommonResult<Void> deletePost(@PathVariable Long postId) {
         forumService.deletePost(postId);
         return CommonResult.success();

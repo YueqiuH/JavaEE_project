@@ -3,7 +3,7 @@ package com.smartcampus.app.service.base;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.smartcampus.contract.dto.StudentQuery;
 import com.smartcampus.contract.dto.StudentSaveRequest;
-import com.smartcampus.contract.entity.StudentEntity;
+import com.smartcampus.contract.entity.Student;
 import com.smartcampus.contract.vo.StudentStatsVo;
 import com.smartcampus.contract.vo.StudentVo;
 

@@ -1,7 +1,7 @@
 package com.smartcampus.contract.vo;
 
-import com.smartcampus.contract.entity.MenuEntity;
-import com.smartcampus.contract.entity.UserEntity;
+import com.smartcampus.contract.entity.Menu;
+import com.smartcampus.contract.entity.User;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,8 +14,8 @@ import java.util.Set;
 @AllArgsConstructor
 public class CurrentUserVo {
 
-    private UserEntity user;
+    private User user;
     private Set<String> roles;
     private Set<String> permissions;
-    private List<MenuEntity> menus;
+    private List<Menu> menus;
 }

@@ -8,5 +8,6 @@ public class Document implements Serializable {
     @TableId(type = IdType.AUTO) private Long docId;
     private String title; private String docType; private String content;
     private Long initiatorId; private Long currentApproverId; private Integer status;
-    private String approvalChain; private Date createTime;
+    private String approvalChain; private Long workflowId; private Integer currentStep;
+    private Integer approvalRound; private Date createTime;
 }

@@ -3,6 +3,7 @@ package com.smartcampus.contract.vo;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 
 /**
  * 学生档案列表视图（含院系/专业名称）。
@@ -19,7 +20,7 @@ public class StudentVo implements Serializable {
     /** 性别: 1=男, 2=女 */
     private Integer gender;
 
-    private String studentBirth;
+    private LocalDate studentBirth;
 
     private Integer studentAge;
 

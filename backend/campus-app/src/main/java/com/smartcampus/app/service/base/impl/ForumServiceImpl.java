@@ -18,7 +18,7 @@ import com.smartcampus.contract.dto.ForumPostCreateRequest;
 import com.smartcampus.contract.entity.ForumComment;
 import com.smartcampus.contract.entity.ForumPost;
 import com.smartcampus.contract.entity.ForumPostLike;
-import com.smartcampus.contract.entity.UserEntity;
+import com.smartcampus.contract.entity.User;
 import com.smartcampus.contract.vo.ForumCommentVo;
 import com.smartcampus.contract.vo.ForumPostVo;
 import org.springframework.stereotype.Service;
@@ -154,7 +154,7 @@ public class ForumServiceImpl implements ForumService {
         commentMapper.insert(comment);
 
         // 查询用户真实姓名，与 listComments 的 COALESCE(u.real_name, u.username) 保持一致
-        UserEntity user = authUserMapper.selectById(session.userId());
+        User user = authUserMapper.selectById(session.userId());
         String authorName = (user != null && user.getRealName() != null && !user.getRealName().isBlank())
                 ? user.getRealName() : session.username();
 

@@ -175,7 +175,7 @@ import { ChatDotRound, Checked, Grid, Right, Star, Top } from '@element-plus/ico
 import { ElMessage } from 'element-plus'
 import campusHero from '@/assets/images/campus-hero.jpg'
 import ServiceCard from '@/components/ServiceCard.vue'
-import { domains, getServicesByDomain, services, getBaseDomainLabel } from '@/config/navigation.js'
+import { canAccessService, domains, getServicesByDomain, services, getBaseDomainLabel } from '@/config/navigation.js'
 import { useServicePreferences } from '@/utils/servicePreferences.js'
 import { getStoredCurrentUser } from '@/utils/authSession.js'
 
@@ -205,7 +205,9 @@ const greeting = computed(() => {
   return '晚上好'
 })
 const formattedDate = new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' }).format(new Date())
-const userPerms = computed(() => getStoredCurrentUser()?.permissions || [])
+const storedUser = computed(() => getStoredCurrentUser())
+const userPerms = computed(() => storedUser.value?.permissions || [])
+const userType = computed(() => storedUser.value?.user?.userType)
 const domainLabels = computed(() => {
   const labels = {}
   for (const d of domains) {
@@ -213,17 +215,13 @@ const domainLabels = computed(() => {
   }
   return labels
 })
-const canSee = (service) => !service.permission
-  || userPerms.value.includes(service.permission)
-  || (service.broadPermission && userPerms.value.includes(service.broadPermission))
+const canSee = (service) => canAccessService(service, userPerms.value, userType.value)
 const visibleTotal = computed(() => services.filter(canSee).length)
 const visibleDomainCounts = computed(() => {
   const counts = {}
   for (const d of domains) counts[d.key] = services.filter(s => s.domain === d.key && canSee(s)).length
   return counts
 })
-  || userPerms.value.includes(service.permission)
-  || (service.broadPermission && userPerms.value.includes(service.broadPermission))
 
 const quickServices = computed(() => {
   let keys = defaultRecommended
@@ -231,7 +229,7 @@ const quickServices = computed(() => {
   if (quickTab.value === 'favorites') keys = favoriteKeys.value
   return keys.map((key) => services.find((service) => service.key === key)).filter(Boolean).filter(canSee)
 })
-const domainServices = computed(() => getServicesByDomain(activeDomain.value).filter(canSee))
+const domainServices = computed(() => getServicesByDomain(activeDomain.value, userPerms.value, userType.value))
 const activeDomainInfo = computed(() => domains.find((domain) => domain.key === activeDomain.value))
 const aiServices = computed(() => services.filter((service) => service.ai && canSee(service)))
 

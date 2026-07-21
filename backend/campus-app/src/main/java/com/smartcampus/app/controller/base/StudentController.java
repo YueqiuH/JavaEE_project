@@ -119,8 +119,8 @@ public class StudentController {
                 req.setStudentName(String.valueOf(r.getOrDefault("姓名*", "")));
                 String g = String.valueOf(r.getOrDefault("性别(1男2女)", "1"));
                 req.setGender("2".equals(g) ? 2 : 1);
-                String birth = String.valueOf(r.getOrDefault("出生日期(yyyy-MM-dd)", ""));
-                if (!birth.isEmpty() && !"null".equals(birth)) req.setStudentBirth(birth);
+                String birthStr = String.valueOf(r.getOrDefault("出生日期(yyyy-MM-dd)", "")).trim();
+                if (!birthStr.isEmpty() && !"null".equals(birthStr)) req.setStudentBirth(java.time.LocalDate.parse(birthStr));
                 String dept = String.valueOf(r.getOrDefault("院系ID", "0"));
                 if (!dept.isEmpty() && !"0".equals(dept) && !"null".equals(dept)) req.setDeptId(Long.parseLong(dept));
                 String major = String.valueOf(r.getOrDefault("专业ID", "0"));
@@ -153,7 +153,7 @@ public class StudentController {
                        @Parameter(description = "入学年份") @RequestParam(required = false) Integer enrollYear) throws IOException {
         var query = new com.smartcampus.contract.dto.StudentQuery();
         query.setPage(1);
-        query.setSize(10000);
+        query.setSize(50000);
         query.setDeptId(deptId);
         query.setEnrollYear(enrollYear);
         var page = studentService.pageVo(query);

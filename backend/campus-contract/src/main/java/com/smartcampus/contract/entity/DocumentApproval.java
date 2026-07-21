@@ -6,6 +6,7 @@ import java.io.Serializable; import java.util.Date;
 @Data @ToString @TableName(value = "document_approval")
 public class DocumentApproval implements Serializable {
     @TableId(type = IdType.AUTO) private Long approvalId;
-    private Long docId; private Long approverId;
+    private Long docId; private Long taskId; private Long approverId;
+    private Integer roundNo; private Integer stepOrder; private String stepName;
     private String action; private String opinion; private Date approvalTime;
 }

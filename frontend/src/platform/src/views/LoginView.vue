@@ -22,7 +22,7 @@
           <el-button class="login-button" native-type="submit" type="primary" size="large" :loading="buttonLoading" @click="submitForm(ruleFormRef)">登录</el-button>
         </el-form>
 
-        <div class="demo-account"><span><el-icon><InfoFilled /></el-icon></span><div><strong>本地演示账号</strong><p>学生：600001　密码：123321</p></div><el-button text @click="fillDemoAccount">填入</el-button></div>
+        <div class="demo-account"><span><el-icon><InfoFilled /></el-icon></span><div><strong>本地演示账号</strong><p>学生 600001 | 辅导员 700001 | 教职工 800001 | 教务处 admin　密码：123321</p></div><el-button text @click="fillDemoAccount">填入</el-button></div>
         <button class="back-button" type="button" @click="goHome"><el-icon><ArrowLeft /></el-icon>返回平台介绍</button>
       </div>
       <footer>Copyright © 2024-2026 智慧校园服务平台</footer>
@@ -47,7 +47,7 @@ const rules={username:[{required:true,message:'请输入账号',trigger:'blur'},
 const goHome=()=>router.push('/?preview=public')
 const fillDemoAccount=()=>{formData.value.username='600001';formData.value.password='123321';ElMessage.success('已填入学生演示账号')}
 const submitForm=(formEl)=>{if(!formEl)return;formEl.validate(valid=>{if(valid)login()})}
-const login=async()=>{buttonLoading.value=true;try{const result=await loginUser(formData.value);setAccessToken(result.data.token);setStoredCurrentUser(result.data.currentUser);if(rememberAccount.value)localStorage.setItem(ACCOUNT_KEY,formData.value.username);else localStorage.removeItem(ACCOUNT_KEY);ElMessage.success('登录成功');const redirect=router.currentRoute.value.query.redirect;await router.push(typeof redirect==='string'?redirect:'/home')}catch{}finally{buttonLoading.value=false}}
+const login=async()=>{buttonLoading.value=true;try{const result=await loginUser(formData.value);const token=result.data.token;const user=result.data.currentUser;if(!token||!user){ElMessage.error('登录返回数据异常，请重试');return};setAccessToken(token);setStoredCurrentUser(user);if(rememberAccount.value)localStorage.setItem(ACCOUNT_KEY,formData.value.username);else localStorage.removeItem(ACCOUNT_KEY);ElMessage.success('登录成功');const redirect=router.currentRoute.value.query.redirect;await router.push(typeof redirect==='string'?redirect:'/home')}catch(e){console.error('登录失败',e);ElMessage.error('登录失败，请检查账号密码')}finally{buttonLoading.value=false}}
 onMounted(()=>{const saved=localStorage.getItem(ACCOUNT_KEY);if(saved)formData.value.username=saved})
 </script>
 

@@ -3,7 +3,7 @@ package com.smartcampus.app.dao.base;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.smartcampus.contract.dto.StudentQuery;
-import com.smartcampus.contract.entity.StudentEntity;
+import com.smartcampus.contract.entity.Student;
 import com.smartcampus.contract.vo.NameValueVo;
 import com.smartcampus.contract.vo.StudentVo;
 import org.apache.ibatis.annotations.Param;
@@ -11,7 +11,7 @@ import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
 
-public interface StudentMapper extends BaseMapper<StudentEntity> {
+public interface StudentMapper extends BaseMapper<Student> {
 
     @Select("""
             SELECT s.student_id, s.student_no, s.student_name, s.gender, s.student_birth, s.student_age,

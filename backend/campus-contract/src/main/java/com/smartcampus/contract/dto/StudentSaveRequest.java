@@ -4,11 +4,12 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
+
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 
 /**
  * 学生档案新增/修改请求。
@@ -27,9 +28,8 @@ public class StudentSaveRequest implements Serializable {
     /** 性别: 1=男, 2=女 */
     private Integer gender;
 
-    /** 出生日期，格式 yyyy-MM-dd */
-    @Pattern(regexp = "\\d{4}-\\d{2}-\\d{2}", message = "出生日期格式不正确（yyyy-MM-dd）")
-    private String studentBirth;
+    /** 出生日期 */
+    private LocalDate studentBirth;
 
     @Min(value = 1, message = "年龄不合理")
     @Max(value = 150, message = "年龄不合理")

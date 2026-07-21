@@ -24,6 +24,7 @@
 
     <properties>
         <java.version>25</java.version>
+        <lombok.version>1.18.38</lombok.version>
         <mybatis-plus.version>3.5.12</mybatis-plus.version>
         <fastjson.version>1.2.73</fastjson.version>
         <poi.version>5.4.0</poi.version>

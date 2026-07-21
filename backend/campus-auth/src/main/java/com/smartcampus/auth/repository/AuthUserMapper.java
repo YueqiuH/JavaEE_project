@@ -1,14 +1,14 @@
 package com.smartcampus.auth.repository;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.smartcampus.contract.entity.MenuEntity;
-import com.smartcampus.contract.entity.UserEntity;
+import com.smartcampus.contract.entity.Menu;
+import com.smartcampus.contract.entity.User;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
 
-public interface AuthUserMapper extends BaseMapper<UserEntity> {
+public interface AuthUserMapper extends BaseMapper<User> {
 
     @Select("""
             SELECT user_id, username, password, user_type, status, created_at, updated_at
@@ -16,7 +16,7 @@ public interface AuthUserMapper extends BaseMapper<UserEntity> {
             WHERE username = #{username} AND status = 1
             LIMIT 1
             """)
-    UserEntity findActiveByUsername(@Param("username") String username);
+    User findActiveByUsername(@Param("username") String username);
 
     @Select("""
             SELECT user_id, username, password, user_type, status, created_at, updated_at
@@ -24,7 +24,7 @@ public interface AuthUserMapper extends BaseMapper<UserEntity> {
             WHERE user_id = #{userId} AND status = 1
             LIMIT 1
             """)
-    UserEntity findActiveById(@Param("userId") Long userId);
+    User findActiveById(@Param("userId") Long userId);
 
     @Select("""
             SELECT r.role_code
@@ -64,5 +64,5 @@ public interface AuthUserMapper extends BaseMapper<UserEntity> {
               )
             ORDER BY m.sort_order, m.menu_id
             """)
-    List<MenuEntity> findMenus(@Param("userId") Long userId);
+    List<Menu> findMenus(@Param("userId") Long userId);
 }
