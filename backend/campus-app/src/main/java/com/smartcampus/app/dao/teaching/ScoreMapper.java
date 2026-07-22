@@ -9,8 +9,9 @@ import java.util.Map;
 
 public interface ScoreMapper extends BaseMapper<Score> {
 
-    /** 根据学生ID查询所有成绩（含课程名） */
-    List<Map<String, Object>> selectByStudentId(@Param("studentId") Long studentId);
+    /** 根据学生ID查询所有成绩（含课程名），可选学期过滤 */
+    List<Map<String, Object>> selectByStudentId(@Param("studentId") Long studentId,
+                                                @Param("semester") String semester);
 
     /** 根据课程ID和学期查询该课程所有学生成绩（含学生信息） */
     List<Map<String, Object>> selectByCourseAndSemester(@Param("courseId") Long courseId,

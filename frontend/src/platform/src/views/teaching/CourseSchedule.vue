@@ -32,10 +32,7 @@
 
       <div style="flex:1"></div>
 
-      <template v-if="role==='admin'">
-        <el-button size="small" type="primary" @click="showAddCourse=true">+ 新增课程</el-button>
-        <el-button size="small" type="warning" @click="$router.push({name:'autoSchedule'})">一键自动排课</el-button>
-      </template>
+      <el-button v-if="role==='admin'" size="small" type="primary" @click="showAddCourse=true">+ 新增课程</el-button>
 
       <el-button-group size="small">
         <el-button @click="wk--" :disabled="wk<=1">◀</el-button>
@@ -95,7 +92,7 @@
             <div v-for="d in 7" :key="d" class="gc" :class="cc(d,p)" @click="role==='admin' ? go(d,p) : null">
               <div v-if="b(d,p) && b(d,p).startPeriod===p" class="bk"
                 :style="{height:(b(d,p).endPeriod-b(d,p).startPeriod+1)*44-2+'px'}"
-                @click.stop>
+                @click.stop="showScheduleDetail(b(d,p))">
                 <div class="bk-n">{{ b(d,p).courseName }}</div>
                 <div class="bk-i">{{ b(d,p).teacherName || '教师'+(b(d,p).teacherId||'-') }} · {{ b(d,p).classroomName || '教室'+(b(d,p).classroomId||'-') }}</div>
                 <div v-if="role==='admin'" class="bk-act" @click.stop="deleteSchedule(b(d,p))">✕</div>
@@ -117,7 +114,8 @@
         <el-form-item label="课程"><strong>{{ picked?.courseName||'-' }}</strong></el-form-item>
         <el-form-item label="星期"><el-select v-model="fm.d" style="width:100%"><el-option v-for="d in 7" :key="d" :label="'星期'+wlbl[d-1]" :value="d" /></el-select></el-form-item>
         <el-form-item label="时段"><el-select v-model="fm.s" style="width:100%" @change="os"><el-option v-for="s in as" :key="s.k" :label="s.l" :value="s.k" /></el-select></el-form-item>
-        <el-form-item label="教室"><el-input-number v-model="fm.r" :min="1" :max="6" style="width:100%" /></el-form-item>
+        <el-form-item label="教师"><el-select v-model="fm.tid" style="width:100%" filterable><el-option v-for="t in teachers" :key="t.userId" :label="t.realName+' ('+(t.title||'教师')+')'" :value="t.userId" /></el-select></el-form-item>
+        <el-form-item label="教室"><el-select v-model="fm.r" style="width:100%" filterable><el-option v-for="r in classrooms" :key="r.classroomId" :label="r.classroomName+' ('+r.building+'·'+r.capacity+'人)'" :value="r.classroomId" /></el-select></el-form-item>
         <el-form-item label="起止周">
           <el-col :span="11"><el-input-number v-model="fm.sw" :min="1" :max="16" style="width:100%" /></el-col>
           <el-col :span="2" style="text-align:center">—</el-col>
@@ -140,6 +138,22 @@
       </el-form>
       <template #footer><el-button @click="showAddCourse=false">取消</el-button><el-button type="primary" @click="addCourse">确认</el-button></template>
     </el-dialog>
+    <!-- 课程详情弹窗 -->
+    <el-dialog v-model="detailDl" title="课程详情" width="420px">
+      <el-descriptions :column="1" border v-if="detailSch" size="small">
+        <el-descriptions-item label="课程名称">{{ detailSch.courseName }}</el-descriptions-item>
+        <el-descriptions-item label="课程代码">{{ detailSch.courseCode || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="授课教师">{{ detailSch.teacherName || detailSch.teacherId || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="上课教室">{{ detailSch.classroomName || detailSch.classroomId || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="星期">{{ '周' + wlbl[(detailSch.weekDay||1)-1] }}</el-descriptions-item>
+        <el-descriptions-item label="节次">{{ detailSch.startPeriod }}-{{ detailSch.endPeriod }} 节</el-descriptions-item>
+        <el-descriptions-item label="教学周">{{ detailSch.startWeek }}-{{ detailSch.endWeek }} 周</el-descriptions-item>
+        <el-descriptions-item label="周模式">{{ detailSch.weekPattern==='odd'?'单周':detailSch.weekPattern==='even'?'双周':'每周' }}</el-descriptions-item>
+        <el-descriptions-item label="类型">{{ detailSch.scheduleType || '正常' }}</el-descriptions-item>
+        <el-descriptions-item label="学分">{{ detailSch.credits || '-' }}</el-descriptions-item>
+      </el-descriptions>
+      <template #footer><el-button @click="detailDl=false">关闭</el-button></template>
+    </el-dialog>
   </div>
 </template>
 
@@ -153,7 +167,8 @@ import './teaching-d.css'
 
 const wlbl = ['一','二','三','四','五','六','日']
 const sms = ['2025-2026-1','2025-2026-2','2026-2027-1']
-const sem = ref('2025-2026-1'), wk = ref(1), wl = ref({total:0,warn:false})
+const sem = ref('2025-2026-2'), wk = ref(1), wl = ref({total:0,warn:false})
+function dedupByKey(arr,key){const seen=new Set();return arr.filter(v=>{const k=v[key];if(seen.has(k))return false;seen.add(k);return true})}
 
 // ===== 身份 =====
 const currentUser = computed(() => { try { return getStoredCurrentUser() } catch { return null } })
@@ -163,9 +178,9 @@ const role = computed(() => ({ 1:'student',2:'counselor',3:'teacher',4:'admin' }
 const roleLabel = computed(() => ({ student:'🧑‍🎓 学生',counselor:'📋 辅导员',teacher:'👨‍🏫 教职工',admin:'🔧 教务处' }[role.value]))
 
 // ===== 课程数据 =====
-const loading = ref(false), dl = ref(false), showAddCourse = ref(false)
-const allCourses = ref([]), allSchedules = ref([]), picked = ref(null)
-const courseFilter = ref(''), courseStatusFilter = ref('all')
+const loading = ref(false), dl = ref(false), showAddCourse = ref(false), detailDl = ref(false)
+const allCourses = ref([]), allSchedules = ref([]), picked = ref(null), detailSch = ref(null)
+const courseFilter = ref(''), courseStatusFilter = ref('all'), classrooms = ref([]), teachers = ref([])
 
 const coursesWithStatus = computed(() => allCourses.value.map(c => {
   const ss = allSchedules.value.filter(s => s.courseId === c.courseId)
@@ -189,7 +204,7 @@ const ALL = [
   {k:'11-13',l:'11-13节(晚上)',sp:11,ep:13},{k:'1-5',l:'1-5节(上午整段)',sp:1,ep:5},{k:'6-10',l:'6-10节(下午整段)',sp:6,ep:10}
 ]
 const as = computed(() => ALL.map(s => ({...s, x: false})))
-const fm = reactive({ d:1, s:'', sp:1, ep:2, r:1, sw:1, ew:16, p:'every', type:'正常' })
+const fm = reactive({ d:1, s:'', sp:1, ep:2, r:1, sw:1, ew:16, p:'every', type:'正常', tid:null })
 const nc = reactive({ courseName:'', courseCode:'', classification:'必修', credit:2, weeklyFrequency:1 })
 
 const b = (d,p) => allSchedules.value.find(s => s.weekDay===d && p>=s.startPeriod && p<=s.endPeriod) || null
@@ -205,9 +220,14 @@ async function loadAll() {
     const api = role.value === 'student'
       ? scheduleApi.getStudentSchedule(uid.value, sem.value)
       : scheduleApi.getTeacherSchedule(tid, sem.value)
-    const [cr, sr] = await Promise.all([courseApi.list(sem.value), api])
-    allCourses.value = (cr?.data||[]).filter(c => c.courseId)
-    allSchedules.value = (sr?.data||[]).filter(s => s.scheduleId)
+    const p = [courseApi.list(sem.value), api]
+    if(role.value === 'admin') p.push(scheduleApi.getClassrooms())
+    if(role.value === 'admin') p.push(courseApi.listTeachers())
+    const results = await Promise.all(p)
+    allCourses.value = dedupByKey((results[0]?.data||[]).filter(c => c.courseId), 'courseId')
+    allSchedules.value = (results[1]?.data||[]).filter(s => s.scheduleId)
+    if(role.value === 'admin' && results[2]) classrooms.value = results[2].data||[]
+    if(role.value === 'admin' && results[3]) teachers.value = results[3].data||[]
     try { const w = await scheduleApi.getTeacherWorkload(uid.value, sem.value); wl.value = typeof w?.data==='string'?JSON.parse(w.data):(w?.data||{total:0,warn:false}) } catch { wl.value = {total:0,warn:false} }
   } catch { allCourses.value=[]; allSchedules.value=[] }
   finally { loading.value=false }
@@ -215,7 +235,8 @@ async function loadAll() {
 
 // ===== 交互 =====
 function selectCourse(c) { picked.value = c }
-function pickAndSchedule(c) { picked.value=c; fm.d=1;fm.s='';fm.r=1;fm.sw=1;fm.ew=16;fm.p='every';fm.type='正常';dl.value=true }
+function pickAndSchedule(c) { picked.value=c; fm.d=1;fm.s=''; const defR = classrooms.value.length>0 ? classrooms.value[0].classroomId : 1; fm.r=defR; fm.tid = teachers.value.length>0 ? teachers.value[0].userId : uid.value; fm.sw=1;fm.ew=16;fm.p='every';fm.type='正常';dl.value=true }
+function showScheduleDetail(s) { detailSch.value = s; detailDl.value = true }
 function go(d,p) { if(!picked.value){ElMessage.info('请先选择课程');return}; fm.d=d; fm.s=''; dl.value=true }
 const os = () => { const s=ALL.find(s=>s.k===fm.s); if(s){fm.sp=s.sp;fm.ep=s.ep} }
 
@@ -225,7 +246,7 @@ async function ok() {
   os()
   try {
     const r = await scheduleApi.add({
-      courseId:picked.value.courseId, teacherId:uid.value, semester:sem.value,
+      courseId:picked.value.courseId, teacherId:fm.tid||uid.value, semester:sem.value,
       weekDay:fm.d, startPeriod:fm.sp, endPeriod:fm.ep, classroomId:fm.r,
       startWeek:fm.sw, endWeek:fm.ew, weekPattern:fm.p,
       credits:picked.value.credit||2, courseName:picked.value.courseName,

@@ -1,22 +1,10 @@
-/**
- * 使用Fetch API进行流式请求
- */
 import { getAccessToken } from '@/utils/authToken.js'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8888'
-export const streamChatAPI = {
-    /**
-     * 流式聊天
-     * @param {string} url - API地址
-     * @param {object} body - 请求体
-     * @param {function} onMessage - 接收消息的回调
-     * @param {function} onError - 错误回调
-     * @param {function} onComplete - 完成回调
-     * @returns {AbortController} - 用于取消请求的控制器
-     */
-    async streamChat(url, body, onMessage, onError, onComplete) {
-        const controller = new AbortController()
 
+export const streamChatAPI = {
+    async streamChat(url, body, onEvent, onError, onComplete) {
+        const controller = new AbortController()
         try {
             const token = getAccessToken()
             const response = await fetch(`${API_BASE_URL}${url}`, {
@@ -28,58 +16,36 @@ export const streamChatAPI = {
                 body: JSON.stringify(body),
                 signal: controller.signal
             })
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`)
-            }
-
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
             const reader = response.body.getReader()
             const decoder = new TextDecoder()
             let buffer = ''
-
+            let currentEvent = 'message'
             while (true) {
-                const {
-                    done,
-                    value
-                } = await reader.read()
-
-                if (done) {
-                    if (onComplete) onComplete()
-                    break
-                }
-
-                // 解码数据
-                buffer += decoder.decode(value, {
-                    stream: true
-                })
-
-                // 处理SSE格式的数据
+                const { done, value } = await reader.read()
+                if (done) { if (onComplete) onComplete(); break }
+                buffer += decoder.decode(value, { stream: true })
                 const lines = buffer.split('\n')
                 buffer = lines.pop() || ''
-
                 for (const line of lines) {
-                    if (line.trim() && line.startsWith('data:')) {
-                        const data = line.substring(5).trim()
-                        if (data && data !== '[DONE]') {
+                    const trimmed = line.trim()
+                    if (trimmed.startsWith('event:')) {
+                        currentEvent = trimmed.substring(6).trim()
+                    } else if (trimmed.startsWith('data:')) {
+                        const dataStr = trimmed.substring(5).trim()
+                        if (dataStr && dataStr !== '[DONE]') {
                             try {
-                                const parsed = JSON.parse(data)
-                                onMessage(typeof parsed === 'string' ? parsed : JSON.stringify(parsed))
-                            } catch {
-                                onMessage(data)
-                            }
+                                const parsed = JSON.parse(dataStr)
+                                onEvent(currentEvent, parsed)
+                            } catch { onEvent(currentEvent, dataStr) }
                         }
                     }
                 }
             }
         } catch (error) {
-            if (error.name === 'AbortError') {
-                console.log('请求被取消')
-            } else {
-                console.error('流式请求错误:', error)
-                if (onError) onError(error)
-            }
+            if (error.name === 'AbortError') console.log('SSE aborted')
+            else if (onError) onError(error)
         }
-
         return controller
     }
 }

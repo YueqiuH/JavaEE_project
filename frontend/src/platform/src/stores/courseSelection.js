@@ -7,9 +7,11 @@ const SPORTS_KEYWORDS = ['体育', '体育课']
 const MAX_CREDIT_DEFAULT = 30
 const MAX_SPORTS_DEFAULT = 1
 
+function dedupByKey(arr,key){const seen=new Set();return arr.filter(v=>{const k=v[key];if(seen.has(k))return false;seen.add(k);return true})}
+
 export const useCourseSelectionStore = defineStore('courseSelection', () => {
   // ==================== 核心状态 ====================
-  const semester = ref('2025-2026-1')
+  const semester = ref('2025-2026-2')
   const allCourses = ref([])          // 所有可选课程（教学班级别）
   const selectedCourses = ref([])     // 已选课程列表
   const creditLimit = ref(MAX_CREDIT_DEFAULT)
@@ -219,7 +221,7 @@ export const useCourseSelectionStore = defineStore('courseSelection', () => {
         getCourseList(semester.value),
         getMySelection(currentUserId.value, semester.value)
       ])
-      allCourses.value = (courseRes?.data || []).filter(c => c.courseId)
+      allCourses.value = dedupByKey((courseRes?.data || []).filter(c => c.courseId && c.scheduleId), 'courseId')
       selectedCourses.value = (selRes?.data || []).map(s => ({
         ...s,
         courseId: s.course_id || s.courseId,           // ← 关键修复：统一 courseId

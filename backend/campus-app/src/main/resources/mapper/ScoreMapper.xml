@@ -7,6 +7,8 @@
         FROM score s
         LEFT JOIN course c ON s.course_id = c.course_id
         WHERE s.student_id = #{studentId}
+        <if test="semester != null">AND s.semester = #{semester}</if>
+        AND (s.publish_status IS NULL OR s.publish_status >= 1)
         ORDER BY s.semester DESC, c.course_code
     </select>
 
@@ -24,26 +26,28 @@
 
     <select id="selectTeacherClasses" resultType="map">
         SELECT
-            sch.schedule_id,
+            MIN(sch.schedule_id) AS schedule_id,
             sch.course_id,
             sch.semester,
-            sch.week_day,
-            sch.start_period,
-            sch.end_period,
+            MIN(sch.week_day) AS week_day,
+            MIN(sch.start_period) AS start_period,
+            MIN(sch.end_period) AS end_period,
             c.course_name,
             c.course_code,
             c.classification,
             c.credit,
-            cr.classroom_name,
-            cap.current_count AS enrolled_count,
-            cap.max_capacity,
-            (SELECT COUNT(*) FROM score sc WHERE sc.course_id = sch.course_id) AS graded_count
+            MIN(cr.classroom_name) AS classroom_name,
+            MIN(cap.current_count) AS enrolled_count,
+            MIN(cap.max_capacity) AS max_capacity,
+            (SELECT COUNT(*) FROM score sc WHERE sc.course_id = sch.course_id AND sc.semester = sch.semester) AS graded_count
         FROM schedule sch
         LEFT JOIN course c ON sch.course_id = c.course_id
         LEFT JOIN classroom cr ON sch.classroom_id = cr.classroom_id
         LEFT JOIN course_capacity cap ON sch.schedule_id = cap.schedule_id AND sch.semester = cap.semester
-        WHERE sch.teacher_id = #{teacherId} AND sch.semester = #{semester}
-        ORDER BY sch.week_day, sch.start_period
+        WHERE (#{teacherId} = 0 OR sch.teacher_id = #{teacherId})
+          AND sch.semester = #{semester}
+        GROUP BY sch.course_id, sch.semester, c.course_name, c.course_code, c.classification, c.credit
+        ORDER BY sch.course_id
     </select>
 
     <select id="selectCounselorWarnings" resultType="map">

@@ -15,14 +15,6 @@
         <span class="top-user">{{ store.currentUser?.username || '-' }}</span>
         <el-tag size="small" effect="plain" type="info">学期: {{ store.semester }}</el-tag>
       </div>
-      <div class="top-center">
-        <el-tag size="small" :type="timePhaseType">
-          第 {{ store.timeWindow.currentWeek }} 周 ·
-          {{ timePhaseLabel }}
-        </el-tag>
-        <el-tag v-if="store.timeWindow.teacherCanEdit" size="small" type="success" effect="dark">📝 教师可录入</el-tag>
-        <el-tag v-if="store.timeWindow.adminOnly" size="small" type="danger" effect="dark">🔒 已归档（仅管理员可修改）</el-tag>
-      </div>
       <div class="top-right">
         <el-button size="small" :icon="Refresh" @click="refreshAll" :loading="store.loading">刷新</el-button>
       </div>
@@ -113,7 +105,7 @@
       </template>
 
       <!-- ========== 教师视图 ========== -->
-      <template v-if="store.role === 'teacher'">
+      <template v-if="store.role === 'teacher' || store.role === 'admin'">
         <div class="view-teacher">
           <!-- 左侧：教学班列表 -->
           <div class="teacher-left">
@@ -359,42 +351,6 @@
         </div>
       </template>
 
-      <!-- ========== 管理员视图 ========== -->
-      <template v-if="store.role === 'admin'">
-        <div class="view-admin">
-          <div class="section-title">🔧 成绩例外修改（归档期管理）</div>
-          <div class="admin-warn" v-if="!store.timeWindow.adminOnly">
-            ⚠️ 当前为第 {{ store.timeWindow.currentWeek }} 周，尚在常规修改期内。教师可直接修改。管理员特权修改应在第21周后使用。
-          </div>
-
-          <div class="admin-form">
-            <el-form label-width="100px" size="default">
-              <el-form-item label="成绩记录ID">
-                <el-input-number v-model="adminForm.scoreId" :min="1" style="width:200px" placeholder="输入 score_id" />
-                <el-button size="small" style="margin-left:8px" @click="searchScore" :loading="store.loading">查询</el-button>
-              </el-form-item>
-              <el-form-item label="当前分数">
-                <span>{{ adminForm.currentScore ?? '-' }}</span>
-              </el-form-item>
-              <el-form-item label="新分数">
-                <el-input-number v-model="adminForm.newScore" :min="0" :max="100" style="width:150px" />
-              </el-form-item>
-              <el-form-item label="修改缘由">
-                <el-input v-model="adminForm.reason" type="textarea" :rows="2" placeholder="修改的具体原因" />
-              </el-form-item>
-              <el-form-item label="公文号">
-                <el-input v-model="adminForm.docNo" placeholder="审批单号（如 SP-2026-001）" style="width:250px" />
-              </el-form-item>
-              <el-form-item>
-                <el-button type="danger" @click="executeAdminModify" :disabled="!adminForm.scoreId || !adminForm.newScore">
-                  提交修改（记录永久日志）
-                </el-button>
-              </el-form-item>
-            </el-form>
-          </div>
-        </div>
-      </template>
-
     </div>
   </div>
 </template>
@@ -564,7 +520,7 @@ async function executeAdminModify() {
 async function refreshAll() {
   await store.loadTimeWindow()
   if (store.role === 'student') await store.loadStudentReport()
-  else if (store.role === 'teacher') await store.loadTeacherClasses()
+  else if (store.role === 'teacher' || store.role === 'admin') await store.loadTeacherClasses()
   else if (store.role === 'counselor') await store.loadWarnings()
 }
 
@@ -572,7 +528,7 @@ async function refreshAll() {
 onMounted(async () => {
   await store.loadTimeWindow()
   if (store.role === 'student') await store.loadStudentReport()
-  else if (store.role === 'teacher') await store.loadTeacherClasses()
+  else if (store.role === 'teacher' || store.role === 'admin') await store.loadTeacherClasses()
   else if (store.role === 'counselor') await store.loadWarnings()
 })
 </script>

@@ -139,12 +139,13 @@ export const useScoreStore = defineStore('scoreManagement', () => {
 
   // --- 教师 ---
 
-  /** 加载教师教学班列表 */
+  /** 加载教师教学班列表(admin传0看全部) */
   async function loadTeacherClasses() {
     if (!currentUser.value) return
     loading.value = true
     try {
-      const res = await scoreApi.getTeacherClasses(currentUser.value.userId, semester.value)
+      const tid = role.value === 'admin' ? 0 : currentUser.value.userId
+      const res = await scoreApi.getTeacherClasses(tid, semester.value)
       teacherClasses.value = res?.data || []
     } catch { teacherClasses.value = [] }
     finally { loading.value = false }

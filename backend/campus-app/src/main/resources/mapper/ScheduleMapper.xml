@@ -20,13 +20,17 @@
         <result column="week_pattern" property="weekPattern"/>
         <result column="target_grade_id" property="targetGradeId"/>
         <result column="course_name" property="courseName"/>
+        <result column="course_code" property="courseCode"/>
+        <result column="classification" property="classification"/>
+        <result column="credit" property="credit"/>
         <result column="teacher_name" property="teacherName"/>
         <result column="classroom_name" property="classroomName"/>
     </resultMap>
 
     <!-- 全局课表（管理员视图） -->
     <select id="selectAll" resultMap="ScheduleResultMap">
-        SELECT s.*, c.course_name, cr.classroom_name,
+        SELECT s.*, c.course_name, c.course_code, c.classification, c.credit,
+               cr.classroom_name,
                COALESCE(u.real_name, CAST(s.teacher_id AS CHAR)) AS teacher_name
         FROM schedule s
         LEFT JOIN course c ON s.course_id = c.course_id
@@ -38,7 +42,8 @@
 
     <!-- 学生课表查询（关联选课表） -->
     <select id="selectByStudent" resultMap="ScheduleResultMap">
-        SELECT s.*, c.course_name, cr.classroom_name,
+        SELECT s.*, c.course_name, c.course_code, c.classification, c.credit,
+               cr.classroom_name,
                COALESCE(u.real_name, CAST(s.teacher_id AS CHAR)) AS teacher_name
         FROM schedule s
         INNER JOIN course_selection cs
@@ -55,7 +60,8 @@
 
     <!-- 教师课表查询 -->
     <select id="selectByTeacher" resultMap="ScheduleResultMap">
-        SELECT s.*, c.course_name, cr.classroom_name,
+        SELECT s.*, c.course_name, c.course_code, c.classification, c.credit,
+               cr.classroom_name,
                COALESCE(u.real_name, CAST(s.teacher_id AS CHAR)) AS teacher_name
         FROM schedule s
         LEFT JOIN course c ON s.course_id = c.course_id

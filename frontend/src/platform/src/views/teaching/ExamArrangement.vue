@@ -24,16 +24,8 @@
       <template v-if="role==='admin'">
         <div class="admin-panel">
           <div class="section-title">📋 统一排考控制台</div>
+          <p style="color:var(--color-text-secondary);font-size:13px;margin-bottom:12px">使用 <strong>AI 智能学习助理</strong> 一键完成考试编排、考场分配和监考指派。</p>
           <div class="admin-actions">
-            <el-button type="primary" @click="scheduleExams" :loading="loading">
-              一键自动编排考试
-            </el-button>
-            <el-button type="success" @click="assignAllRooms" :loading="loading">
-              一键分配考场
-            </el-button>
-            <el-button type="warning" @click="assignAllInvigilators" :loading="loading">
-              一键指派监考
-            </el-button>
           </div>
 
           <el-table :data="exams" stripe size="small" max-height="calc(100vh - 280px)">

@@ -8,7 +8,6 @@ import com.smartcampus.contract.entity.CourseSelection;
 import com.smartcampus.app.service.teaching.ICourseSelectionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,16 +16,36 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 @RestController
 @RequestMapping("/api/v1/teaching/selection")
 @Tag(name = "选课与容量控制", description = "用于处理学生选课、退选、容量管理的业务")
 public class CourseSelectionController {
 
-    
-    final ICourseSelectionService selectionService;
+    private final ICourseSelectionService selectionService;
+    private final Map<String, Boolean> selectionStatus = new ConcurrentHashMap<>();
 
     public CourseSelectionController(ICourseSelectionService selectionService) {
         this.selectionService = selectionService;
+    }
+
+    @RequirePermission("teaching:read")
+    @GetMapping("/status")
+    @Operation(summary = "选课开放状态", description = "查询某学期选课是否开放")
+    public CommonResult getStatus(@RequestParam String semester) {
+        return CommonResult.success(Map.of("semester", semester, "open", selectionStatus.getOrDefault(semester, false)));
+    }
+
+    @RequirePermission("teaching:write")
+    @PostMapping("/toggle")
+    @Operation(summary = "开启/关闭选课", description = "教务处开关某学期选课入口")
+    public CommonResult toggleSelection(@RequestBody Map<String, Object> body) {
+        String semester = (String) body.get("semester");
+        boolean open = Boolean.TRUE.equals(body.get("open"));
+        selectionStatus.put(semester, open);
+        return CommonResult.success(Map.of("semester", semester, "open", open));
     }
 
     /**

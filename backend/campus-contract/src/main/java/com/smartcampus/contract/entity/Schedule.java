@@ -39,4 +39,16 @@ public class Schedule implements Serializable {
     /** 教室名称（JOIN 填充） */
     @TableField(exist = false)
     private String classroomName;
+
+    /** 课程代码（JOIN 填充） */
+    @TableField(exist = false)
+    private String courseCode;
+
+    /** 课程性质（JOIN 填充） */
+    @TableField(exist = false)
+    private String classification;
+
+    /** 学分（JOIN 填充） */
+    @TableField(exist = false)
+    private java.math.BigDecimal credit;
 }

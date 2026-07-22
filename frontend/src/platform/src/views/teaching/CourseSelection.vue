@@ -64,6 +64,7 @@
           🔒 学分已满，选课已锁定
         </el-tag>
       <div class="top-right">
+        <el-button v-if="role==='admin'" size="small" :type="selectionOpen?'success':'warning'" @click="toggleSelection">{{ selectionOpen ? '🔓 选课已开启' : '🔒 开启选课' }}</el-button>
         <el-button size="small" :icon="Refresh" @click="store.loadAll()" :loading="store.loading">刷新</el-button>
         <el-button size="small" @click="showLog=true">📝 选课日志 ({{ store.selectionLogs.length }})</el-button>
       </div>
@@ -489,16 +490,32 @@ async function viewClassStudents(cls) {
   } catch { teacherClassStudents.value = [] }
 }
 
-// ==================== 选课前置条件：是否有排课 ====================
+// ==================== 选课前置条件：是否开放 ====================
 const hasSchedules = ref(true)
+const selectionOpen = ref(false)
 
 async function checkSchedules() {
   try {
     const { default: request } = await import('@/utils/request.js')
-    const res = await request.get('/api/v1/teaching/schedule/teacher/0', { params: { semester: store.semester } })
-    hasSchedules.value = (res?.data || []).length > 0
-    if (hasSchedules.value && role.value === 'student') store.loadAll()
+    const [schRes, statusRes] = await Promise.all([
+      request.get('/api/v1/teaching/schedule/teacher/0', { params: { semester: store.semester } }),
+      request.get('/api/v1/teaching/selection/status', { params: { semester: store.semester } })
+    ])
+    hasSchedules.value = (schRes?.data || []).length > 0
+    selectionOpen.value = statusRes?.data?.open === true
+    if (hasSchedules.value && selectionOpen.value && role.value === 'student') store.loadAll()
+    else if (hasSchedules.value && role.value === 'admin') store.loadAll()
   } catch { hasSchedules.value = true }
+}
+
+async function toggleSelection() {
+  try {
+    const { default: request } = await import('@/utils/request.js')
+    const open = !selectionOpen.value
+    await request.post('/api/v1/teaching/selection/toggle', { semester: store.semester, open })
+    selectionOpen.value = open
+    ElMessage.success(open ? '选课已开启' : '选课已关闭')
+  } catch { ElMessage.error('操作失败') }
 }
 
 // 初始化时根据角色加载数据

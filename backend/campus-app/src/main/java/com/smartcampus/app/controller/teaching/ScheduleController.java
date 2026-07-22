@@ -1,15 +1,19 @@
 package com.smartcampus.app.controller.teaching;
 
 import com.smartcampus.app.config.CourseScheduleConfig;
+import com.smartcampus.app.dao.teaching.ClassroomMapper;
 import com.smartcampus.app.dto.teaching.ScheduleDto;
 import com.smartcampus.app.service.teaching.ICourseScheduleService;
 import com.smartcampus.common.result.CommonResult;
+import com.smartcampus.contract.entity.Classroom;
 import com.smartcampus.contract.entity.Schedule;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 排课管理 Controller —— 仅对 TEACHER 角色开放。
@@ -29,6 +33,9 @@ public class ScheduleController {
 
     @Autowired
     private ICourseScheduleService scheduleService;
+
+    @Autowired
+    private ClassroomMapper classroomMapper;
 
     // ========================================================================
     //  新增排课
@@ -120,5 +127,15 @@ public class ScheduleController {
     public CommonResult getTeacherWorkload(@PathVariable Long teacherId,
                                            @RequestParam String semester) {
         return scheduleService.getTeacherWorkload(teacherId, semester);
+    }
+
+    // ========================================================================
+    //  教室列表
+    // ========================================================================
+
+    @GetMapping("/classrooms")
+    @Operation(summary = "教室列表", description = "获取所有可用教室")
+    public CommonResult listClassrooms() {
+        return CommonResult.success(classroomMapper.selectList(null));
     }
 }

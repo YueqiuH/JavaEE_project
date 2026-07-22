@@ -37,17 +37,22 @@
             cs.selection_id,
             cs.course_id,
             c.course_name,
+            c.course_code,
+            c.classification,
+            c.credit,
             cs.semester,
             cs.status,
             cs.select_time,
             sch.week_day,
             sch.start_period,
             sch.end_period,
-            cr.classroom_name
+            cr.classroom_name,
+            COALESCE(u.real_name, CAST(sch.teacher_id AS CHAR)) AS teacher_name
         FROM course_selection cs
         INNER JOIN course c ON cs.course_id = c.course_id
         LEFT JOIN schedule sch ON cs.schedule_id = sch.schedule_id
         LEFT JOIN classroom cr ON sch.classroom_id = cr.classroom_id
+        LEFT JOIN user u ON sch.teacher_id = u.user_id
         WHERE cs.student_id = #{studentId}
           AND cs.semester = #{semester}
           AND cs.status = 1

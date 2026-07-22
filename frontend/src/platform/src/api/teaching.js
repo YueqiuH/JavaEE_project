@@ -1,26 +1,24 @@
 import request from '@/utils/request.js'
+import { streamChatAPI } from '@/utils/streamChatAPI.js'
 
 export const TEACHING_API_PREFIX = '/api/v1/teaching'
 
-// ==================== AI 学习助理 ====================
-export const aiStudyApi = {
-    uploadMaterial(data) {
-        return request.post(`${TEACHING_API_PREFIX}/ai/materials`, data)
+export const aiChatApi = {
+    sendMessage(message, conversationId, onEvent, onError, onComplete) {
+        return streamChatAPI.streamChat(
+            `${TEACHING_API_PREFIX}/ai/chat`,
+            { message, conversationId, stream: true },
+            onEvent, onError, onComplete
+        )
     },
-    getMaterials(studentId) {
-        return request.get(`${TEACHING_API_PREFIX}/ai/materials`, { params: { studentId } })
+    getHistory() {
+        return request.get(`${TEACHING_API_PREFIX}/ai/history`)
     },
-    generateSummary(materialId) {
-        return request.post(`${TEACHING_API_PREFIX}/ai/materials/${materialId}/summary`)
+    getConversation(convId) {
+        return request.get(`${TEACHING_API_PREFIX}/ai/history/${convId}`)
     },
-    generateQuestions(materialId) {
-        return request.post(`${TEACHING_API_PREFIX}/ai/materials/${materialId}/questions`)
-    },
-    recommendPath(studentId) {
-        return request.post(`${TEACHING_API_PREFIX}/ai/learning-paths`, { studentId })
-    },
-    getRecords(studentId) {
-        return request.get(`${TEACHING_API_PREFIX}/ai/records`, { params: { studentId } })
+    deleteConversation(convId) {
+        return request.delete(`${TEACHING_API_PREFIX}/ai/history/${convId}`)
     }
 }
 
@@ -33,7 +31,10 @@ export const courseApi = {
     list(semester) { return request.get(`${TEACHING_API_PREFIX}/course/list`, { params: { semester } }) },
 
     /** 新增课程 */
-    add(data) { return request.post(`${TEACHING_API_PREFIX}/course/add`, data) }
+    add(data) { return request.post(`${TEACHING_API_PREFIX}/course/add`, data) },
+
+    /** 教师列表 */
+    listTeachers() { return request.get(`${TEACHING_API_PREFIX}/course/teachers`) }
 }
 
 // ==================== 排课管理 ====================
@@ -65,6 +66,11 @@ export const scheduleApi = {
     /** F4: 教师工作量 */
     getTeacherWorkload(teacherId, semester) {
         return request.get(`${TEACHING_API_PREFIX}/schedule/workload/${teacherId}`, { params: { semester } })
+    },
+
+    /** 教室列表 */
+    getClassrooms() {
+        return request.get(`${TEACHING_API_PREFIX}/schedule/classrooms`)
     }
 }
 

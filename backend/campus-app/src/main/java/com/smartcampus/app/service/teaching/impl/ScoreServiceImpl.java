@@ -15,6 +15,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.temporal.WeekFields;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class ScoreServiceImpl implements IScoreService {
@@ -42,15 +43,14 @@ public class ScoreServiceImpl implements IScoreService {
 
     @Override
     public Map<String, Object> getTimeWindowStatus() {
-        int week = getCurrentWeek();
         Map<String, Object> status = new LinkedHashMap<>();
-        status.put("currentWeek", week);
-        status.put("phase", week <= 16 ? "locked" : week <= 19 ? "exam" : week <= 20 ? "buffer" : "archived");
-        status.put("teacherCanEdit", week >= 17 && week <= 20);
-        status.put("teacherCanPublish", week >= 17);
-        status.put("studentCanView", week >= 17);
-        status.put("studentCanReview", week == 20);
-        status.put("adminOnly", week >= 21);
+        status.put("currentWeek", 1);
+        status.put("phase", "editable");
+        status.put("teacherCanEdit", true);
+        status.put("teacherCanPublish", true);
+        status.put("studentCanView", true);
+        status.put("studentCanReview", true);
+        status.put("adminOnly", false);
         return status;
     }
 
@@ -74,9 +74,6 @@ public class ScoreServiceImpl implements IScoreService {
     @Override
     @Transactional
     public CommonResult inputScore(Score score) {
-        int week = getCurrentWeek();
-        if (week < 17) return CommonResult.error(930, "第" + week + "周，成绩录入已锁定");
-        if (week > 20) return CommonResult.error(931, "已归档，请联系教务处");
         if (score.getStudentId() == null || score.getCourseId() == null)
             return CommonResult.error(920, "学生ID和课程ID不能为空");
         if (score.getScoreScore() == null || score.getScoreScore() < 0 || score.getScoreScore() > 100)
@@ -85,6 +82,7 @@ public class ScoreServiceImpl implements IScoreService {
         BigDecimal gpa = calcGpa(score.getScoreScore());
         score.setGpa(gpa);
         score.setStatus(score.getScoreScore() >= 60 ? 1 : 0);
+        score.setPublishStatus(1);
 
         LambdaQueryWrapper<Score> w = new LambdaQueryWrapper<>();
         w.eq(Score::getStudentId, score.getStudentId())
@@ -104,7 +102,22 @@ public class ScoreServiceImpl implements IScoreService {
 
     @Override
     public CommonResult saveDraft(Score score) {
-        return inputScore(score);
+        if (score.getStudentId() == null || score.getCourseId() == null)
+            return CommonResult.error(920, "学生ID和课程ID不能为空");
+        score.setPublishStatus(0);
+        score.setStatus(0);
+        LambdaQueryWrapper<Score> w = new LambdaQueryWrapper<>();
+        w.eq(Score::getStudentId, score.getStudentId())
+         .eq(Score::getCourseId, score.getCourseId())
+         .eq(Score::getSemester, score.getSemester());
+        Score exist = scoreMapper.selectOne(w);
+        if (exist != null) {
+            score.setScoreId(exist.getScoreId());
+            scoreMapper.updateById(score);
+        } else {
+            scoreMapper.insert(score);
+        }
+        return CommonResult.success(Map.of("scoreId", score.getScoreId()));
     }
 
     @Override
@@ -112,8 +125,8 @@ public class ScoreServiceImpl implements IScoreService {
         LambdaUpdateWrapper<Score> w = new LambdaUpdateWrapper<>();
         w.eq(Score::getScheduleId, scheduleId)
          .eq(Score::getTeacherId, teacherId)
-         .eq(Score::getPublishStatus, 1)
-         .set(Score::getPublishStatus, 2);
+         .eq(Score::getPublishStatus, 0)
+         .set(Score::getPublishStatus, 1);
         int count = scoreMapper.update(null, w);
         return CommonResult.success(Map.of("published", count));
     }
@@ -122,16 +135,16 @@ public class ScoreServiceImpl implements IScoreService {
 
     @Override
     public CommonResult getStudentReport(Long studentId, String semester) {
-        LambdaQueryWrapper<Score> w = new LambdaQueryWrapper<>();
-        w.eq(Score::getStudentId, studentId);
-        if (semester != null) w.eq(Score::getSemester, semester);
-        List<Score> list = scoreMapper.selectList(w);
+        List<Map<String, Object>> rawList = scoreMapper.selectByStudentId(studentId, semester);
+        List<Map<String, Object>> list = rawList.stream().map(ScoreServiceImpl::toCamelMap).collect(Collectors.toList());
 
         int pass = 0, fail = 0;
         BigDecimal totalGpa = BigDecimal.ZERO;
-        for (Score s : list) {
-            if (s.getStatus() != null && s.getStatus() == 1) pass++; else fail++;
-            if (s.getGpa() != null) totalGpa = totalGpa.add(s.getGpa());
+        for (Map<String, Object> row : list) {
+            Integer status = (Integer) row.get("status");
+            BigDecimal gpa = row.get("gpa") != null ? new BigDecimal(row.get("gpa").toString()) : null;
+            if (status != null && status == 1) pass++; else fail++;
+            if (gpa != null) totalGpa = totalGpa.add(gpa);
         }
         BigDecimal gpaAvg = list.isEmpty() ? BigDecimal.ZERO
             : totalGpa.divide(new BigDecimal(list.size()), 2, RoundingMode.HALF_UP);
@@ -167,16 +180,17 @@ public class ScoreServiceImpl implements IScoreService {
 
     @Override
     public CommonResult getStudentFullProfile(Long studentId) {
-        LambdaQueryWrapper<Score> w = new LambdaQueryWrapper<>();
-        w.eq(Score::getStudentId, studentId);
-        List<Score> all = scoreMapper.selectList(w);
+        List<Map<String, Object>> rawAll = scoreMapper.selectByStudentId(studentId, null);
+        List<Map<String, Object>> all = rawAll.stream().map(ScoreServiceImpl::toCamelMap).collect(Collectors.toList());
 
         int totalFail = 0, currentFail = 0;
         String currentSemester = getCurrentSemester();
-        for (Score s : all) {
-            if (s.getStatus() != null && s.getStatus() == 0) {
+        for (Map<String, Object> row : all) {
+            Integer status = (Integer) row.get("status");
+            String sem = (String) row.get("semester");
+            if (status != null && status == 0) {
                 totalFail++;
-                if (currentSemester.equals(s.getSemester())) currentFail++;
+                if (currentSemester.equals(sem)) currentFail++;
             }
         }
         Map<String, Object> profile = new LinkedHashMap<>();
@@ -237,5 +251,25 @@ public class ScoreServiceImpl implements IScoreService {
             level = "🟡 黄色预警：学期" + currentCredits + "学分";
         }
         if (level != null) System.err.println("【学业预警】学生" + studentId + " → " + level);
+    }
+
+    private static Map<String, Object> toCamelMap(Map<String, Object> row) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        for (Map.Entry<String, Object> e : row.entrySet()) {
+            String key = camelCase(e.getKey());
+            m.put(key, e.getValue());
+        }
+        return m;
+    }
+
+    private static String camelCase(String snake) {
+        StringBuilder sb = new StringBuilder();
+        boolean up = false;
+        for (int i = 0; i < snake.length(); i++) {
+            char c = snake.charAt(i);
+            if (c == '_') { up = true; }
+            else { sb.append(up ? Character.toUpperCase(c) : c); up = false; }
+        }
+        return sb.toString();
     }
 }
