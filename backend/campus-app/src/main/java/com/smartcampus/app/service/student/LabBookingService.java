@@ -268,6 +268,8 @@ public class LabBookingService {
         booking.setStudentId(student.getStudentId());
         booking.setBookingDate(today);
         booking.setPurpose(request.getPurpose().trim());
+        booking.setStartPeriod(1);
+        booking.setEndPeriod(12);
         booking.setStatus(LabBookingStatus.RESERVED.code());
         booking.setCreateTime(now);
         booking.setExpiresAt(now.plusMinutes(30));
