@@ -84,18 +84,18 @@
             cap.current_count    AS currentCount,
             sch.teacher_id       AS teacherId,
             u.username           AS teacherName
-        FROM course c
-        LEFT JOIN schedule sch
-            ON c.course_id = sch.course_id
-            AND sch.semester = #{semester}
-        LEFT JOIN classroom cr
-            ON sch.classroom_id = cr.classroom_id
-        LEFT JOIN course_capacity cap
-            ON c.course_id = cap.course_id
-            AND cap.semester = #{semester}
-        LEFT JOIN user u
-            ON sch.teacher_id = u.user_id
-        ORDER BY c.course_id
+         FROM course c
+         INNER JOIN course_capacity cap
+             ON c.course_id = cap.course_id
+             AND cap.semester = #{semester}
+         LEFT JOIN schedule sch
+             ON c.course_id = sch.course_id
+             AND sch.semester = #{semester}
+         LEFT JOIN classroom cr
+             ON sch.classroom_id = cr.classroom_id
+         LEFT JOIN user u
+             ON sch.teacher_id = u.user_id
+         ORDER BY c.course_id
     </select>
 
 </mapper>

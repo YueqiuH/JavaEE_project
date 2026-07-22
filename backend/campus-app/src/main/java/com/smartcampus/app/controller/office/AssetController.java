@@ -424,7 +424,7 @@ public AssetController(IAssetService assetService) {        this.assetService = 
 
     private void requireTeacherOrStaffApplicant() {
         if (CurrentUserContext.require().roles().stream()
-                .noneMatch(role -> "TEACHER".equals(role) || "STAFF".equals(role))) {
+                .noneMatch(role -> "TEACHER".equals(role) || "STAFF".equals(role) || "COUNSELOR".equals(role))) {
             throw new BusinessException(OfficeErrorCodeConstants.FORBIDDEN, "固定资产申请仅限教师或教职工提交");
         }
     }

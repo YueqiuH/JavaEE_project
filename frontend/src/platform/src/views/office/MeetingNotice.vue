@@ -66,7 +66,7 @@ const summaryVisible = ref(false)
 const summaryData = ref({})
 const audienceOptions = [
   { value: 'ALL_STUDENTS', label: '全体学生' },
-  { value: 'COUNSELORS', label: '全体辅导员（教师）' },
+  { value: 'ALL_TEACHERS', label: '全体教师（含辅导员）' },
   { value: 'STAFF', label: '全体教职工' },
   { value: 'ACADEMIC_AFFAIRS', label: '全体教务处（领导）' },
 ]

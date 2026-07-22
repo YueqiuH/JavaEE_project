@@ -130,7 +130,7 @@ const handleUserCommand = async (command) => {
 
 const closeDropdown = () => { userDropdownRef.value?.handleClose?.() }
 onMounted(() => {
-  if (!currentUser.value) loadCurrentUser().catch(() => {})
+  loadCurrentUser().catch(() => {})
   document.addEventListener('wheel', closeDropdown, true)
 })
 onUnmounted(() => { document.removeEventListener('wheel', closeDropdown, true) })

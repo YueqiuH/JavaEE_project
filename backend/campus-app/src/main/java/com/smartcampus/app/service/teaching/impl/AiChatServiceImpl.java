@@ -123,13 +123,13 @@ public class AiChatServiceImpl implements IAiChatService {
     }
 
     @Override
-    public SseEmitter chat(String message, String conversationId, Long userId) {
+    public SseEmitter chat(String message, String conversationId, Long userId, String semester) {
         SseEmitter emitter = new SseEmitter(180000L);
         String convId = (conversationId == null || conversationId.isBlank())
                 ? UUID.randomUUID().toString().replace("-", "") : conversationId;
         saveMessage(convId, userId, "user", message);
         final Integer userType = getCurrentUserType();
-        new Thread(() -> processChat(emitter, convId, message, userId, userType)).start();
+        new Thread(() -> processChat(emitter, convId, message, userId, userType, semester)).start();
         return emitter;
     }
 
@@ -138,7 +138,7 @@ public class AiChatServiceImpl implements IAiChatService {
         catch (Exception e) { return 0; }
     }
 
-    private void processChat(SseEmitter emitter, String convId, String message, Long userId, Integer userType) {
+    private void processChat(SseEmitter emitter, String convId, String message, Long userId, Integer userType, String semester) {
         try {
             if (apiKey.isEmpty()) {
                 demoChat(emitter, convId, message, userId, userType);
@@ -146,8 +146,8 @@ public class AiChatServiceImpl implements IAiChatService {
                 String intent = classifyIntent(message);
                 log.info("AI_CHAT userId={} intent={}", userId, intent);
                 switch (intent) {
-                    case "schedule" -> handleSchedule(emitter, convId, message, userId, userType);
-                    case "exam" -> handleExam(emitter, convId, message, userId, userType);
+                    case "schedule" -> handleSchedule(emitter, convId, message, userId, userType, semester);
+                    case "exam" -> handleExam(emitter, convId, message, userId, userType, semester);
                     case "query" -> handleQuery(emitter, convId, message, userId, userType);
                     case "learn" -> handleLearn(emitter, convId, message, userId, userType);
                     default -> handleGeneralChat(emitter, convId, message, userId, userType);
@@ -195,14 +195,13 @@ public class AiChatServiceImpl implements IAiChatService {
 
     // ============ Handle: Schedule ============
 
-    private void handleSchedule(SseEmitter emitter, String convId, String message, Long userId, Integer userType) throws IOException {
+    private void handleSchedule(SseEmitter emitter, String convId, String message, Long userId, Integer userType, String semester) throws IOException {
         if (userType == null || userType != 4) {
             sendText(emitter, convId, "一键排课仅限教务处管理员使用。你可以在「排课与课表」页面手动排课。");
             return;
         }
         sendText(emitter, convId, "收到，正在分析排课需求...");
-        String semester = extractSemester(message);
-        if (semester == null) semester = "2025-2026-1";
+        if (semester == null || semester.isBlank()) semester = detectCurrentSemester();
         try {
             AutoScheduleConfigDto config = new AutoScheduleConfigDto();
             config.setSemester(semester);
@@ -264,13 +263,12 @@ public class AiChatServiceImpl implements IAiChatService {
 
     // ============ Handle: Exam ============
 
-    private void handleExam(SseEmitter emitter, String convId, String message, Long userId, Integer userType) throws IOException {
+    private void handleExam(SseEmitter emitter, String convId, String message, Long userId, Integer userType, String semester) throws IOException {
         if (userType == null || userType != 4) {
             sendText(emitter, convId, "考试编排仅限教务处管理员使用。你可以在「考试与补考」页面手动操作。");
             return;
         }
-        String semester = extractSemester(message);
-        if (semester == null) semester = detectCurrentSemester();
+        if (semester == null || semester.isBlank()) semester = detectCurrentSemester();
         sendText(emitter, convId, "开始全自动考试编排，学期：" + semester + "...");
         sendProgress(emitter, convId, "exam", 20, "编排考试时间…");
         try {

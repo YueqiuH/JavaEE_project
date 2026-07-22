@@ -35,7 +35,7 @@ public class CourseSelectionController {
     @GetMapping("/status")
     @Operation(summary = "选课开放状态", description = "查询某学期选课是否开放")
     public CommonResult getStatus(@RequestParam String semester) {
-        return CommonResult.success(Map.of("semester", semester, "open", selectionStatus.getOrDefault(semester, false)));
+        return CommonResult.success(Map.of("semester", semester, "open", selectionStatus.getOrDefault(semester, true)));
     }
 
     @RequirePermission("teaching:write")

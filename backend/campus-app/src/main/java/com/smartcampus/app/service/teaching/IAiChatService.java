@@ -8,7 +8,7 @@ import java.util.Map;
 
 public interface IAiChatService {
 
-    SseEmitter chat(String message, String conversationId, Long userId);
+    SseEmitter chat(String message, String conversationId, Long userId, String semester);
 
     List<Map<String, Object>> getHistory(Long userId);
 

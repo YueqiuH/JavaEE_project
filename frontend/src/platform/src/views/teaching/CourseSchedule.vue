@@ -160,7 +160,7 @@
 <script setup>
 import { ref,reactive,computed,onMounted } from 'vue'
 import { ElMessage,ElMessageBox } from 'element-plus'
-import { courseApi,scheduleApi } from '@/api/teaching.js'
+import { courseApi,scheduleApi,scoreApi } from '@/api/teaching.js'
 import { getStoredCurrentUser } from '@/utils/authSession.js'
 import PageBreadcrumb from '@/components/business/PageBreadcrumb.vue'
 import './teaching-d.css'
@@ -180,12 +180,12 @@ const roleLabel = computed(() => ({ student:'🧑‍🎓 学生',counselor:'📋
 // ===== 课程数据 =====
 const loading = ref(false), dl = ref(false), showAddCourse = ref(false), detailDl = ref(false)
 const allCourses = ref([]), allSchedules = ref([]), picked = ref(null), detailSch = ref(null)
-const courseFilter = ref(''), courseStatusFilter = ref('all'), classrooms = ref([]), teachers = ref([])
+const courseFilter = ref(''), courseStatusFilter = ref('all'), classrooms = ref([]), teachers = ref([]), scoredCourseIds = ref(new Set())
 
 const coursesWithStatus = computed(() => allCourses.value.map(c => {
   const ss = allSchedules.value.filter(s => s.courseId === c.courseId)
-  return { ...c, _scheduled: ss.length>0, _scheduleCount: ss.length }
-}))
+  return { ...c, _scheduled: ss.length>0, _scheduleCount: ss.length, _scored: scoredCourseIds.value.has(c.courseId) }
+}).filter(c => !c._scored))
 const filteredCourseList = computed(() => {
   let list = coursesWithStatus.value
   if (courseFilter.value) { const kw = courseFilter.value.toLowerCase(); list = list.filter(c => (c.courseName||'').toLowerCase().includes(kw) || (c.courseCode||'').toLowerCase().includes(kw)) }
@@ -223,11 +223,13 @@ async function loadAll() {
     const p = [courseApi.list(sem.value), api]
     if(role.value === 'admin') p.push(scheduleApi.getClassrooms())
     if(role.value === 'admin') p.push(courseApi.listTeachers())
+    if(role.value === 'admin') p.push(scoreApi.getTeacherClasses(0, sem.value))
     const results = await Promise.all(p)
     allCourses.value = dedupByKey((results[0]?.data||[]).filter(c => c.courseId), 'courseId')
     allSchedules.value = (results[1]?.data||[]).filter(s => s.scheduleId)
     if(role.value === 'admin' && results[2]) classrooms.value = results[2].data||[]
     if(role.value === 'admin' && results[3]) teachers.value = results[3].data||[]
+    if(role.value === 'admin' && results[4]) scoredCourseIds.value = new Set((results[4].data||[]).map(c => c.courseId))
     try { const w = await scheduleApi.getTeacherWorkload(uid.value, sem.value); wl.value = typeof w?.data==='string'?JSON.parse(w.data):(w?.data||{total:0,warn:false}) } catch { wl.value = {total:0,warn:false} }
   } catch { allCourses.value=[]; allSchedules.value=[] }
   finally { loading.value=false }

@@ -30,11 +30,11 @@ import java.util.Map;
 @RequestMapping("/api/v1/office/meeting")
 @Tag(name = "校园会议与通知发布")
 public class MeetingController {
-    private static final Map<String, String> AUDIENCE_ROLE_CODES = Map.of(
-            "ALL_STUDENTS", "STUDENT",
-            "COUNSELORS", "TEACHER",
-            "STAFF", "STAFF",
-            "ACADEMIC_AFFAIRS", "ADMIN"
+    private static final Map<String, List<String>> AUDIENCE_ROLE_CODES = Map.of(
+            "ALL_STUDENTS", List.of("STUDENT"),
+            "ALL_TEACHERS", List.of("TEACHER", "COUNSELOR"),
+            "STAFF", List.of("STAFF"),
+            "ACADEMIC_AFFAIRS", List.of("ADMIN")
     );
 
     @Autowired private IMeetingService meetingService;
@@ -72,11 +72,15 @@ public class MeetingController {
             throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST,
                     invalidAudienceTypes.isEmpty() ? "请选择参会范围" : "无效的参会范围：" + String.join(", ", invalidAudienceTypes));
         }
-        List<String> roleCodes = audienceTypes.stream()
-                .map(AUDIENCE_ROLE_CODES::get)
+        List<String> actionCodes = audienceTypes.stream()
+                .filter(AUDIENCE_ROLE_CODES::containsKey)
+                .flatMap(type -> AUDIENCE_ROLE_CODES.get(type).stream())
                 .distinct()
                 .toList();
-        List<Long> attendeeIds = attendeeMapper.findActiveUserIdsByRoleCodes(roleCodes);
+        if (actionCodes.isEmpty()) {
+            throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "所选参会范围暂无启用用户");
+        }
+        List<Long> attendeeIds = attendeeMapper.findActiveUserIdsByRoleCodes(actionCodes);
         if (attendeeIds.isEmpty()) {
             throw new BusinessException(OfficeErrorCodeConstants.BAD_REQUEST, "所选参会范围暂无启用用户");
         }

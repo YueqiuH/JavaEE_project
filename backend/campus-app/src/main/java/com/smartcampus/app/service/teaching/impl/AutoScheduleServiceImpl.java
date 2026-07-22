@@ -280,9 +280,12 @@ public class AutoScheduleServiceImpl implements IAutoScheduleService {
             // ==== 第1步：加载任务池 ====
             updateProgress(taskId, "running", "任务池初始化", 5, "加载课程与教室数据...", 0, 0, 0);
 
-            // 加载所有待排课程
+            // 加载本学期待排课程(有容量记录的课程)
             List<Course> allCourses = courseMapper.selectList(
-                new LambdaQueryWrapper<Course>().eq(Course::getIsActive, 1));
+                new LambdaQueryWrapper<Course>()
+                    .eq(Course::getIsActive, 1)
+                    .inSql(Course::getCourseId,
+                        "SELECT course_id FROM course_capacity WHERE semester = '" + semester + "'"));
             if (config.getExcludedCourseIds() != null) {
                 allCourses.removeIf(c -> config.getExcludedCourseIds().contains(c.getCourseId()));
             }

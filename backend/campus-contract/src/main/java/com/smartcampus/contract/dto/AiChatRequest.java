@@ -15,5 +15,7 @@ public class AiChatRequest implements Serializable {
 
     private String conversationId;
 
+    private String semester;
+
     private boolean stream = true;
 }

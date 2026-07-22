@@ -67,13 +67,10 @@
           </el-table>
 
           <!-- 不及格课程 → 补考报名 -->
-          <div class="section-title" style="margin-top:16px" v-if="currentWeek>=17">
-            📝 补考/缓考预报名（第20周）
+          <div class="section-title" style="margin-top:16px">
+            📝 补考/缓考报名
           </div>
-          <div class="resit-section" v-if="currentWeek>=17 && failedCourses.length>0">
-            <div class="resit-hint" v-if="currentWeek===20">
-              💡 第20周核对期：可申请补考预报名。若教师更正成绩至≥60，系统将自动撤销报名。
-            </div>
+          <div class="resit-section" v-if="failedCourses.length>0">
             <el-table :data="failedCourses" stripe size="small" max-height="300">
               <el-table-column type="index" width="40" />
               <el-table-column prop="courseName" label="课程" width="130" />
@@ -93,7 +90,7 @@
               <el-table-column label="操作" width="120">
                 <template #default="{row}">
                   <el-button
-                    v-if="row._resitStatus===0 && currentWeek<=20"
+                    v-if="row._resitStatus===0"
                     size="small" type="warning"
                     @click="applyResit(row, '补考')"
                   >
@@ -105,7 +102,7 @@
               </el-table-column>
             </el-table>
           </div>
-          <el-empty v-else-if="currentWeek>=17" description="无不及格课程，无需补考" :image-size="60" />
+          <el-empty v-else description="无不及格课程，无需补考" :image-size="60" />
         </div>
       </template>
 

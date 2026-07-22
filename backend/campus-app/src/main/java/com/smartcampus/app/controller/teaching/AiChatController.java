@@ -30,7 +30,7 @@ public class AiChatController {
     @Operation(summary = "AI 智能对话(SSE 流式)")
     public SseEmitter chat(@Valid @RequestBody AiChatRequest request) {
         Long userId = CurrentUserContext.require().userId();
-        return aiChatService.chat(request.getMessage(), request.getConversationId(), userId);
+        return aiChatService.chat(request.getMessage(), request.getConversationId(), userId, request.getSemester());
     }
 
     @GetMapping("/history")

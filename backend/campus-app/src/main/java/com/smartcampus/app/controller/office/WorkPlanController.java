@@ -274,7 +274,7 @@ public class WorkPlanController {
 
     private AuthSession requireWorkStudyAssigner() {
         AuthSession session = CurrentUserContext.require();
-        if (!session.roles().contains("TEACHER") && !session.roles().contains("STAFF")) {
+        if (!session.roles().contains("TEACHER") && !session.roles().contains("STAFF") && !session.roles().contains("COUNSELOR")) {
             throw new BusinessException(OfficeErrorCodeConstants.FORBIDDEN, "只有教师或教职工可以指派和结算勤工俭学任务");
         }
         return session;

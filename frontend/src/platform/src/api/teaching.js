@@ -7,7 +7,7 @@ export const aiChatApi = {
     sendMessage(message, conversationId, onEvent, onError, onComplete) {
         return streamChatAPI.streamChat(
             `${TEACHING_API_PREFIX}/ai/chat`,
-            { message, conversationId, stream: true },
+            { message, conversationId, semester: '2025-2026-2', stream: true },
             onEvent, onError, onComplete
         )
     },
