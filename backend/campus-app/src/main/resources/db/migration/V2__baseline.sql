@@ -765,7 +765,7 @@ ON DUPLICATE KEY UPDATE `permission_name` = VALUES(`permission_name`);
 INSERT INTO `user` (`username`, `password`, `user_type`, `status`) VALUES
     ('600001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 1, 1),
     ('700001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 3, 1),
-    ('800001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 2, 1),
+    ('800001', '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 3, 1),
     ('admin',  '$2a$10$O9AYH1qiGk9m8wdTB3GKQ.bshEv1b5ofrGfNh0Rzw7YQD9IklnLgy', 4, 1)
 ON DUPLICATE KEY UPDATE `password` = VALUES(`password`), `user_type` = VALUES(`user_type`), `status` = VALUES(`status`);
 
@@ -796,7 +796,10 @@ SELECT r.role_id, p.permission_id FROM `role` r CROSS JOIN `permission` p WHERE
         'scholarship:review:read', 'scholarship:review:submit', 'scholarship:result:generate',
         'status:review:read', 'status:review:submit'))
     OR (r.role_code = 'COUNSELOR' AND p.permission_code IN (
-        'teaching:read', 'student:read', 'student:write', 'base:read', 'counselor:read', 'counselor:write'))
+        'office:read', 'fee:overview:read', 'asset:read', 'asset:apply',
+        'work-plan:self', 'work-plan:manage', 'document:self', 'document:approve',
+        'meeting:self', 'meeting:manage', 'notification:self:read',
+        'counselor:read', 'counselor:write'))
     OR (r.role_code = 'STAFF' AND p.permission_code IN (
         'student:read', 'student:write', 'office:read', 'office:write', 'base:read',
         'fee:self:read', 'fee:self:pay', 'fee:manage',

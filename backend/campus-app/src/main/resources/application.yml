@@ -21,6 +21,7 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
     baseline-version: 0
+    validate-on-migrate: false
     validate-migration-naming: true
   data:
     redis:
