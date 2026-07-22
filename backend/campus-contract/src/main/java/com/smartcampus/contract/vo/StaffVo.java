@@ -28,6 +28,9 @@ public class StaffVo implements Serializable {
 
     private String email;
 
+    /** 家庭住址 */
+    private String address;
+
     /** 职称 */
     private String title;
 

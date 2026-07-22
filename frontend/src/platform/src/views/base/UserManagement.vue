@@ -48,6 +48,7 @@
               <template #default="scope"><span class="d-num">{{ scope.row.studentNo }}</span></template>
             </el-table-column>
             <el-table-column prop="studentName" label="姓名" width="100" />
+            <el-table-column prop="phone" label="电话" width="120" />
             <el-table-column label="性别" width="70" align="center">
               <template #default="scope">{{ genderText(scope.row.gender) }}</template>
             </el-table-column>
@@ -55,6 +56,7 @@
             <el-table-column prop="majorName" label="专业" min-width="130" show-overflow-tooltip />
             <el-table-column prop="className" label="班级" width="110" />
             <el-table-column prop="originPlace" label="生源地" width="90" />
+            <el-table-column prop="studentAddress" label="家庭住址" min-width="140" show-overflow-tooltip />
             <el-table-column label="入学年份" width="90" align="center">
               <template #default="scope">{{ scope.row.enrollYear ? `${scope.row.enrollYear}级` : '—' }}</template>
             </el-table-column>
@@ -105,7 +107,7 @@
             <el-button :icon="Download" :loading="exportingStaffs" @click="doExportStaffs">导出</el-button>
           </div>
 
-          <el-table v-loading="staffLoading" :data="staffRows">
+          <el-table v-loading="staffLoading" :data="staffRows" @row-click="showStaffDetail" style="cursor:pointer">
             <el-table-column prop="username" label="工号" width="110">
               <template #default="scope"><span class="d-num">{{ scope.row.username }}</span></template>
             </el-table-column>
@@ -123,6 +125,7 @@
             <el-table-column prop="position" label="职务" width="100" />
             <el-table-column prop="phone" label="电话" width="120" />
             <el-table-column prop="email" label="邮箱" min-width="150" show-overflow-tooltip />
+            <el-table-column prop="address" label="家庭住址" min-width="150" show-overflow-tooltip />
             <el-table-column label="状态" width="90" align="center">
               <template #default="scope">
                 <el-tag size="small" effect="plain" :type="staffStatusTag(scope.row.status)">
@@ -168,6 +171,7 @@
           <div class="detail-item"><label>班级</label><span>{{ detailStudent.className || '—' }}</span></div>
           <div class="detail-item"><label>入学年份</label><span>{{ detailStudent.enrollYear ? detailStudent.enrollYear + '级' : '—' }}</span></div>
           <div class="detail-item"><label>生源地</label><span>{{ detailStudent.originPlace || '—' }}</span></div>
+          <div class="detail-item"><label>电话</label><span>{{ detailStudent.phone || '—' }}</span></div>
           <div class="detail-item"><label>家庭地址</label><span>{{ detailStudent.studentAddress || '—' }}</span></div>
         </div>
         <div class="detail-actions">
@@ -179,6 +183,8 @@
 
     <!-- 学生表单 -->
     <el-dialog v-model="studentFormVisible" :title="studentForm.studentId ? '编辑学生档案' : '新增学生档案'" width="min(640px, calc(100vw - 32px))">
+      <el-alert v-if="!studentForm.studentId" type="info" :closable="false" class="form-tip"
+        title="创建后将同时开通登录账号，初始密码默认123321" />
       <el-form ref="studentFormRef" :model="studentForm" :rules="studentRules" label-position="top" class="form-grid">
         <el-form-item label="学号" prop="studentNo">
           <el-input v-model="studentForm.studentNo" placeholder="如：2026100001" />
@@ -212,6 +218,9 @@
           <el-select v-model="studentForm.enrollYear" clearable placeholder="请选择" style="width: 100%">
             <el-option v-for="y in yearOptions" :key="y" :label="`${y}级`" :value="y" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="电话">
+          <el-input v-model="studentForm.phone" maxlength="20" placeholder="手机号" />
         </el-form-item>
         <el-form-item label="生源地(省份)">
           <el-input v-model="studentForm.originPlace" maxlength="32" placeholder="如：山东" />
@@ -259,10 +268,39 @@
       </template>
     </el-dialog>
 
+    <!-- 教职工详情抽屉 -->
+    <el-drawer v-model="staffDetailVisible" title="教职工档案" size="min(500px, 88vw)">
+      <div v-if="detailStaff" class="detail-card">
+        <div class="detail-head">
+          <span class="detail-avatar">{{ detailStaff.realName?.charAt(0) }}</span>
+          <div>
+            <h3>{{ detailStaff.realName }}</h3>
+            <el-tag size="small" effect="plain" :type="staffStatusTag(detailStaff.status)">{{ staffStatusMap[detailStaff.status] || '未知' }}</el-tag>
+          </div>
+        </div>
+        <div class="detail-grid">
+          <div class="detail-item"><label>工号</label><span class="d-num">{{ detailStaff.username }}</span></div>
+          <div class="detail-item"><label>性别</label><span>{{ genderText(detailStaff.gender) }}</span></div>
+          <div class="detail-item"><label>类别</label><span>{{ detailStaff.userType === 2 ? '教师' : '教职工' }}</span></div>
+          <div class="detail-item"><label>院系</label><span>{{ detailStaff.deptName || '—' }}</span></div>
+          <div class="detail-item"><label>职称</label><span>{{ detailStaff.title || '—' }}</span></div>
+          <div class="detail-item"><label>职务</label><span>{{ detailStaff.position || '—' }}</span></div>
+          <div class="detail-item"><label>电话</label><span>{{ detailStaff.phone || '—' }}</span></div>
+          <div class="detail-item"><label>邮箱</label><span>{{ detailStaff.email || '—' }}</span></div>
+          <div class="detail-item"><label>家庭住址</label><span>{{ detailStaff.address || '—' }}</span></div>
+          <div class="detail-item"><label>注册时间</label><span>{{ detailStaff.createdAt || '—' }}</span></div>
+        </div>
+        <div class="detail-actions">
+          <el-button v-if="canWrite" type="primary" @click="staffDetailVisible = false; openStaffForm(detailStaff)">编辑</el-button>
+          <el-button @click="staffDetailVisible = false">关闭</el-button>
+        </div>
+      </div>
+    </el-drawer>
+
     <!-- 教职工表单 -->
     <el-dialog v-model="staffFormVisible" :title="staffForm.userId ? '编辑教职工档案' : '新增教职工档案'" width="min(640px, calc(100vw - 32px))">
       <el-alert v-if="!staffForm.userId" type="info" :closable="false" class="form-tip"
-        title="创建后将同时开通登录账号，初始密码随机生成" />
+        title="创建后将同时开通登录账号，初始密码默认123321" />
       <el-form ref="staffFormRef" :model="staffForm" :rules="staffRules" label-position="top" class="form-grid">
         <el-form-item label="工号（登录账号）" prop="username">
           <el-input v-model="staffForm.username" maxlength="64" :disabled="!!staffForm.userId" placeholder="如：700010" />
@@ -298,6 +336,9 @@
         </el-form-item>
         <el-form-item label="邮箱">
           <el-input v-model="staffForm.email" maxlength="64" />
+        </el-form-item>
+        <el-form-item label="家庭住址">
+          <el-input v-model="staffForm.address" maxlength="128" placeholder="如：四川省成都市郫都区" />
         </el-form-item>
         <el-form-item v-if="staffForm.userId" label="账号状态">
           <el-radio-group v-model="staffForm.status">
@@ -415,7 +456,7 @@ const studentFormVisible = ref(false)
 const studentFormRef = ref(null)
 const emptyStudentForm = {
   studentId: null, studentNo: '', studentName: '', gender: 1, studentBirth: '',
-  studentAddress: '', originPlace: '', className: '', enrollYear: null,
+  studentAddress: '', phone: '', originPlace: '', className: '', enrollYear: null,
   deptId: null, majorId: null, status: 1,
 }
 const studentForm = reactive({ ...emptyStudentForm })
@@ -431,7 +472,7 @@ const openStudentForm = async (row) => {
   Object.assign(studentForm, row ? {
     studentId: row.studentId, studentNo: String(row.studentNo ?? ''), studentName: row.studentName,
     gender: row.gender, studentBirth: row.studentBirth, studentAddress: row.studentAddress,
-    originPlace: row.originPlace, className: row.className, enrollYear: row.enrollYear,
+    phone: row.phone || '', originPlace: row.originPlace, className: row.className, enrollYear: row.enrollYear,
     deptId: row.deptId, majorId: row.majorId, status: row.status,
   } : { ...emptyStudentForm })
   formMajorOptions.value = studentForm.deptId ? await loadMajorOptions(studentForm.deptId) : []
@@ -494,9 +535,12 @@ const loadStaffs = async (page) => {
 
 const staffFormVisible = ref(false)
 const staffFormRef = ref(null)
+const staffDetailVisible = ref(false)
+const detailStaff = ref(null)
+const showStaffDetail = (row) => { detailStaff.value = row; staffDetailVisible.value = true }
 const emptyStaffForm = {
   userId: null, username: '', realName: '', userType: 2, gender: 1,
-  phone: '', email: '', title: '', position: '', deptId: null, status: 1,
+  phone: '', email: '', address: '', title: '', position: '', deptId: null, status: 1,
 }
 const staffForm = reactive({ ...emptyStaffForm })
 const staffRules = {
@@ -508,7 +552,7 @@ const staffRules = {
 const openStaffForm = (row) => {
   Object.assign(staffForm, row ? {
     userId: row.userId, username: row.username, realName: row.realName, userType: row.userType,
-    gender: row.gender, phone: row.phone, email: row.email, title: row.title,
+    gender: row.gender, phone: row.phone, email: row.email, address: row.address, title: row.title,
     position: row.position, deptId: row.deptId, status: row.status,
   } : { ...emptyStaffForm })
   staffFormVisible.value = true

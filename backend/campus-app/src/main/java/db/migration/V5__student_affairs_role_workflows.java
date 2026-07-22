@@ -45,6 +45,14 @@ public class V5__student_affairs_role_workflows extends BaseJavaMigration {
                 WHERE `username` IN ('700001', '800001', 'admin')
                 """);
         execute(connection, """
+                UPDATE `user` SET
+                    `phone` = CASE `username`
+                        WHEN '700001' THEN '13800001001'
+                        WHEN '800001' THEN '13800001002'
+                        WHEN 'admin' THEN '13800001000' END
+                WHERE `username` IN ('700001', '800001', 'admin') AND `phone` IS NULL
+                """);
+        execute(connection, """
                 DELETE ur FROM `user_role` ur
                 JOIN `user` u ON u.user_id = ur.user_id
                 WHERE u.username IN ('700001', '800001', 'admin')

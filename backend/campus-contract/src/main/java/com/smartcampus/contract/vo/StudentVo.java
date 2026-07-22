@@ -26,6 +26,8 @@ public class StudentVo implements Serializable {
 
     private String studentAddress;
 
+    private String phone;
+
     /** 生源地(省份) */
     private String originPlace;
 

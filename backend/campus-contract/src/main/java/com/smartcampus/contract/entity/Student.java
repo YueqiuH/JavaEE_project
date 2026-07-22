@@ -18,6 +18,7 @@ public class Student implements Serializable {
     private String studentName;
     private LocalDate studentBirth;
     private String studentAddress;
+    private String phone;
     private Long studentNo;
     private Long gradeId;
     private Integer studentAge;

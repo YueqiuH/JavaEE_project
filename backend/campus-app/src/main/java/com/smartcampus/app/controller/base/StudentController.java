@@ -52,7 +52,6 @@ public class StudentController {
 
     @GetMapping("/by-no/{studentNo}")
     @Operation(summary = "按学号查询学生详情（含院系专业班级）")
-    @RequirePermission("base:read")
     public CommonResult<StudentVo> getByNo(@PathVariable Long studentNo) {
         return CommonResult.success(studentService.getByStudentNo(studentNo));
     }
@@ -138,6 +137,8 @@ public class StudentController {
                 if (!cls.isEmpty() && !"null".equals(cls)) req.setClassName(cls);
                 String origin = String.valueOf(r.getOrDefault("生源地(省份)", ""));
                 if (!origin.isEmpty() && !"null".equals(origin)) req.setOriginPlace(origin);
+                String phone = String.valueOf(r.getOrDefault("手机号", "")).trim();
+                if (!phone.isEmpty() && !"null".equals(phone)) req.setPhone(phone);
                 req.setStatus(1);
                 studentService.create(req);
                 success++;

@@ -48,7 +48,7 @@ public class StaffServiceImpl implements StaffService {
         assertDeptExists(request.getDeptId());
         User user = new User();
         user.setUsername(request.getUsername());
-        user.setPassword(passwordEncoder.encode(java.util.UUID.randomUUID().toString().substring(0, 8)));
+        user.setPassword(passwordEncoder.encode("123321"));
         user.setUserType(request.getUserType());
         applyProfile(user, request);
         if (user.getStatus() == null) {
@@ -101,6 +101,7 @@ public class StaffServiceImpl implements StaffService {
         user.setGender(request.getGender());
         user.setPhone(request.getPhone());
         user.setEmail(request.getEmail());
+        user.setAddress(request.getAddress());
         user.setTitle(request.getTitle());
         user.setPosition(request.getPosition());
         user.setDeptId(request.getDeptId());
@@ -132,6 +133,7 @@ public class StaffServiceImpl implements StaffService {
         vo.setGender(user.getGender());
         vo.setPhone(user.getPhone());
         vo.setEmail(user.getEmail());
+        vo.setAddress(user.getAddress());
         vo.setTitle(user.getTitle());
         vo.setPosition(user.getPosition());
         vo.setDeptId(user.getDeptId());

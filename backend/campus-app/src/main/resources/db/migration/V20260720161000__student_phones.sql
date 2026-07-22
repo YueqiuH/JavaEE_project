@@ -1,0 +1,2 @@
+UPDATE student SET phone = CONCAT('1', ELT(1+FLOOR(RAND()*3),'3','5','8'), LPAD(FLOOR(RAND()*1000000000),9,'0'))
+WHERE phone IS NULL;

@@ -174,44 +174,4 @@ INSERT INTO `enrollment` (`major_id`, `year`, `plan_count`, `actual_count`, `rep
     (@m_ad01, 2026,  55,  30, 54.55), (@m_ad02, 2026,  48,  21, 43.75)
 ON DUPLICATE KEY UPDATE `plan_count` = VALUES(`plan_count`), `actual_count` = VALUES(`actual_count`), `report_rate` = VALUES(`report_rate`);
 
--- ---------- 新闻公告 ----------
-SET @u_admin := (SELECT user_id FROM `user` WHERE username = 'admin');
-SET @u_t1    := (SELECT user_id FROM `user` WHERE username = '700001');
-SET @u_s1    := (SELECT user_id FROM `user` WHERE username = '600001');
-
-INSERT INTO `news` (`title`, `content`, `news_type`, `publisher_id`, `is_pinned`, `create_time`)
-SELECT t.title, t.content, t.news_type, @u_admin, t.is_pinned, t.create_time FROM (
-    SELECT '关于2026级新生报到安排的通知' AS title, '2026级新生请于8月28日-29日持录取通知书到各学院迎新点办理报到手续，宿舍分配结果可在迎新系统中查询。' AS content, '公告' AS news_type, 1 AS is_pinned, '2026-07-10 09:00:00' AS create_time
-    UNION ALL SELECT '2026-2027学年第一学期选课通知', '第一轮选课将于8月20日开放，请同学们提前查看培养方案，合理规划学分。', '公告', 0, '2026-07-12 10:30:00'
-    UNION ALL SELECT '我校学子在全国大学生程序设计竞赛中获佳绩', '在刚刚结束的全国大学生程序设计竞赛中，我校三支代表队分获金、银、铜奖，创历史最好成绩。', '新闻', 0, '2026-07-08 15:20:00'
-    UNION ALL SELECT '智慧校园服务平台正式上线试运行', '平台整合教务、学工、办公与基础数据四大板块，为全校师生提供一站式在线服务。', '新闻', 0, '2026-07-05 08:00:00'
-    UNION ALL SELECT '图书馆暑期开放时间调整公告', '7月15日至8月25日期间，图书馆开放时间调整为每日9:00-17:00，节假日闭馆。', '公告', 0, '2026-07-13 16:45:00'
-) t
-WHERE NOT EXISTS (SELECT 1 FROM news);
-
--- ---------- 论坛帖子与回复 ----------
-INSERT INTO `forum_post` (`title`, `content`, `author_id`, `like_count`, `view_count`, `status`, `create_time`)
-SELECT t.title, t.content, t.author_id, t.like_count, t.view_count, t.status, t.create_time FROM (
-    SELECT '新生求助：宿舍网络如何开通？' AS title, '马上要报到了，请问宿舍的校园网怎么办理？需要提前准备什么材料吗？' AS content, @u_s1 AS author_id, 12 AS like_count, 208 AS view_count, 1 AS status, '2026-07-11 20:15:00' AS create_time
-    UNION ALL SELECT '暑期实习经验分享帖', '刚结束在一家互联网公司的实习，整理了一些投递简历和面试的经验，欢迎交流。', @u_s1, 45, 530, 1, '2026-07-09 14:30:00'
-    UNION ALL SELECT '关于选课系统使用问题的答疑汇总', '整理了同学们常见的选课问题和解决办法，选课前建议先看这一帖。', @u_t1, 67, 890, 1, '2026-07-12 09:00:00'
-    UNION ALL SELECT '低价出全新考研资料（违规示例）', '各种考研资料低价转让，加微信详聊。', @u_s1, 0, 35, -1, '2026-07-13 22:40:00'
-) t
-WHERE NOT EXISTS (SELECT 1 FROM forum_post);
-
-SET @p_net   := (SELECT post_id FROM forum_post WHERE title = '新生求助：宿舍网络如何开通？' LIMIT 1);
-SET @p_intern := (SELECT post_id FROM forum_post WHERE title = '暑期实习经验分享帖' LIMIT 1);
-SET @p_course := (SELECT post_id FROM forum_post WHERE title = '关于选课系统使用问题的答疑汇总' LIMIT 1);
-
-INSERT INTO `forum_comment` (`post_id`, `author_id`, `content`, `status`, `create_time`)
-SELECT t.post_id, t.author_id, t.content, 1, t.create_time FROM (
-    SELECT @p_net AS post_id, @u_t1 AS author_id, '报到当天在宿舍楼下有网络运营商的办理点，带身份证即可。' AS content, '2026-07-11 21:00:00' AS create_time
-    UNION ALL SELECT @p_net, @u_s1, '也可以在企业微信里搜索"校园网自助开通"，线上办理更快。', '2026-07-11 21:35:00'
-    UNION ALL SELECT @p_intern, @u_s1, '感谢分享！请问简历模板方便发一份吗？', '2026-07-09 15:10:00'
-    UNION ALL SELECT @p_intern, @u_t1, '写得很实用，已推荐给我带的毕业设计小组。', '2026-07-09 18:22:00'
-    UNION ALL SELECT @p_course, @u_s1, '请问跨专业选课需要先提交申请吗？', '2026-07-12 10:05:00'
-    UNION ALL SELECT @p_course, @u_t1, '需要的，在教务系统提交跨专业选课申请，学院审核通过后即可选课。', '2026-07-12 10:40:00'
-    UNION ALL SELECT @p_course, @u_s1, '明白了，谢谢老师！', '2026-07-12 11:02:00'
-    UNION ALL SELECT @p_net, @u_s1, '补充：新生宿舍今年已全部覆盖 WiFi，开通账号后直接连接即可。', '2026-07-12 08:50:00'
-) t
-WHERE NOT EXISTS (SELECT 1 FROM forum_comment);
+-- 新闻和论坛数据已在 V1-V7 baseline 中包含，此处跳过

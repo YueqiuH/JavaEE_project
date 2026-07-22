@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.smartcampus.app.dao.base.DepartmentMapper;
 import com.smartcampus.app.dao.base.MajorMapper;
+import com.smartcampus.app.dao.base.StaffMapper;
 import com.smartcampus.app.dao.base.StudentMapper;
 import com.smartcampus.app.service.base.BaseErrorCodes;
 import com.smartcampus.app.service.base.StudentService;
@@ -14,23 +15,34 @@ import com.smartcampus.contract.dto.StudentQuery;
 import com.smartcampus.contract.dto.StudentSaveRequest;
 import com.smartcampus.contract.entity.Major;
 import com.smartcampus.contract.entity.Student;
+import com.smartcampus.contract.entity.User;
 import com.smartcampus.contract.vo.StudentStatsVo;
 import com.smartcampus.contract.vo.StudentVo;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class StudentServiceImpl implements StudentService {
 
+    private static final int USER_TYPE_STUDENT = 1;
+
     private final StudentMapper studentMapper;
     private final DepartmentMapper departmentMapper;
     private final MajorMapper majorMapper;
+    private final StaffMapper staffMapper;
+    private final PasswordEncoder passwordEncoder;
 
     public StudentServiceImpl(StudentMapper studentMapper,
                               DepartmentMapper departmentMapper,
-                              MajorMapper majorMapper) {
+                              MajorMapper majorMapper,
+                              StaffMapper staffMapper,
+                              PasswordEncoder passwordEncoder) {
         this.studentMapper = studentMapper;
         this.departmentMapper = departmentMapper;
         this.majorMapper = majorMapper;
+        this.staffMapper = staffMapper;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -40,15 +52,32 @@ public class StudentServiceImpl implements StudentService {
     }
 
     @Override
+    @Transactional
     public StudentVo create(StudentSaveRequest request) {
         assertStudentNoAvailable(request.getStudentNo(), null);
         assertDeptMajorConsistent(request.getDeptId(), request.getMajorId());
+
+        // 创建学生档案
         Student student = new Student();
         applyRequest(student, request);
         if (student.getStatus() == null) {
             student.setStatus(1);
         }
         studentMapper.insert(student);
+
+        // 同步开通登录账号，初始密码123321
+        User user = new User();
+        user.setUsername(String.valueOf(request.getStudentNo()));
+        user.setPassword(passwordEncoder.encode("123321"));
+        user.setUserType(USER_TYPE_STUDENT);
+        user.setRealName(request.getStudentName());
+        user.setGender(request.getGender());
+        user.setPhone(request.getPhone());
+        user.setDeptId(request.getDeptId());
+        user.setStatus(1);
+        staffMapper.insert(user);
+        staffMapper.assignRole(user.getUserId(), "STUDENT");
+
         return toVo(student);
     }
 
@@ -114,6 +143,7 @@ public class StudentServiceImpl implements StudentService {
         student.setStudentBirth(request.getStudentBirth());
         student.setStudentAge(request.getStudentAge());
         student.setStudentAddress(request.getStudentAddress());
+        student.setPhone(request.getPhone());
         student.setOriginPlace(request.getOriginPlace());
         student.setClassName(request.getClassName());
         student.setEnrollYear(request.getEnrollYear());
@@ -133,6 +163,7 @@ public class StudentServiceImpl implements StudentService {
         vo.setStudentBirth(student.getStudentBirth());
         vo.setStudentAge(student.getStudentAge());
         vo.setStudentAddress(student.getStudentAddress());
+        vo.setPhone(student.getPhone());
         vo.setOriginPlace(student.getOriginPlace());
         vo.setClassName(student.getClassName());
         vo.setEnrollYear(student.getEnrollYear());

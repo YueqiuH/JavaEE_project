@@ -43,6 +43,10 @@ public class StaffSaveRequest implements Serializable {
     @Size(max = 64, message = "邮箱不能超过 64 个字符")
     private String email;
 
+    /** 家庭住址 */
+    @Size(max = 128, message = "地址不能超过 128 个字符")
+    private String address;
+
     /** 职称 */
     @Size(max = 32, message = "职称不能超过 32 个字符")
     private String title;

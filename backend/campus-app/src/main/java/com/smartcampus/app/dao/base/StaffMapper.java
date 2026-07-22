@@ -17,7 +17,7 @@ import org.apache.ibatis.annotations.Select;
 public interface StaffMapper extends BaseMapper<User> {
 
     @Select("""
-            SELECT u.user_id, u.username, u.user_type, u.real_name, u.gender, u.phone, u.email,
+            SELECT u.user_id, u.username, u.user_type, u.real_name, u.gender, u.phone, u.email, u.address,
                    u.title, u.position, u.dept_id, d.dept_name, u.status, u.created_at
             FROM `user` u
             LEFT JOIN department d ON d.dept_id = u.dept_id

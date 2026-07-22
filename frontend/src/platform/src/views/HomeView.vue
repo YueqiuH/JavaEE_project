@@ -22,11 +22,11 @@
               <button class="header-icon-button" type="button" aria-label="消息通知" @click="router.push({ name: 'meetingNotice' })"><el-icon><Bell /></el-icon></button>
             </el-tooltip>
           </el-badge>
-          <el-dropdown trigger="click" @command="handleUserCommand">
+          <el-dropdown ref="userDropdownRef" trigger="click" @command="handleUserCommand" @visible-change="dropdownOpen = $event">
             <button class="user-button" type="button">
               <span class="user-avatar">{{ avatarText }}</span>
-              <span class="user-copy"><strong>{{ displayName }}</strong><small>{{ roleLabel }}</small></span>
-              <el-icon><ArrowDown /></el-icon>
+              <span class="user-copy"><strong>{{ displayName }}</strong></span>
+              <el-icon :class="{ rotated: dropdownOpen }"><ArrowDown /></el-icon>
             </button>
             <template #dropdown>
               <el-dropdown-menu>
@@ -71,7 +71,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, provide, ref } from 'vue'
+import { computed, onMounted, onUnmounted, provide, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowDown, Bell, Checked, Close, Grid, HomeFilled, Menu, Search, Setting, SwitchButton, User } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
@@ -83,6 +83,8 @@ import { clearStoredCurrentUser, getStoredCurrentUser, setStoredCurrentUser } fr
 
 const route = useRoute()
 const router = useRouter()
+const userDropdownRef = ref(null)
+const dropdownOpen = ref(false)
 const previewUser = import.meta.env.DEV && import.meta.env.VITE_UI_PREVIEW === 'true'
   ? { user: { username: '600001', realName: '林同学' }, roles: ['STUDENT'], permissions: [], menus: [] }
   : null
@@ -104,7 +106,7 @@ const displayName = computed(() => currentUser.value?.user?.realName || currentU
 const avatarText = computed(() => displayName.value.slice(0, 1).toUpperCase())
 const roleLabel = computed(() => {
   const t = currentUser.value?.user?.userType
-  return { 1: '学生', 2: '辅导员', 3: '教职工', 4: '教务处' }[t] || '用户'
+  return { 1: '学生', 2: '教师', 3: '教职工', 4: '教务处' }[t] || '用户'
 })
 
 const loadCurrentUser = async () => {
@@ -126,9 +128,12 @@ const handleUserCommand = async (command) => {
   router.push({ name: 'profile', query: { tab: command === 'settings' ? 'password' : 'info' } })
 }
 
+const closeDropdown = () => { userDropdownRef.value?.handleClose?.() }
 onMounted(() => {
   if (!currentUser.value) loadCurrentUser().catch(() => {})
+  document.addEventListener('wheel', closeDropdown, true)
 })
+onUnmounted(() => { document.removeEventListener('wheel', closeDropdown, true) })
 </script>
 
 <style scoped>
@@ -154,6 +159,8 @@ onMounted(() => {
 .user-copy { display:flex; min-width:0; flex:1; flex-direction:column; line-height:1.25; }
 .user-copy strong { overflow:hidden; font-size:13px; font-weight:600; text-overflow:ellipsis; white-space:nowrap; }
 .user-copy small { color:rgba(255,255,255,.65); font-size:11px; }
+.user-button .el-icon { transition: transform .25s ease }
+.user-button .el-icon.rotated { transform: rotate(180deg) }
 .mobile-menu-button { display:none; }
 .app-body { display:flex; min-height:calc(100vh - var(--header-height)); }
 .app-main { min-width:0; flex:1; }

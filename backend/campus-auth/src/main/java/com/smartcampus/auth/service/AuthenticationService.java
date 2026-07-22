@@ -7,6 +7,7 @@ import com.smartcampus.auth.repository.AuthUserMapper;
 import com.smartcampus.common.enums.GlobalErrorCodeConstants;
 import com.smartcampus.common.exception.BusinessException;
 import com.smartcampus.contract.dto.LoginRequest;
+import com.smartcampus.contract.dto.ResetPasswordRequest;
 import com.smartcampus.contract.dto.UpdatePasswordRequest;
 import com.smartcampus.contract.dto.UpdateProfileRequest;
 import com.smartcampus.contract.entity.Menu;
@@ -19,7 +20,9 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class AuthenticationService {
@@ -70,11 +73,48 @@ public class AuthenticationService {
         return loadCurrentUser(user);
     }
 
+    private final Map<String, CodeEntry> resetCodes = new ConcurrentHashMap<>();
+
+    private record CodeEntry(int code, long expiresAt) {}
+
+    /** Generate a 6-digit demo code, valid for 1 minute. */
+    public int sendResetCode(String username, String phone) {
+        User user = userMapper.findActiveByUsername(username);
+        boolean phoneOk = (user != null && phone.equals(user.getPhone()))
+                || userMapper.findStudentPhone(username, phone) > 0;
+        if (!phoneOk) throw new BusinessException(new com.smartcampus.common.result.ErrorCode(400003, "账号或手机号不匹配", org.springframework.http.HttpStatus.BAD_REQUEST));
+        int code = 100000 + (int) (Math.random() * 900000);
+        resetCodes.put(username, new CodeEntry(code, System.currentTimeMillis() + 60_000));
+        return code;
+    }
+
+    public void resetPassword(ResetPasswordRequest request) {
+        CodeEntry entry = resetCodes.get(request.getUsername());
+        if (entry == null) {
+            throw new BusinessException(new com.smartcampus.common.result.ErrorCode(400004, "请先获取验证码", org.springframework.http.HttpStatus.BAD_REQUEST));
+        }
+        if (System.currentTimeMillis() > entry.expiresAt) {
+            resetCodes.remove(request.getUsername());
+            throw new BusinessException(new com.smartcampus.common.result.ErrorCode(400004, "验证码已失效，请重新获取", org.springframework.http.HttpStatus.BAD_REQUEST));
+        }
+        if (entry.code != Integer.parseInt(request.getCode())) {
+            throw new BusinessException(new com.smartcampus.common.result.ErrorCode(400004, "验证码错误", org.springframework.http.HttpStatus.BAD_REQUEST));
+        }
+        User user = userMapper.findActiveByUsername(request.getUsername());
+        if (user == null) throw new BusinessException(GlobalErrorCodeConstants.LOGIN_ERROR);
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userMapper.updateById(user);
+        resetCodes.remove(request.getUsername());
+    }
+
     public void changePassword(UpdatePasswordRequest request) {
         AuthSession session = CurrentUserContext.require();
         User user = userMapper.findActiveById(session.userId());
         if (user == null || !passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
-            throw new BusinessException(GlobalErrorCodeConstants.LOGIN_ERROR);
+            throw new BusinessException(new com.smartcampus.common.result.ErrorCode(400005, "原密码错误", org.springframework.http.HttpStatus.BAD_REQUEST));
+        }
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new BusinessException(new com.smartcampus.common.result.ErrorCode(400006, "新密码不能与原密码相同", org.springframework.http.HttpStatus.BAD_REQUEST));
         }
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userMapper.updateById(user);

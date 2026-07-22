@@ -148,8 +148,7 @@
           <strong>智慧校园服务平台</strong>
           <p>统一入口 · 协同办理 · 数据驱动</p>
         </div>
-        <p>校园图片：note thanun / Unsplash</p>
-      </div>
+              </div>
     </footer>
 
     <div class="floating-actions" aria-label="快捷工具">

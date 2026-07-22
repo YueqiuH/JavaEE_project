@@ -14,7 +14,7 @@ public interface GlobalErrorCodeConstants {
     // ========== 客户端错误段 ==========
     ErrorCode BAD_REQUEST = new ErrorCode(400001, "请求参数不正确", HttpStatus.BAD_REQUEST);
     ErrorCode UNAUTHORIZED = new ErrorCode(401001, "账号未登录", HttpStatus.UNAUTHORIZED);
-    ErrorCode LOGIN_ERROR = new ErrorCode(401002, "账号或密码错误", HttpStatus.UNAUTHORIZED);
+    ErrorCode LOGIN_ERROR = new ErrorCode(400002, "账号或密码错误", HttpStatus.BAD_REQUEST);
     ErrorCode FORBIDDEN = new ErrorCode(403001, "没有该操作权限", HttpStatus.FORBIDDEN);
     ErrorCode NOT_FOUND = new ErrorCode(404001, "请求未找到", HttpStatus.NOT_FOUND);
     ErrorCode METHOD_NOT_ALLOWED = new ErrorCode(405001, "请求方法不正确", HttpStatus.METHOD_NOT_ALLOWED);

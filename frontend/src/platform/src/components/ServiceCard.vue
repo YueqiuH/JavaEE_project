@@ -20,10 +20,6 @@
           <span v-if="service.ai" class="ai-label">AI</span>
         </span>
         <span class="service-description">{{ service.description }}</span>
-        <span class="service-summary">
-          <span class="summary-dot"></span>
-          {{ service.summary }}
-        </span>
       </span>
     </button>
   </article>
@@ -57,15 +53,18 @@ const cardStyle = computed(() => {
   min-height: 132px;
   overflow: hidden;
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-light);
   border-radius: var(--radius-md);
-  transition: border-color 180ms ease, background-color 180ms ease;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-normal);
 }
 
 .service-card:hover,
 .service-card:focus-within {
   background: color-mix(in srgb, var(--service-soft) 48%, white);
   border-color: var(--service-color);
+  box-shadow: 0 6px 20px rgba(0,0,0,.1);
+  transform: translateY(-2px);
 }
 
 .service-main {
@@ -90,15 +89,17 @@ const cardStyle = computed(() => {
 
 .service-icon {
   display: inline-flex;
-  width: 44px;
-  height: 44px;
-  flex: 0 0 44px;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
   align-items: center;
   justify-content: center;
   color: var(--service-color);
   background: var(--service-soft);
-  border-radius: 8px;
+  border-radius: 10px;
+  transition: transform var(--transition-fast);
 }
+.service-card:hover .service-icon{transform:scale(1.08)}
 
 .service-icon :deep(svg) {
   width: 24px;
@@ -150,21 +151,8 @@ const cardStyle = computed(() => {
   -webkit-line-clamp: 2;
 }
 
-.service-summary {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 8px;
-  color: var(--color-text-tertiary);
-  font-size: 12px;
-}
 
-.summary-dot {
-  width: 5px;
-  height: 5px;
-  background: var(--service-color);
-  border-radius: 50%;
-}
+
 
 .favorite-button {
   position: absolute;

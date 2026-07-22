@@ -38,6 +38,9 @@ public class StudentSaveRequest implements Serializable {
     @Size(max = 128, message = "地址不能超过 128 个字符")
     private String studentAddress;
 
+    @Size(max = 20, message = "电话不能超过 20 个字符")
+    private String phone;
+
     /** 生源地(省份) */
     @Size(max = 32, message = "生源地不能超过 32 个字符")
     private String originPlace;

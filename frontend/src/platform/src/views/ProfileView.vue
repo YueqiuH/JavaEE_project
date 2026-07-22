@@ -11,9 +11,10 @@
         </div>
       </div>
 
-      <el-tabs v-model="activeTab" class="profile-tabs">
-        <!-- ===== 个人信息 TAB ===== -->
-        <el-tab-pane label="个人信息" name="info">
+      <div class="profile-tabs">
+        <h2 class="section-title">{{ showInfo ? '个人信息' : '修改密码' }}</h2>
+        <!-- ===== 个人信息 ===== -->
+        <template v-if="showInfo">
           <!-- 学生 -->
           <template v-if="isStudent">
             <div class="info-grid">
@@ -23,6 +24,7 @@
               <div class="info-item"><label>院系</label><span>{{ studentInfo?.deptName || '-' }}</span></div>
               <div class="info-item"><label>专业</label><span>{{ studentInfo?.majorName || '-' }}</span></div>
               <div class="info-item"><label>班级</label><span>{{ studentInfo?.className || '-' }}</span></div>
+              <div class="info-item"><label>电话</label><span>{{ studentInfo?.phone || '-' }}</span></div>
               <div class="info-item"><label>生源地</label><span>{{ studentInfo?.originPlace || '-' }}</span></div>
               <div class="info-item"><label>入学年份</label><span>{{ studentInfo?.enrollYear ? studentInfo.enrollYear+'级' : '-' }}</span></div>
               <div class="info-item"><label>学籍状态</label><span :class="studentInfo?.status===1?'text-green':'text-red'">{{ statusLabel(studentInfo?.status) }}</span></div>
@@ -35,7 +37,7 @@
               <div class="info-item"><label>姓名</label><span>{{ user?.realName || '-' }}</span></div>
               <div class="info-item"><label>性别</label><span>{{ genderLabel(user?.gender) }}</span></div>
               <div class="info-item"><label>类别</label><span>{{ roleLabel }}</span></div>
-              <div class="info-item"><label>院系</label><span>{{ deptName || '-' }}</span></div>
+              <div class="info-item"><label>院系</label><span>{{ user?.deptName || '-' }}</span></div>
               <div class="info-item"><label>职称</label><span>{{ user?.title || '-' }}</span></div>
               <div class="info-item"><label>职务</label><span>{{ user?.position || '-' }}</span></div>
               <div class="info-item"><label>电话</label><span>{{ user?.phone || '-' }}</span></div>
@@ -52,26 +54,26 @@
               <div class="info-item"><label>状态</label><span class="text-green">在职</span></div>
             </div>
           </template>
-        </el-tab-pane>
+        </template>
 
-        <!-- ===== 修改密码 TAB ===== -->
-        <el-tab-pane label="修改密码" name="password">
-          <el-form ref="pwdFormRef" :model="pwdForm" :rules="pwdRules" label-position="top" size="large" style="max-width:420px">
+        <!-- ===== 修改密码 ===== -->
+        <template v-else>
+          <el-form ref="pwdFormRef" :model="pwdForm" :rules="pwdRules" label-position="top" size="large" style="max-width:420px" autocomplete="off">
             <el-form-item label="原密码" prop="oldPassword">
-              <el-input v-model="pwdForm.oldPassword" type="password" placeholder="输入当前密码" show-password autocomplete="current-password" />
+              <el-input v-model="pwdForm.oldPassword" type="password" placeholder="输入当前密码" show-password autocomplete="off" />
             </el-form-item>
             <el-form-item label="新密码" prop="newPassword">
-              <el-input v-model="pwdForm.newPassword" type="password" placeholder="6-32 位新密码" show-password autocomplete="new-password" />
+              <el-input v-model="pwdForm.newPassword" type="password" placeholder="6-32 位新密码" show-password autocomplete="off" />
             </el-form-item>
             <el-form-item label="确认新密码" prop="confirmPassword">
-              <el-input v-model="pwdForm.confirmPassword" type="password" placeholder="再次输入新密码" show-password autocomplete="new-password" />
+              <el-input v-model="pwdForm.confirmPassword" type="password" placeholder="再次输入新密码" show-password autocomplete="off" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" :loading="pwdLoading" @click="savePassword">修改密码</el-button>
             </el-form-item>
           </el-form>
-        </el-tab-pane>
-      </el-tabs>
+        </template>
+      </div>
     </div>
   </div>
 </template>
@@ -81,13 +83,12 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { changePassword, getCurrentUser } from '@/api/auth.js'
-import { getStudentByNo, listDepartmentPage } from '@/api/base.js'
+import { getStudentByNo } from '@/api/base.js'
 
 const route = useRoute()
-const activeTab = ref(route.query.tab === 'password' ? 'password' : 'info')
+const showInfo = computed(() => route.query.tab !== 'password')
 const user = ref(null)
 const studentInfo = ref(null)
-const deptName = ref('')
 
 const isStudent = computed(() => user.value?.userType === 1)
 const isStaff = computed(() => user.value?.userType === 2 || user.value?.userType === 3)
@@ -145,13 +146,6 @@ onMounted(async () => {
         studentInfo.value = r.data
       } catch { /* non-critical */ }
     }
-    if (user.value?.deptId) {
-      try {
-        const r = await listDepartmentPage({ page: 1, size: 100 })
-        const dept = (r.data?.records || []).find(d => d.deptId === user.value.deptId)
-        deptName.value = dept?.deptName || ''
-      } catch { /* */ }
-    }
   } catch { /* */ }
 })
 </script>
@@ -164,7 +158,7 @@ onMounted(async () => {
 .header-info h1 { margin: 0; font-size: 22px; font-weight: 600; }
 .header-info p { margin: 4px 0 0; color: #8a919c; font-size: 14px; }
 .profile-tabs { padding: 28px 32px; background: #fff; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
-.profile-tabs :deep(.el-tabs__header) { margin-bottom: 28px; }
+.section-title { margin: 0 0 28px; font-size: 20px; font-weight: 600; }
 .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px 32px; }
 .info-item { display: flex; flex-direction: column; gap: 4px; }
 .info-item label { color: #8a919c; font-size: 13px; }

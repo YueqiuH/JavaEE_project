@@ -15,7 +15,7 @@ public interface StudentMapper extends BaseMapper<Student> {
 
     @Select("""
             SELECT s.student_id, s.student_no, s.student_name, s.gender, s.student_birth, s.student_age,
-                   s.student_address, s.origin_place, s.class_name, s.enroll_year, s.status,
+                   s.student_address, s.phone, s.origin_place, s.class_name, s.enroll_year, s.status,
                    s.dept_id, d.dept_name, s.major_id, m.major_name
             FROM student s
             LEFT JOIN department d ON d.dept_id = s.dept_id

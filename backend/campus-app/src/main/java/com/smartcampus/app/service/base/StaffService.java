@@ -9,7 +9,7 @@ public interface StaffService {
 
     IPage<StaffVo> pageVo(StaffQuery query);
 
-    /** 创建教职工档案并开通登录账号（随机密码），按类别赋予 TEACHER/STAFF 角色 */
+    /** 创建教职工档案并开通登录账号（初始密码123321），按类别赋予 TEACHER/STAFF 角色 */
     StaffVo create(StaffSaveRequest request);
 
     /** 更新档案信息（不修改工号与密码） */

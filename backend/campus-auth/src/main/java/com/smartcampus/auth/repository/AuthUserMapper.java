@@ -11,17 +11,23 @@ import java.util.List;
 public interface AuthUserMapper extends BaseMapper<User> {
 
     @Select("""
-            SELECT user_id, username, password, user_type, status, created_at, updated_at
-            FROM `user`
-            WHERE username = #{username} AND status = 1
+            SELECT u.user_id, u.username, u.password, u.user_type, u.real_name, u.gender,
+                   u.phone, u.email, u.title, u.position, u.dept_id, u.status,
+                   u.created_at, u.updated_at, d.dept_name
+            FROM `user` u
+            LEFT JOIN department d ON d.dept_id = u.dept_id
+            WHERE u.username = #{username} AND u.status = 1
             LIMIT 1
             """)
     User findActiveByUsername(@Param("username") String username);
 
     @Select("""
-            SELECT user_id, username, password, user_type, status, created_at, updated_at
-            FROM `user`
-            WHERE user_id = #{userId} AND status = 1
+            SELECT u.user_id, u.username, u.password, u.user_type, u.real_name, u.gender,
+                   u.phone, u.email, u.title, u.position, u.dept_id, u.status,
+                   u.created_at, u.updated_at, d.dept_name
+            FROM `user` u
+            LEFT JOIN department d ON d.dept_id = u.dept_id
+            WHERE u.user_id = #{userId} AND u.status = 1
             LIMIT 1
             """)
     User findActiveById(@Param("userId") Long userId);
@@ -65,4 +71,7 @@ public interface AuthUserMapper extends BaseMapper<User> {
             ORDER BY m.sort_order, m.menu_id
             """)
     List<Menu> findMenus(@Param("userId") Long userId);
+
+    @Select("SELECT COUNT(*) FROM student WHERE student_no = #{username} AND phone = #{phone}")
+    int findStudentPhone(@Param("username") String username, @Param("phone") String phone);
 }

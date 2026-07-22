@@ -42,6 +42,9 @@ public class User implements Serializable {
     /** 邮箱 */
     private String email;
 
+    /** 家庭住址 */
+    private String address;
+
     /** 职称 */
     private String title;
 
@@ -56,4 +59,8 @@ public class User implements Serializable {
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
+
+    /** 院系名称（JOIN 填充） */
+    @TableField(exist = false)
+    private String deptName;
 }

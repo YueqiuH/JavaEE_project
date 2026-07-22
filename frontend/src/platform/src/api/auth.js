@@ -11,3 +11,7 @@ export const getCurrentUser = () => request.get(`${AUTH_API_PREFIX}/me`)
 export const changePassword = (data) => request.put(`${AUTH_API_PREFIX}/password`, data)
 
 export const updateProfile = (data) => request.put(`${AUTH_API_PREFIX}/profile`, data)
+
+export const sendResetCode = (data) => request.post(`${AUTH_API_PREFIX}/reset-password/send-code`, data)
+
+export const resetPassword = (data) => request.post(`${AUTH_API_PREFIX}/reset-password`, data)

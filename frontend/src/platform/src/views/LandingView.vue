@@ -58,7 +58,7 @@
       </section>
     </main>
 
-    <footer class="landing-footer"><div class="container"><div><strong>智慧校园服务平台</strong><p>统一入口 · 协同办理 · 数据驱动</p></div><div><p>演示账号：600001 / 123321</p><small>校园图片：note thanun / Unsplash</small></div></div></footer>
+    <footer class="landing-footer"><div class="container"><div><strong>智慧校园服务平台</strong><p>统一入口 · 协同办理 · 数据驱动</p></div><div><p>演示账号：600001 / 123321</p></div></div></footer>
   </div>
 </template>
 
