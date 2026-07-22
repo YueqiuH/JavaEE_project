@@ -43,7 +43,7 @@
                 <span class="sc-label">未通过</span>
               </div>
               <div class="stat-card credit">
-                <span class="sc-num">{{ store.studentReport?.totalCredits || 0 }}</span>
+                <span class="sc-num">{{ store.earnedCredits }}</span>
                 <span class="sc-label">已修学分</span>
               </div>
             </div>

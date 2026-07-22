@@ -66,6 +66,13 @@ export const useScoreStore = defineStore('scoreManagement', () => {
       .reduce((sum, s) => sum + (s.credit || 2), 0)
   })
 
+  /** 学生已修学分(通过课程) */
+  const earnedCredits = computed(() => {
+    return studentScores.value
+      .filter(s => s.status === 1)
+      .reduce((sum, s) => sum + (s.credit || 2), 0)
+  })
+
   /** 学生 GPA */
   const studentGpa = computed(() => studentReport.value?.gpa || 0)
 
@@ -256,7 +263,7 @@ export const useScoreStore = defineStore('scoreManagement', () => {
     studentReport, studentScores, teacherClasses, currentClassScores, selectedClass,
     warningList, selectedStudentProfile, adminModifyLogs,
     // 计算
-    currentFailCredits, totalFailCredits, studentGpa, warningLevel, classStats,
+    currentFailCredits, totalFailCredits, earnedCredits, studentGpa, warningLevel, classStats,
     // 工具
     scoreToGpa, calcTotal,
     // 方法
